@@ -1,0 +1,1693 @@
+---
+title: "Score_Qualtrics"
+author: "Cameron, Kate & Nandi"
+date: "20 April 2017 dude"
+output: html_document
+---
+
+# Begin script
+
+Load required packages
+```{r, echo=FALSE}
+## Load required packages ##
+packages <- c("lme4", "nlme", "ggplot2", "zoo","dplyr", "tidyr", "knitr",
+              "parallel", "data.table", "lubridate","qualtRics")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+```
+
+Extract qualtrics data from website
+```{r, include=FALSE}
+tagqualtricstoken<-readChar("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/qualtrics_TAG_token.txt",nchars = file.info("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/qualtrics_TAG_token.txt")$size) 
+qualtRics::registerApiKey(tagqualtricstoken)
+current_surveys <- qualtRics::getSurveys("https://oregon.qualtrics.com/")
+
+sess1_surveys<-current_surveys %>% filter(grepl("Sess 1",name))
+home_surveys<-current_surveys %>% filter(grepl("Home",name))
+sess2_surveys<-current_surveys %>% filter(grepl("Sess 2",name))
+parent_surveys<-current_surveys %>% filter(grepl("Parent",name))
+
+surveys_to_process<-bind_rows(sess1_surveys,sess2_surveys,home_surveys,parent_surveys)
+
+for (i in 1:length(surveys_to_process$id)){
+getSurvey(surveys_to_process$id[i],
+                      format = "csv",
+                      save_dir="/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Working/",
+                      "https://oregon.qualtrics.com/",
+                      verbose=TRUE)}
+
+```
+
+
+Load and clean redcap info
+```{r}
+redcapData <- read.csv("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Working/redcap_dates.csv", header = TRUE, stringsAsFactors = FALSE)
+redcapData_dob<-redcapData %>%
+  select(dob,subject_spit_id) %>%
+  filter(!dob=="")
+redcapData_sessiondates<-redcapData %>%
+  select(sa_date,sb_date,subject_spit_id) %>%
+  filter(!sa_date=="")
+redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
+  mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
+  filter(!subject_spit_id=="TAG_001P") %>%
+  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid))
+```
+
+Load and clean qualtrics (from scratch)
+```{r}
+qualtrics_test<-merge(survey)
+
+
+
+
+qualtricsData_raw_long <- read.csv(paste0(processed_data,"qualtrics/TAG_auto_raw_qualtrics_long.csv"), header = TRUE, stringsAsFactors = FALSE)
+qualtricsData_raw_long <- qualtricsData_raw_long %>% mutate(tagid=sprintf("TAG%03s",SID)) %>% select(tagid, item, value, survey_name) %>% filter(!tagid=="TAG000")
+
+```
+
+Prepare subject identifying information
+```{r}
+participant_info <- redcapData %>%
+  mutate(tagid=sprintf("TAG%03d",SID)) %>%
+  arrange(tagid) %>%
+  select(-age, -SID) %>%
+  filter(!is.na(dob))
+```
+
+Create survey date info  
+```{r}
+survey_date<-filter(qualtricsData_raw_long, grepl("EndDate",item))
+```
+
+Figure out duplicates
+```{r}
+#Step 1: Define your questionnaire measure. Possibilities: K_SRQ, IRI, PDS
+questionnaire<-"^Ethnicity"
+
+# Now highlight the next segment until you read # STOP # and run
+checkoutduplicates<-filter(qualtricsData_raw_long, grepl(questionnaire,item)) %>% 
+  mutate(value=as.numeric(value)) %>%
+  filter(!is.na(value)) %>%
+  distinct(tagid,item,value,.keep_all = FALSE)
+
+duplicates<-checkoutduplicates %>%
+  spread(item,value)
+
+# STOP #
+######################
+
+# Now check each of the rows #
+checkoutduplicates[647:658,]
+
+# To figure out the timestamp just enter in one of the rows from above here:
+rownum<-450
+qualtricsData_raw_long %>%
+  filter(tagid %in% checkoutduplicates$tagid[rownum]) %>%
+  filter(survey_name %in% checkoutduplicates$survey_name[rownum]) %>%
+  filter(item=="EndDate")
+# Now compare the timestamps to those in Google Calendar for TAG
+
+```
+
+Prepare BFI-10
+```{r}
+qualtricsData_raw_bfi10<-filter(qualtricsData_raw_long, grepl("BFI",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_bfi10<-left_join(qualtricsData_raw_bfi10,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(BFI_10_1=ifelse(BFI_10_1==1,5,
+                        ifelse(BFI_10_1==2,4,
+                               ifelse(BFI_10_1==3,3,
+                                      ifelse(BFI_10_1==4,2,
+                                             ifelse(BFI_10_1==5,1,
+                                                    BFI_10_1))))),
+         BFI_10_3=ifelse(BFI_10_3==1,5,
+                        ifelse(BFI_10_3==2,4,
+                               ifelse(BFI_10_3==3,3,
+                                      ifelse(BFI_10_3==4,2,
+                                             ifelse(BFI_10_3==5,1,
+                                                    BFI_10_3))))),
+         BFI_10_4=ifelse(BFI_10_4==1,5,
+                        ifelse(BFI_10_4==2,4,
+                               ifelse(BFI_10_4==3,3,
+                                      ifelse(BFI_10_4==4,2,
+                                             ifelse(BFI_10_4==5,1,
+                                                    BFI_10_4))))),
+         BFI_10_5=ifelse(BFI_10_5==1,5,
+                        ifelse(BFI_10_5==2,4,
+                               ifelse(BFI_10_5==3,3,
+                                      ifelse(BFI_10_5==4,2,
+                                             ifelse(BFI_10_5==5,1,
+                                                    BFI_10_5))))),
+         BFI_10_7=ifelse(BFI_10_7==1,5,
+                        ifelse(BFI_10_7==2,4,
+                               ifelse(BFI_10_7==3,3,
+                                      ifelse(BFI_10_7==4,2,
+                                             ifelse(BFI_10_7==5,1,
+                                                    BFI_10_7))))),
+         BFI_10_10=ifelse(BFI_10_10==1,5,
+                        ifelse(BFI_10_10==2,4,
+                               ifelse(BFI_10_10==3,3,
+                                      ifelse(BFI_10_10==4,2,
+                                             ifelse(BFI_10_10==5,1,
+                                                    BFI_10_10))))),
+      BFI10_extra_N=2,
+      BFI10_extra_missing=rowSums(is.na(cbind(BFI_10_1,BFI_10_6))),
+      BFI10_extra_total=rowSums(cbind(BFI_10_1,BFI_10_6), na.rm=F),
+      BFI10_extra_mean=rowMeans(cbind(BFI_10_1,BFI_10_6), na.rm=T),
+      BFI10_agree_N=2,
+      BFI10_agree_missing=rowSums(is.na(cbind(BFI_10_2,BFI_10_7))),
+      BFI10_agree_total=rowSums(cbind(BFI_10_2,BFI_10_7), na.rm=F),
+      BFI10_agree_mean=rowMeans(cbind(BFI_10_2,BFI_10_7), na.rm=T),
+      BFI10_consc_N=2,
+      BFI10_consc_missing=rowSums(is.na(cbind(BFI_10_3,BFI_10_8))),
+      BFI10_consc_total=rowSums(cbind(BFI_10_3,BFI_10_8), na.rm=F),
+      BFI10_consc_mean=rowMeans(cbind(BFI_10_3,BFI_10_8), na.rm=T),
+      BFI10_neuro_N=2,
+      BFI10_neuro_missing=rowSums(is.na(cbind(BFI_10_4,BFI_10_9))),
+      BFI10_neuro_total=rowSums(cbind(BFI_10_4,BFI_10_9), na.rm=F),
+      BFI10_neuro_mean=rowMeans(cbind(BFI_10_4,BFI_10_9), na.rm=T),
+      BFI10_open_N=2,
+      BFI10_open_missing=rowSums(is.na(cbind(BFI_10_5,BFI_10_10))),
+      BFI10_open_total=rowSums(cbind(BFI_10_5,BFI_10_10), na.rm=F),
+      BFI10_open_mean=rowMeans(cbind(BFI_10_5,BFI_10_10), na.rm=T))
+```
+
+Prepare CAMM
+```{r}
+qualtricsData_raw_camm<-filter(qualtricsData_raw_long, grepl("CAMM",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG015") %>%
+  spread(item,value)
+
+qualtricsData_raw_camm<-left_join(qualtricsData_raw_camm,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(CAMM_1=ifelse(CAMM_1==4,0,
+                        ifelse(CAMM_1==3,1,
+                               ifelse(CAMM_1==2,2,
+                                      ifelse(CAMM_1==1,3,
+                                             ifelse(CAMM_1==0,4,
+                                                    NA))))),
+         CAMM_2=ifelse(CAMM_2==4,0,
+                        ifelse(CAMM_2==3,1,
+                               ifelse(CAMM_2==2,2,
+                                      ifelse(CAMM_2==1,3,
+                                             ifelse(CAMM_2==0,4,
+                                                    NA))))),
+         CAMM_3=ifelse(CAMM_3==4,0,
+                        ifelse(CAMM_3==3,1,
+                               ifelse(CAMM_3==2,2,
+                                      ifelse(CAMM_3==1,3,
+                                             ifelse(CAMM_3==0,4,
+                                                    NA))))),
+         CAMM_4=ifelse(CAMM_4==4,0,
+                        ifelse(CAMM_4==3,1,
+                               ifelse(CAMM_4==2,2,
+                                      ifelse(CAMM_4==1,3,
+                                             ifelse(CAMM_4==0,4,
+                                                    NA))))),
+         CAMM_5=ifelse(CAMM_5==4,0,
+                        ifelse(CAMM_5==3,1,
+                               ifelse(CAMM_5==2,2,
+                                      ifelse(CAMM_5==1,3,
+                                             ifelse(CAMM_5==0,4,
+                                                    NA))))),
+         CAMM_6=ifelse(CAMM_6==4,0,
+                        ifelse(CAMM_6==3,1,
+                               ifelse(CAMM_6==2,2,
+                                      ifelse(CAMM_6==1,3,
+                                             ifelse(CAMM_6==0,4,
+                                                    NA))))),
+         CAMM_7=ifelse(CAMM_7==4,0,
+                        ifelse(CAMM_7==3,1,
+                               ifelse(CAMM_7==2,2,
+                                      ifelse(CAMM_7==1,3,
+                                             ifelse(CAMM_7==0,4,
+                                                    NA))))),
+         CAMM_8=ifelse(CAMM_8==4,0,
+                        ifelse(CAMM_8==3,1,
+                               ifelse(CAMM_8==2,2,
+                                      ifelse(CAMM_8==1,3,
+                                             ifelse(CAMM_8==0,4,
+                                                    NA))))),
+         CAMM_9=ifelse(CAMM_9==4,0,
+                        ifelse(CAMM_9==3,1,
+                               ifelse(CAMM_9==2,2,
+                                      ifelse(CAMM_9==1,3,
+                                             ifelse(CAMM_9==0,4,
+                                                    NA))))),
+         CAMM_10=ifelse(CAMM_10==5,0,
+                        ifelse(CAMM_10==4,3,
+                               ifelse(CAMM_10==3,2,
+                                      ifelse(CAMM_10==2,1,
+                                             ifelse(CAMM_10==1,0,
+                                                    NA))))),
+ CAMM_N=10,
+ CAMM_missing=rowSums(is.na(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10))),
+ CAMM_mean=rowMeans(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10), na.rm=T),
+ CAMM_total=rowSums(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10), na.rm=F))
+```
+
+Prepare CARE-R Soc
+```{r}
+qualtricsData_raw_carersoc<-filter(qualtricsData_raw_long, grepl("CARE_R",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG078") %>%
+  spread(item,value)
+
+qualtricsData_raw_carersoc<-left_join(qualtricsData_raw_carersoc,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(carersoc_1=CARE_R_I,
+         carersoc_2=CARE_R_II,
+         carersoc_3=CARE_R_1A,
+         carersoc_4=CARE_R_1B,
+         carersoc_5=CARE_R_2A,
+         carersoc_6=CARE_R_2B,
+         carersoc_7=CARE_R_3A,
+         carersoc_8=CARE_R_3B,
+         carersoc_9=CARE_R_4A,
+         carersoc_10=CARE_R_4B,
+         carersoc_11=CARE_R_5A,
+         carersoc_12=CARE_R_5B,
+         carersoc_13=CARE_R_6A,
+         carersoc_14=CARE_R_6B,
+         carersoc_15=CARE_R_7A,
+         carersoc_16=CARE_R_7B,
+         carersoc_17=CARE_R_8A,
+         carersoc_18=CARE_R_8B,
+         carersoc_19=CARE_R_9A,
+         carersoc_20=CARE_R_9B,
+         carersoc_21=CARE_R_10A,
+         carersoc_22=CARE_R_10B,
+         carersoc_23=CARE_R_11A,
+         carersoc_24=CARE_R_11B,
+         carersoc_25=CARE_R_12A,
+         carersoc_26=CARE_R_12B,
+         carersoc_27=CARE_R_13A,
+         carersoc_28=CARE_R_13B,
+         carersoc_29=CARE_R_14A,
+         carersoc_30=CARE_R_14B)
+```
+
+Prepare CES-DC 
+```{r}
+qualtricsData_raw_cesd<-filter(qualtricsData_raw_long, grepl("CES_DC",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_cesd<-left_join(qualtricsData_raw_cesd,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(CES_DC_4=ifelse(CES_DC_4==0,3,
+                                ifelse(CES_DC_4==1,2,
+                                     ifelse(CES_DC_4==2,1,
+                                                   ifelse(CES_DC_4==3,0,
+                                                          NA)))),
+         CES_DC_8=ifelse(CES_DC_8==0,3,
+                              ifelse(CES_DC_8==1,2,
+                                     ifelse(CES_DC_8==2,1,
+                                                   ifelse(CES_DC_8==3,0,
+                                                          NA)))),
+         CES_DC_12=ifelse(CES_DC_12==0,3,
+                                ifelse(CES_DC_12==1,2,
+                                     ifelse(CES_DC_12==2,1,
+                                                   ifelse(CES_DC_12==3,0,
+                                                          NA)))),
+         CES_DC_16=ifelse(CES_DC_16==0,3,
+                                ifelse(CES_DC_16==1,2,
+                                     ifelse(CES_DC_16==2,1,
+                                                   ifelse(CES_DC_16==3,0,
+                                                          NA)))),
+CES_DC_C=20,
+CES_DC_missing=rowSums(is.na(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20))),
+CES_DC_mean=rowMeans(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20), na.rm=T),
+CES_DC_total=rowSums(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20), na.rm=F))
+```
+
+Prepare CRQ
+```{r}
+qualtricsData_raw_crq<-filter(qualtricsData_raw_long, grepl("CRQ",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG070") %>%
+  filter(!tagid=="TAG015") %>%
+  spread(item,value)
+
+qualtricsData_raw_crq<-left_join(qualtricsData_raw_crq,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(CRQ_N=27,
+         CRQ_missing=rowSums(is.na(cbind(CRQ_1,CRQ_2,CRQ_3,CRQ_4,CRQ_5,CRQ_6,CRQ_7,CRQ_8,CRQ_9,CRQ_10,CRQ_11,CRQ_12,CRQ_13,CRQ_14,CRQ_15,CRQ_16,CRQ_17,CRQ_18,CRQ_19,CRQ_20,CRQ_21,CRQ_22,CRQ_23,CRQ_24,CRQ_25,CRQ_26,CRQ_27))),
+         CRQ_mean=rowMeans(cbind(CRQ_1,CRQ_2,CRQ_3,CRQ_4,CRQ_5,CRQ_6,CRQ_7,CRQ_8,CRQ_9,CRQ_10,CRQ_11,CRQ_12,CRQ_13,CRQ_14,CRQ_15,CRQ_16,CRQ_17,CRQ_18,CRQ_19,CRQ_20,CRQ_21,CRQ_22,CRQ_23,CRQ_24,CRQ_25,CRQ_26,CRQ_27),na.rm=T),
+         CRQ_total=rowSums(cbind(CRQ_1,CRQ_2,CRQ_3,CRQ_4,CRQ_5,CRQ_6,CRQ_7,CRQ_8,CRQ_9,CRQ_10,CRQ_11,CRQ_12,CRQ_13,CRQ_14,CRQ_15,CRQ_16,CRQ_17,CRQ_18,CRQ_19,CRQ_20,CRQ_21,CRQ_22,CRQ_23,CRQ_24,CRQ_25,CRQ_26,CRQ_27), na.rm=F))
+```
+
+Prepare CTQ
+```{r}
+qualtricsData_raw_ctq<-filter(qualtricsData_raw_long, grepl("CTQ",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_ctq<-left_join(qualtricsData_raw_ctq,survey_date, by = c("tagid", "survey_name")) %>%
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(CTQ_1=CTQ_1..1,
+         CTQ_2=ifelse(CTQ_2..1==1,5,
+                         ifelse(CTQ_2..1==2,4,
+                                ifelse(CTQ_2..1==3,3,
+                                       ifelse(CTQ_2..1==4,2,
+                                               ifelse(CTQ_2..1==5,1,
+                                                      NA))))),
+         CTQ_3=CTQ_3..1,
+         CTQ_4=CTQ_4..1,
+         CTQ_5=ifelse(CTQ_5..1==1,5,
+                         ifelse(CTQ_5..1==2,4,
+                                ifelse(CTQ_5..1==3,3,
+                                       ifelse(CTQ_5..1==4,2,
+                                              ifelse(CTQ_5..1==5,1,
+                                                     NA))))),
+         CTQ_6=CTQ_6..1,
+         CTQ_7=ifelse(CTQ_7..1==1,5,
+                         ifelse(CTQ_7..1==2,4,
+                                ifelse(CTQ_7..1==3,3,
+                                       ifelse(CTQ_7..1==4,2,
+                                              ifelse(CTQ_7..1==5,1,
+                                                     NA))))),
+         CTQ_8=CTQ_8..1,
+         CTQ_9=CTQ_9..1,
+         CTQ_10=CTQ_10..1,
+         CTQ_11=CTQ_11..1,
+         CTQ_12=CTQ_12..1,
+         CTQ_13=ifelse(CTQ_13..1==1,5,
+                         ifelse(CTQ_13..1==2,4,
+                                ifelse(CTQ_13..1==3,3,
+                                       ifelse(CTQ_13..1==4,2,
+                                              ifelse(CTQ_13..1==5,1,
+                                                     NA))))),
+         CTQ_14=CTQ_14..1,
+         CTQ_15=CTQ_15..1,
+         CTQ_16=CTQ_16..1,
+         CTQ_17=CTQ_17..1,
+         CTQ_18=CTQ_18..1,
+         CTQ_19=ifelse(CTQ_19..1==1,5,
+                         ifelse(CTQ_19..1==2,4,
+                                ifelse(CTQ_19..1==3,3,
+                                       ifelse(CTQ_19..1==4,2,
+                                               ifelse(CTQ_19..1==5,1,
+                                                      NA))))),
+         CTQ_20=CTQ_20..1,
+         CTQ_21=CTQ_21..1,
+         CTQ_22=CTQ_22..1,
+         CTQ_23=CTQ_23..1,
+         CTQ_24=CTQ_24..1,
+         CTQ_25=CTQ_25..1,
+         CTQ_26=ifelse(CTQ_26..1==1,5,
+                         ifelse(CTQ_26..1==2,4,
+                                ifelse(CTQ_26..1==3,3,
+                                       ifelse(CTQ_26..1==4,2,
+                                              ifelse(CTQ_26..1==5,1,
+                                                     NA))))),
+         CTQ_27=CTQ_27..1,
+         CTQ_28=CTQ_28..1,
+         CTQ_N=28,
+         CTQ_missing=rowSums(is.na(cbind(CTQ_1,CTQ_2,CTQ_3,CTQ_4,CTQ_5,CTQ_6,CTQ_7,CTQ_8,CTQ_9,CTQ_10,CTQ_11,CTQ_12,CTQ_13,CTQ_14,CTQ_15,CTQ_16,CTQ_17,CTQ_18,CTQ_19,CTQ_20,CTQ_21,CTQ_22,CTQ_23,CTQ_24,CTQ_25,CTQ_26,CTQ_27,CTQ_28))),
+         CTW_mean=rowMeans(cbind(CTQ_1,CTQ_2,CTQ_3,CTQ_4,CTQ_5,CTQ_6,CTQ_7,CTQ_8,CTQ_9,CTQ_10,CTQ_11,CTQ_12,CTQ_13,CTQ_14,CTQ_15,CTQ_16,CTQ_17,CTQ_18,CTQ_19,CTQ_20,CTQ_21,CTQ_22,CTQ_23,CTQ_24,CTQ_25,CTQ_26,CTQ_27,CTQ_28),na.rm=T),
+         CTQ_total=rowSums(cbind(CTQ_1,CTQ_2,CTQ_3,CTQ_4,CTQ_5,CTQ_6,CTQ_7,CTQ_8,CTQ_9,CTQ_10,CTQ_11,CTQ_12,CTQ_13,CTQ_14,CTQ_15,CTQ_16,CTQ_17,CTQ_18,CTQ_19,CTQ_20,CTQ_21,CTQ_22,CTQ_23,CTQ_24,CTQ_25,CTQ_26,CTQ_27,CTQ_28), na.rm=F))
+```
+
+Prepare DIT
+```{r}
+qualtricsData_raw_dit<-filter(qualtricsData_raw_long, grepl("DIT",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG015") %>%
+  spread(item,value)
+
+qualtricsData_raw_dit<-left_join(qualtricsData_raw_dit,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) 
+
+#NEED TO GET SCORING
+  mutate(DIT_N=14, 
+         DIT_missing=rowSums(is.na(cbind())),
+         DIT_mean=rowMeans(cbind(),na.rm=T),
+         DIT_total=rowSums(cbind(),na.rm=F))
+```
+
+Prepare EHI
+```{r}
+qualtricsData_raw_edinburgh_hand<-filter(qualtricsData_raw_long, grepl("^EHI",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG015") %>%
+  filter(!tagid=="TAG017") %>%
+  filter(!tagid=="TAG035") %>%
+  filter(!tagid=="TAG070") %>%
+  spread(item,value)
+
+qualtricsData_raw_edinburgh_hand<-left_join(qualtricsData_raw_edinburgh_hand,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(writing=ifelse(EHI_1==1,"spl",
+                        ifelse(EHI_1==2,"left",
+                               ifelse(EHI_1==3,"np",
+                                      ifelse(EHI_1==4,"right",
+                                             ifelse(EHI_1==5,"spr",
+                                                    NA))))),
+         drawing=ifelse(EHI_2==1,"spl",
+                        ifelse(EHI_2==2,"left",
+                               ifelse(EHI_2==3,"np",
+                                      ifelse(EHI_2==4,"right",
+                                             ifelse(EHI_2==5,"spr",
+                                                    NA))))),
+         throwing=ifelse(EHI_3==1,"spl",
+                        ifelse(EHI_3==2,"left",
+                               ifelse(EHI_3==3,"np",
+                                      ifelse(EHI_3==4,"right",
+                                             ifelse(EHI_3==5,"spr",
+                                                    NA))))),
+         scissors=ifelse(EHI_4==1,"spl",
+                        ifelse(EHI_4==2,"left",
+                               ifelse(EHI_4==3,"np",
+                                      ifelse(EHI_4==4,"right",
+                                             ifelse(EHI_4==5,"spr",
+                                                    NA))))),
+         toothbrush=ifelse(EHI_5==1,"spl",
+                        ifelse(EHI_5==2,"left",
+                               ifelse(EHI_5==3,"np",
+                                      ifelse(EHI_5==4,"right",
+                                             ifelse(EHI_5==5,"spr",
+                                                    NA))))),
+         knife_no_fork=ifelse(EHI_6==1,"spl",
+                        ifelse(EHI_6==2,"left",
+                               ifelse(EHI_6==3,"np",
+                                      ifelse(EHI_6==4,"right",
+                                             ifelse(EHI_6==5,"spr",
+                                                    NA))))),
+         spoon=ifelse(EHI_7==1,"spl",
+                        ifelse(EHI_7==2,"left",
+                               ifelse(EHI_7==3,"np",
+                                      ifelse(EHI_7==4,"right",
+                                             ifelse(EHI_7==5,"spr",
+                                                    NA))))),
+         broom=ifelse(EHI_8==1,"spl",
+                        ifelse(EHI_8==2,"left",
+                               ifelse(EHI_8==3,"np",
+                                      ifelse(EHI_8==4,"right",
+                                             ifelse(EHI_8==5,"spr",
+                                                    NA))))),
+         match=ifelse(EHI_9==1,"spl",
+                        ifelse(EHI_9==2,"left",
+                               ifelse(EHI_9==3,"np",
+                                      ifelse(EHI_9==4,"right",
+                                             ifelse(EHI_9==5,"spr",
+                                                    NA))))),
+         box=ifelse(EHI_10==1,"spl",
+                        ifelse(EHI_10==2,"left",
+                               ifelse(EHI_10==3,"np",
+                                      ifelse(EHI_10==4,"right",
+                                             ifelse(EHI_10==5,"spr",
+                                                    NA))))),
+         foot=ifelse(EHI_11==1,"spl",
+                        ifelse(EHI_11==2,"left",
+                               ifelse(EHI_11==3,"np",
+                                      ifelse(EHI_11==4,"right",
+                                             ifelse(EHI_11==5,"spr",
+                                                    NA))))),
+         eye=ifelse(EHI_12==1,"spl",
+                        ifelse(EHI_12==2,"left",
+                               ifelse(EHI_12==3,"np",
+                                      ifelse(EHI_12==4,"right",
+                                             ifelse(EHI_12==5,"spr",
+                                                    NA))))))
+
+```
+
+Prepare ERQ
+```{r}
+qualtricsData_raw_erq<-filter(qualtricsData_raw_long, grepl("ERQ",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG015") %>%
+  filter(!tagid=="TAG070") %>%
+  spread(item,value)
+
+qualtricsData_raw_erq<-left_join(qualtricsData_raw_erq,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(erq_reappraisal_N=6,
+         erq_reappraisal_missing=rowSums(is.na(cbind(ERQ_1, ERQ_3, ERQ_5, ERQ_7, ERQ_8, ERQ_10))),
+         erq_reappraisal_mean=rowMeans(cbind(ERQ_1, ERQ_3, ERQ_5, ERQ_7, ERQ_8, ERQ_10), na.rm=T),
+         erq_reappraisal_total=rowSums(cbind(ERQ_1, ERQ_3, ERQ_5, ERQ_7, ERQ_8, ERQ_10), na.rm=F),
+         erq_suppression_N=4,
+         erq_suppression_missing=rowSums(is.na(cbind(ERQ_2, ERQ_4, ERQ_6, ERQ_9))),
+         erq_suppression_mean=rowMeans(cbind(ERQ_2, ERQ_4, ERQ_6, ERQ_9),na.rm=T),
+         erq_suppression_total=rowSums(cbind(ERQ_2, ERQ_4, ERQ_6, ERQ_9),na.rm=F))
+```
+
+Prepare IFS 
+```{r}
+qualtricsData_raw_ifs<-filter(qualtricsData_raw_long, grepl("IFS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_ifs<-left_join(qualtricsData_raw_ifs,survey_date, by = c("tagid", "survey_name")) %>%
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(IFS_N=32,
+         IFS_missing=rowSums(is.na(cbind(IFS_1,IFS_2,IFS_3,IFS_4,IFS_5,IFS_6,IFS_7,IFS_8,IFS_9,IFS_10,IFS_11,IFS_12,IFS_13,IFS_14,IFS_15,IFS_16,IFS_17,IFS_18,IFS_19,IFS_20,IFS_21,IFS_22,IFS_23,IFS_24,IFS_25,IFS_26,IFS_27,IFS_28,IFS_29,IFS_30,IFS_31,IFS_32))),
+         IFS_mean=rowMeans(cbind(IFS_1,IFS_2,IFS_3,IFS_4,IFS_5,IFS_6,IFS_7,IFS_8,IFS_9,IFS_10,IFS_11,IFS_12,IFS_13,IFS_14,IFS_15,IFS_16,IFS_17,IFS_18,IFS_19,IFS_20,IFS_21,IFS_22,IFS_23,IFS_24,IFS_25,IFS_26,IFS_27,IFS_28,IFS_29,IFS_30,IFS_31,IFS_32),na.rm=T),
+         IFS_total=rowSums(cbind(IFS_1,IFS_2,IFS_3,IFS_4,IFS_5,IFS_6,IFS_7,IFS_8,IFS_9,IFS_10,IFS_11,IFS_12,IFS_13,IFS_14,IFS_15,IFS_16,IFS_17,IFS_18,IFS_19,IFS_20,IFS_21,IFS_22,IFS_23,IFS_24,IFS_25,IFS_26,IFS_27,IFS_28,IFS_29,IFS_30,IFS_31,IFS_32), na.rm=F))
+```
+
+Prepare IRI
+```{r}
+qualtricsData_raw_iri<-filter(qualtricsData_raw_long, grepl("IRI",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG015") %>%
+  spread(item,value)
+
+qualtricsData_raw_iri<-left_join(qualtricsData_raw_iri,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(IRI_1=IRI_1,
+         IRI_2=IRI_2,
+         IRI_3=ifelse(IRI_3==0,4,
+                                    ifelse(IRI_3==1,3,
+                                           ifelse(IRI_3==2,2,
+                                                  ifelse(IRI_3==3,1,
+                                                         ifelse(IRI_3==4,0,
+                                                                NA))))),
+         IRI_4=ifelse(IRI_4==0,4,
+                                         ifelse(IRI_4==1,3,
+                                                ifelse(IRI_4==2,2,
+                                                       ifelse(IRI_4==3,1,
+                                                              ifelse(IRI_4==4,0,
+                                                                     NA))))),
+         IRI_5=IRI_5,
+         IRI_6=IRI_6,
+         IRI_7=ifelse(IRI_7==0,4,
+                                   ifelse(IRI_7==1,3,
+                                          ifelse(IRI_7==2,2,
+                                                 ifelse(IRI_7==3,1,
+                                                        ifelse(IRI_7==4,0,
+                                                               NA))))),
+         IRI_8=IRI_8,
+         IRI_9=IRI_9,
+         IRI_10=IRI_10,
+         IRI_11=IRI_11,
+         IRI_12=ifelse(IRI_12==0,4,
+                                   ifelse(IRI_12==1,3,
+                                          ifelse(IRI_12==2,2,
+                                                 ifelse(IRI_12==3,1,
+                                                        ifelse(IRI_12==4,0,
+                                                               NA))))),
+         IRI_13=ifelse(IRI_13==0,4,
+                               ifelse(IRI_13==1,3,
+                                      ifelse(IRI_13==2,2,
+                                             ifelse(IRI_13==3,1,
+                                                    ifelse(IRI_13==4,0,
+                                                           NA))))),
+         IRI_14=ifelse(IRI_14==0,4,
+                                          ifelse(IRI_14==1,3,
+                                                 ifelse(IRI_14==2,2,
+                                                        ifelse(IRI_14==3,1,
+                                                               ifelse(IRI_14==4,0,
+                                                                      NA))))),
+         IRI_15=ifelse(IRI_15==0,4,
+                                          ifelse(IRI_15==1,3,
+                                                 ifelse(IRI_15==2,2,
+                                                        ifelse(IRI_15==3,1,
+                                                               ifelse(IRI_15==4,0,
+                                                                      NA))))),
+         IRI_16=IRI_16,
+         IRI_17=IRI_17,
+         IRI_18=ifelse(IRI_18==0,4,
+                              ifelse(IRI_18==1,3,
+                                     ifelse(IRI_18==2,2,
+                                            ifelse(IRI_18==3,1,
+                                                   ifelse(IRI_18==4,0,
+                                                          NA))))),
+         IRI_19=ifelse(IRI_19==0,4,
+                                      ifelse(IRI_19==1,3,
+                                             ifelse(IRI_19==2,2,
+                                                    ifelse(IRI_19==3,1,
+                                                           ifelse(IRI_19==4,0,
+                                                                  NA))))),
+         IRI_20=IRI_20,
+         IRI_21=IRI_21,
+         IRI_22=IRI_22,
+         IRI_23=IRI_23,
+         IRI_24=IRI_24,
+         IRI_25=IRI_25,
+         IRI_26=IRI_26,
+         IRI_27=IRI_27,
+         IRI_28=IRI_28,
+         comments=ifelse(is.na(IRI_1),"Fantasy subscale was not administered.",
+                                        ""),
+         comments=ifelse(is.na(IRI_5),"Fantasy subscale was not administered.",
+                                        ""),
+         comments=ifelse(is.na(IRI_7),"Fantasy subscale was not administered.",
+                                        ""),
+         comments=ifelse(is.na(IRI_12),"Fantasy subscale was not administered.",
+                                        ""),
+         comments=ifelse(is.na(IRI_16),"Fantasy subscale was not administered.",
+                                        ""),
+         comments=ifelse(is.na(IRI_23),"Fantasy subscale was not administered.",
+                                        ""),
+         comments=ifelse(is.na(IRI_26),"Fantasy subscale was not administered.",
+                                        ""),
+         IRI_PT=rowSums(cbind(IRI_3,IRI_8,IRI_11,IRI_15,IRI_21,IRI_25,IRI_28), na.rm=T),
+         IRI_EC=rowSums(cbind(IRI_2,IRI_4,IRI_9,IRI_14,IRI_18,IRI_20,IRI_22), na.rm=T),
+         IRI_PD=rowSums(cbind(IRI_6,IRI_10,IRI_13,IRI_17,IRI_19,IRI_24,IRI_27), na.rm=T)
+         )
+
+```
+
+Prepare K-SRQ 
+```{r}
+qualtricsData_raw_socreward<-filter(qualtricsData_raw_long, grepl("K_SRQ",item)) %>% 
+  mutate(value=as.numeric(value)) %>%
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_socreward<-left_join(qualtricsData_raw_socreward,survey_date, by = c("tagid", "survey_name")) %>%
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>% 
+  mutate(ksrq_adm=rowSums(cbind(K_SRQ_1,K_SRQ_7,K_SRQ_11,K_SRQ_17), na.rm=T),
+         krsq_negsoc=rowSums(cbind(K_SRQ_3,K_SRQ_5,K_SRQ_13,K_SRQ_16), na.rm=T),
+         krsq_pass=rowSums(cbind(K_SRQ_12,K_SRQ_20,K_SRQ_22), na.rm=T),
+         krsq_prosoc=rowSums(cbind(K_SRQ_2,K_SRQ_6,K_SRQ_15,K_SRQ_18,K_SRQ_21), na.rm=T),
+         krsq_sex=rowSums(cbind(K_SRQ_9,K_SRQ_19), na.rm=T),
+         krsq_social=rowSums(cbind(K_SRQ_4,K_SRQ_10,K_SRQ_14), na.rm=T))
+
+#NOTE: No total score calculated for this questionnaire
+```
+
+Prepare MSPSS
+```{r}
+qualtricsData_raw_mspss<-filter(qualtricsData_raw_long, grepl("MSPSS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_mspss<-left_join(qualtricsData_raw_mspss,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>% 
+  mutate(mspss_fam=rowSums(cbind(MSPSS_3,MSPSS_4,MSPSS_8,MSPSS_11), na.rm=T),
+         mspss_fri=rowSums(cbind(MSPSS_6,MSPSS_7,MSPSS_9,MSPSS_12), na.rm=T),
+         mspss_so=rowSums(cbind(MSPSS_1,MSPSS_2,MSPSS_5,MSPSS_10), na.rm=T)) %>%
+  mutate(mspss_total=rowSums(cbind(mspss_fam+mspss_fri+mspss_so), na.rm=T))
+```
+
+Prepare PSS
+```{r}
+qualtricsData_raw_pss<-filter(qualtricsData_raw_long, grepl("^PSS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG132") %>%
+  spread(item,value)
+
+qualtricsData_raw_pss<-left_join(qualtricsData_raw_pss,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(PSS_4=ifelse(PSS_4==0,4,
+                        ifelse(PSS_4==1,3,
+                               ifelse(PSS_4==2,2,
+                                      ifelse(PSS_4==3,1,
+                                             ifelse(PSS_4==4,0,
+                                                    88))))),
+         PSS_5=ifelse(PSS_5==0,4,
+                        ifelse(PSS_5==1,3,
+                               ifelse(PSS_5==2,2,
+                                      ifelse(PSS_5==3,1,
+                                             ifelse(PSS_5==4,0,
+                                                    88))))),
+         PSS_7=ifelse(PSS_7==0,4,
+                        ifelse(PSS_7==1,3,
+                               ifelse(PSS_7==2,2,
+                                      ifelse(PSS_7==3,1,
+                                             ifelse(PSS_7==4,0,
+                                                    88))))),
+         PSS_8=ifelse(PSS_8==0,4,
+                        ifelse(PSS_8==1,3,
+                               ifelse(PSS_8==2,2,
+                                      ifelse(PSS_8==3,1,
+                                             ifelse(PSS_8==4,0,
+                                                    88))))),
+         pss_totalscore=rowSums(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=T))
+
+```
+
+Prepare RMET
+```{r}
+qualtricsData_raw_rmet<-filter(qualtricsData_raw_long, grepl("RMET",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_rmet<-left_join(qualtricsData_raw_rmet,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) 
+```
+
+Prepare R-SCS-C
+```{r}
+qualtricsData_raw_rscsc<-filter(qualtricsData_raw_long, grepl("R_SCS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_rscsc<-left_join(qualtricsData_raw_rscsc,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>% 
+  mutate(rscsc_publicsc=rowSums(cbind(R_SCS_C_1,R_SCS_C_2,R_SCS_C_3,R_SCS_C_7,R_SCS_C_10,R_SCS_C_12,R_SCS_C_14,
+                           R_SCS_C_15,R_SCS_C_16,R_SCS_C_21,R_SCS_C_28), na.rm=T),
+         rscsc_privatesc=rowSums(cbind(R_SCS_C_4,R_SCS_C_5,R_SCS_C_6,R_SCS_C_8,R_SCS_C_9,R_SCS_C_11,R_SCS_C_20,
+                            R_SCS_C_22,R_SCS_C_23,R_SCS_C_24,R_SCS_C_27), na.rm=T),
+         rscsc_socanx=rowSums(cbind(R_SCS_C_13,R_SCS_C_17,R_SCS_C_18,R_SCS_C_19,R_SCS_C_25,R_SCS_C_26,R_SCS_C_29), na.rm=T))
+
+#NOTE: No total score calculated for this questionnaire
+```
+
+Prepare SAQ
+```{r}
+qualtricsData_raw_saq<-filter(qualtricsData_raw_long, grepl("SAQ",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG070") %>%
+  filter(!tagid=="TAG015") %>%
+  spread(item,value)
+
+qualtricsData_raw_saq<-left_join(qualtricsData_raw_saq,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(SAQ_total=rowSums(cbind(SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8,SAQ_9,SAQ_10,SAQ_11,SAQ_12,SAQ_13,SAQ_14,SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=T))
+```
+
+Prepare SCARED-R 
+```{r}
+qualtricsData_raw_scared<-filter(qualtricsData_raw_long, grepl("SCARED",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG078") %>%
+  spread(item,value)
+
+qualtricsData_raw_scared<-left_join(qualtricsData_raw_scared,survey_date, by = c("tagid", "survey_name")) %>%   
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(SCARED_total=rowSums(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5),na.rm=T),
+         SCARED_ptsd=rowSums(cbind(SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_9),na.rm=T))
+
+```
+
+Prepare SCC
+```{r}
+qualtricsData_raw_scc<-filter(qualtricsData_raw_long, grepl("^SCC",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG015") %>%
+  filter(!tagid=="TAG017") %>%
+  filter(!tagid=="TAG070") %>%
+  spread(item,value)
+
+qualtricsData_raw_scc<-left_join(qualtricsData_raw_scc,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(SCC_1=ifelse(SCC_1==1,5,
+                        ifelse(SCC_1==2,4,
+                               ifelse(SCC_1==3,3,
+                                      ifelse(SCC_1==4,2,
+                                             ifelse(SCC_1==5,1,
+                                                    NA))))),
+         SCC_2=ifelse(SCC_2==1,5,
+                        ifelse(SCC_2==2,4,
+                               ifelse(SCC_2==3,3,
+                                      ifelse(SCC_2==4,2,
+                                             ifelse(SCC_2==5,1,
+                                                    NA))))),
+         SCC_3=ifelse(SCC_3==1,5,
+                        ifelse(SCC_3==2,4,
+                               ifelse(SCC_3==3,3,
+                                      ifelse(SCC_3==4,2,
+                                             ifelse(SCC_3==5,1,
+                                                    NA))))),
+         SCC_4=ifelse(SCC_4==1,5,
+                        ifelse(SCC_4==2,4,
+                               ifelse(SCC_4==3,3,
+                                      ifelse(SCC_4==4,2,
+                                             ifelse(SCC_4==5,1,
+                                                    NA))))),
+         SCC_5=ifelse(SCC_5==1,5,
+                        ifelse(SCC_5==2,4,
+                               ifelse(SCC_5==3,3,
+                                      ifelse(SCC_5==4,2,
+                                             ifelse(SCC_5==5,1,
+                                                    NA))))),
+         SCC_6=SCC_6,
+         SCC_7=ifelse(SCC_7==1,5,
+                        ifelse(SCC_7==2,4,
+                               ifelse(SCC_7==3,3,
+                                      ifelse(SCC_7==4,2,
+                                             ifelse(SCC_7==5,1,
+                                                    NA))))),
+         SCC_8=ifelse(SCC_8==1,5,
+                        ifelse(SCC_8==2,4,
+                               ifelse(SCC_8==3,3,
+                                      ifelse(SCC_8==4,2,
+                                             ifelse(SCC_8==5,1,
+                                                    NA))))),
+         SCC_9=ifelse(SCC_9==1,5,
+                        ifelse(SCC_9==2,4,
+                               ifelse(SCC_9==3,3,
+                                      ifelse(SCC_9==4,2,
+                                             ifelse(SCC_9==5,1,
+                                                    NA))))),
+         SCC_10=ifelse(SCC_10==1,5,
+                        ifelse(SCC_10==2,4,
+                               ifelse(SCC_10==3,3,
+                                      ifelse(SCC_10==4,2,
+                                             ifelse(SCC_10==5,1,
+                                                    NA))))),
+         SCC_11=SCC_11,
+         SCC_12=ifelse(SCC_12==1,5,
+                        ifelse(SCC_12==2,4,
+                               ifelse(SCC_12==3,3,
+                                      ifelse(SCC_12==4,2,
+                                             ifelse(SCC_12==5,1,
+                                                    NA))))),
+ SCC_total=rowSums(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=T))
+```
+
+Prepare SPPA
+```{r}
+qualtricsData_raw_sppa<-filter(qualtricsData_raw_long, grepl("SPPA",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG015") %>%
+  filter(!tagid=="TAG070") %>%
+  filter(!tagid=="TAG017") %>%
+  spread(item,value)
+
+qualtricsData_raw_sppa<-left_join(qualtricsData_raw_sppa,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(ha1=ifelse(SPPA_1==10 & SPPA_2==2,4,
+                    ifelse(SPPA_1==10 & SPPA_2==1,3,
+                           ifelse(SPPA_1==2 & SPPA_2==1,2,
+                                      ifelse(SPPA_1==2 & SPPA_2==2,1,
+                                                    NA)))),
+         ha2=ifelse(SPPA_3==0 & SPPA_4==2,1,
+                    ifelse(SPPA_3==0 & SPPA_4==1,2,
+                           ifelse(SPPA_3==2 & SPPA_4==1,3,
+                                      ifelse(SPPA_3==2 & SPPA_4==2,4,
+                                                    NA)))),
+         ha3=ifelse(SPPA_5==0 & SPPA_6==2,4,
+                    ifelse(SPPA_5==0 & SPPA_6==1,3,
+                           ifelse(SPPA_5==2 & SPPA_6==1,2,
+                                      ifelse(SPPA_5==2 & SPPA_6==2,1,
+                                                    NA)))),
+         ha4=ifelse(SPPA_7==0 & SPPA_8==2,1,
+                    ifelse(SPPA_7==0 & SPPA_8==1,2,
+                           ifelse(SPPA_7==2 & SPPA_8==1,3,
+                                      ifelse(SPPA_7==2 & SPPA_8==2,4,
+                                                    NA)))),
+         ha7=ifelse(SPPA_9==0 & SPPA_10==2,4,
+                    ifelse(SPPA_9==0 & SPPA_10==1,3,
+                           ifelse(SPPA_9==2 & SPPA_10==1,2,
+                                      ifelse(SPPA_9==2 & SPPA_10==2,1,
+                                                    NA)))),
+         ha8=ifelse(SPPA_11==0 & SPPA_12==2,4,
+                    ifelse(SPPA_11==0 & SPPA_12==1,3,
+                           ifelse(SPPA_11==2 & SPPA_12==1,2,
+                                      ifelse(SPPA_11==2 & SPPA_12==2,1,
+                                                    NA)))),
+         ha9=ifelse(SPPA_13==0 & SPPA_14==2,1,
+                    ifelse(SPPA_13==0 & SPPA_14==1,2,
+                           ifelse(SPPA_13==2 & SPPA_14==1,3,
+                                      ifelse(SPPA_13==2 & SPPA_14==2,4,
+                                                    NA)))),
+         ha10=ifelse(SPPA_15==0 & SPPA_16==2,1,
+                    ifelse(SPPA_15==0 & SPPA_16==1,2,
+                           ifelse(SPPA_15==2 & SPPA_16==1,3,
+                                      ifelse(SPPA_15==2 & SPPA_16==2,4,
+                                                    NA)))),
+         ha11=ifelse(SPPA_17==0 & SPPA_18==2,4,
+                    ifelse(SPPA_17==0 & SPPA_18==1,3,
+                           ifelse(SPPA_17==2 & SPPA_18==1,2,
+                                      ifelse(SPPA_17==2 & SPPA_18==2,1,
+                                                    NA)))),
+         ha12=ifelse(SPPA_19==0 & SPPA_20==2,4,
+                    ifelse(SPPA_19==0 & SPPA_20==1,3,
+                           ifelse(SPPA_19==2 & SPPA_20==1,2,
+                                      ifelse(SPPA_19==2 & SPPA_20==2,1,
+                                                    NA)))),
+         ha13=ifelse(SPPA_21==0 & SPPA_22==2,1,
+                    ifelse(SPPA_21==0 & SPPA_22==1,2,
+                           ifelse(SPPA_21==2 & SPPA_22==1,3,
+                                      ifelse(SPPA_21==2 & SPPA_22==2,4,
+                                                    NA)))),
+         ha16=ifelse(SPPA_23==0 & SPPA_24==2,1,
+                    ifelse(SPPA_23==0 & SPPA_24==1,2,
+                           ifelse(SPPA_23==2 & SPPA_24==1,3,
+                                      ifelse(SPPA_23==2 & SPPA_24==2,4,
+                                                    NA)))),
+         ha17=ifelse(SPPA_25==0 & SPPA_26==2,1,
+                    ifelse(SPPA_25==0 & SPPA_26==1,2,
+                           ifelse(SPPA_25==2 & SPPA_26==1,3,
+                                      ifelse(SPPA_25==2 & SPPA_26==2,4,
+                                                    NA)))),
+         ha18=ifelse(SPPA_27==0 & SPPA_28==2,1,
+                    ifelse(SPPA_27==0 & SPPA_28==1,2,
+                           ifelse(SPPA_27==2 & SPPA_28==1,3,
+                                      ifelse(SPPA_27==2 & SPPA_28==2,4,
+                                                    NA)))),
+         ha19=ifelse(SPPA_29==0 & SPPA_30==2,4,
+                    ifelse(SPPA_29==0 & SPPA_30==1,3,
+                           ifelse(SPPA_29==2 & SPPA_30==1,2,
+                                      ifelse(SPPA_29==2 & SPPA_30==2,1,
+                                                    NA)))),
+         ha20=ifelse(SPPA_31==0 & SPPA_32==2,1,
+                    ifelse(SPPA_31==0 & SPPA_32==1,2,
+                           ifelse(SPPA_31==2 & SPPA_32==1,3,
+                                      ifelse(SPPA_31==2 & SPPA_32==2,4,
+                                                    NA)))),
+         ha21=ifelse(SPPA_33==0 & SPPA_34==2,4,
+                    ifelse(SPPA_33==0 & SPPA_34==1,3,
+                           ifelse(SPPA_33==2 & SPPA_34==1,2,
+                                      ifelse(SPPA_33==2 & SPPA_34==2,1,
+                                                    NA)))),
+         ha22=ifelse(SPPA_35==0 & SPPA_36==2,1,
+                    ifelse(SPPA_35==0 & SPPA_36==1,2,
+                           ifelse(SPPA_35==2 & SPPA_36==1,3,
+                                      ifelse(SPPA_35==2 & SPPA_36==2,4,
+                                                    NA)))),
+         ha25=ifelse(SPPA_37==0 & SPPA_38==2,4,
+                    ifelse(SPPA_37==0 & SPPA_38==1,3,
+                           ifelse(SPPA_37==2 & SPPA_38==1,2,
+                                      ifelse(SPPA_37==2 & SPPA_38==2,1,
+                                                    NA)))),
+         ha26=ifelse(SPPA_39==1 & SPPA_40==2,4,
+                    ifelse(SPPA_39==1 & SPPA_40==1,3,
+                           ifelse(SPPA_39==2 & SPPA_40==1,2,
+                                      ifelse(SPPA_39==2 & SPPA_40==2,1,
+                                                    NA)))),
+         ha27=ifelse(SPPA_41==1 & SPPA_42==2,4,
+                    ifelse(SPPA_41==1 & SPPA_42==1,3,
+                           ifelse(SPPA_41==2 & SPPA_42==1,2,
+                                      ifelse(SPPA_41==2 & SPPA_42==2,1,
+                                                    NA)))),
+         ha28=ifelse(SPPA_43==1 & SPPA_44==2,1,
+                    ifelse(SPPA_43==1 & SPPA_44==1,2,
+                           ifelse(SPPA_43==2 & SPPA_44==1,3,
+                                      ifelse(SPPA_43==2 & SPPA_44==2,4,
+                                                    NA)))),
+         ha29=ifelse(SPPA_45==1 & SPPA_46==2,4,
+                    ifelse(SPPA_45==1 & SPPA_46==1,3,
+                           ifelse(SPPA_45==2 & SPPA_46==1,2,
+                                      ifelse(SPPA_45==2 & SPPA_46==2,1,
+                                                    NA)))),
+         ha30=ifelse(SPPA_47==1 & SPPA_48==2,1,
+                    ifelse(SPPA_47==1 & SPPA_48==1,2,
+                           ifelse(SPPA_47==2 & SPPA_48==1,3,
+                                      ifelse(SPPA_47==2 & SPPA_48==2,4,
+                                                    NA)))),
+         ha31=ifelse(SPPA_49==1 & SPPA_50==2,4,
+                    ifelse(SPPA_49==1 & SPPA_50==1,3,
+                           ifelse(SPPA_49==2 & SPPA_50==1,2,
+                                      ifelse(SPPA_49==2 & SPPA_50==2,1,
+                                                    NA)))),
+         ha34=ifelse(SPPA_51==1 & SPPA_52==2,1,
+                    ifelse(SPPA_51==1 & SPPA_52==1,2,
+                           ifelse(SPPA_51==2 & SPPA_52==1,3,
+                                      ifelse(SPPA_51==2 & SPPA_52==2,4,
+                                                    NA)))),
+         ha35=ifelse(SPPA_53==0 & SPPA_54==2,1,
+                    ifelse(SPPA_53==0 & SPPA_54==1,2,
+                           ifelse(SPPA_53==2 & SPPA_54==1,3,
+                                      ifelse(SPPA_53==2 & SPPA_54==2,4,
+                                                    NA)))),
+         ha36=ifelse(SPPA_55==0 & SPPA_56==2,4,
+                    ifelse(SPPA_55==0 & SPPA_56==1,3,
+                           ifelse(SPPA_55==2 & SPPA_56==1,2,
+                                      ifelse(SPPA_55==2 & SPPA_56==2,1,
+                                                    NA)))),
+         ha37=ifelse(SPPA_57==0 & SPPA_58==2,4,
+                    ifelse(SPPA_57==0 & SPPA_58==1,3,
+                           ifelse(SPPA_57==2 & SPPA_58==1,2,
+                                      ifelse(SPPA_57==2 & SPPA_58==2,1,
+                                                    NA)))),
+         ha38=ifelse(SPPA_59==0 & SPPA_60==2,4,
+                    ifelse(SPPA_59==0 & SPPA_60==1,3,
+                           ifelse(SPPA_59==2 & SPPA_60==1,2,
+                                      ifelse(SPPA_59==2 & SPPA_60==2,1,
+                                                    NA)))),
+         ha39=ifelse(SPPA_61==0 & SPPA_62==2,1,
+                    ifelse(SPPA_61==0 & SPPA_62==1,2,
+                           ifelse(SPPA_61==2 & SPPA_62==1,3,
+                                      ifelse(SPPA_61==2 & SPPA_62==2,4,
+                                                    NA)))),
+         ha40=ifelse(SPPA_63==0 & SPPA_64==2,4,
+                    ifelse(SPPA_63==0 & SPPA_64==1,3,
+                           ifelse(SPPA_63==2 & SPPA_64==1,2,
+                                      ifelse(SPPA_63==2 & SPPA_64==2,1,
+                                                    NA)))),
+         ha43=ifelse(SPPA_65==0 & SPPA_66==2,4,
+                    ifelse(SPPA_65==0 & SPPA_66==1,3,
+                           ifelse(SPPA_65==2 & SPPA_66==1,2,
+                                      ifelse(SPPA_65==2 & SPPA_66==2,1,
+                                                    NA)))),
+         ha44=ifelse(SPPA_67==0 & SPPA_68==2,1,
+                    ifelse(SPPA_67==0 & SPPA_68==1,2,
+                           ifelse(SPPA_67==2 & SPPA_68==1,3,
+                                      ifelse(SPPA_67==2 & SPPA_68==2,4,
+                                                    NA)))),
+         ha45=ifelse(SPPA_69==0 & SPPA_70==2,4,
+                    ifelse(SPPA_69==0 & SPPA_70==1,3,
+                           ifelse(SPPA_69==2 & SPPA_70==1,2,
+                                      ifelse(SPPA_69==2 & SPPA_70==2,1,
+                                                    NA)))))
+```
+
+Prepare SSDS
+```{r}
+qualtricsData_raw_ssds<-filter(qualtricsData_raw_long, grepl("SSDS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_ssds<-left_join(qualtricsData_raw_ssds,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(SSDS_family=rowSums(cbind(SSDS_1,SSDS_2,SSDS_3,SSDS_4,SSDS_5,SSDS_6,SSDS_7,SSDS_8), na.rm=T),
+      SSDS_friendship=rowSums(cbind(SSDS_9,SSDS_10,SSDS_11,SSDS_12,SSDS_13,SSDS_14,SSDS_15), na.rm=T),
+      SSDS_physical=rowSums(cbind(SSDS_16,SSDS_17,SSDS_18,SSDS_19,SSDS_20,SSDS_21,SSDS_22,SSDS_23), na.rm=T))
+```
+
+Prepare PANAS-C
+```{r}
+qualtricsData_raw_panasc<-filter(qualtricsData_raw_long, grepl("PANAS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  filter(!tagid=="TAG015") %>%
+  spread(item,value)
+
+qualtricsData_raw_panasc<-left_join(qualtricsData_raw_panasc,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) 
+```
+
+Prepare PBIP
+```{r}
+qualtricsData_raw_pbip<-filter(qualtricsData_raw_long, grepl("PBIP",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>%
+  filter(!tagid=="TAG114") %>%
+  filter(!tagid=="TAG078") %>%
+  spread(item,value)
+
+qualtricsData_raw_pbip<-left_join(qualtricsData_raw_pbip,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value)  %>%
+  mutate(pbip=rowMeans(cbind(PBIP_1A,PBIP_2A),na.rm=F)) 
+```
+
+Prepare PDS
+```{r}
+qualtricsData_raw_pds<-filter(qualtricsData_raw_long, grepl("PDS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!survey_name=="TAG - Parent Questionnaires") %>%
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  filter(!tagid=="TAG015") %>%
+  filter(!tagid=="TAG078") %>%
+  spread(item,value)
+
+qualtricsData_raw_pds<-left_join(qualtricsData_raw_pds,survey_date, by = c("tagid", "survey_name")) %>%
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(peta=PDS_F1,
+         petb=PDS_F2,
+         petc=PDS_F3,
+         petd=PDS_F4,
+         pete=PDS_F5,
+         fpete=PDS_F6,
+         petaf=ifelse(PDS_F1==1,1,
+                       ifelse(PDS_F1==2,2,
+                              ifelse(PDS_F1==3,3,
+                                     ifelse(PDS_F1==4,5,
+                                            NA)))),
+         petbf=ifelse(PDS_F2==1,1,
+                       ifelse(PDS_F2==2,2,
+                              ifelse(PDS_F2==3,4,
+                                     ifelse(PDS_F2==4,5,
+                                            NA)))),
+         petcf=ifelse(PDS_F3==1,1,
+                       ifelse(PDS_F3==2,2,
+                              ifelse(PDS_F3==3,4,
+                                     ifelse(PDS_F3==4,5,
+                                            NA)))),
+         petdf=ifelse(PDS_F4==1,1,
+                       ifelse(PDS_F4==2,3,
+                              ifelse(PDS_F4==3,4,
+                                     ifelse(PDS_F4==4,5,
+                                            NA)))),         
+         petef=ifelse(PDS_F6==0,1,
+                       ifelse(PDS_F6==1,5,
+                              NA))) %>%
+  mutate(adrenf=rowMeans(cbind(petbf,petcf),na.rm=F)) %>%
+  mutate(adrenf2=ifelse(adrenf==1,1,
+                        ifelse(petb==1 & adrenf==1.5,1,
+                               ifelse(petb==2 & adrenf==1.5,2,
+                                      ifelse(adrenf==2,2,
+                                             ifelse(adrenf==2.5,3,
+                                                    ifelse(adrenf==3,3,
+                                                           ifelse(adrenf==3.5,4,
+                                                                  ifelse(adrenf==4,4,
+                                                                         ifelse(adrenf==4.5,5,
+                                                                                ifelse(adrenf==5,5,
+                                                                                       NA))))))))))) %>%
+  mutate(gonadf=rowMeans(cbind(petaf,petdf),na.rm=F)) %>%
+  mutate(gonadf2=ifelse(gonadf==1 & petef==1,1,
+                       ifelse(gonadf==1.5 & petef==1,1,
+                              ifelse(gonadf==2 & petef==1,2,
+                                     ifelse(gonadf==2.5 & petef==1,2,
+                                            ifelse(gonadf==3 & petef==1,3,
+                                                   ifelse(gonadf==3.5 & petef==1,3,
+                                                          ifelse(gonadf==4 & petef==1,3,
+                                                              ifelse(gonadf==4.5 & petef==1,4,
+                                                                     ifelse(gonadf==5 & petef==1,4,
+                                                                            ifelse(gonadf==1 & petef==5,2,
+                                                                                   ifelse(gonadf==1.5 & petef==5,3,
+                                                                                          ifelse(gonadf==2 & petef==5,4,
+                                                                                                 ifelse(gonadf==2.5 & petef==5,4,
+                                                                                                        ifelse(gonadf==3 & petef==5,4,
+                                                                                                               ifelse(gonadf==3.5 & petef==5,5,
+                                                                                                                      ifelse(gonadf==4 & petef==5,5,
+                                                                                                                             ifelse(gonadf==4.5 & petef==5,5,
+                                                                                                                                    ifelse(gonadf==5 & petef==5,5,
+                                                                                                                                           NA))))))))))))))))))) %>%
+  mutate(pdss=rowMeans(cbind(adrenf2,gonadf2),na.rm=F))                                            
+```
+
+Prepare PSS
+```{r}
+qualtricsData_raw_pss<-filter(qualtricsData_raw_long, grepl("^PSS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!survey_name=="TAG - Parent Questionnaires") %>%
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  filter(!tagid=="TAG132") %>%
+  spread(item,value)
+
+qualtricsData_raw_pss<-left_join(qualtricsData_raw_pss,survey_date, by = c("tagid", "survey_name")) %>%
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(survey_date=value) %>% select(-item, -value)                                 
+```
+
+Prepare SCS-C
+```{r}
+qualtricsData_raw_scs_c<-filter(qualtricsData_raw_long, grepl("^SCS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!survey_name=="TAG - Parent Questionnaires") %>%
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_scs_c<-left_join(qualtricsData_raw_scs_c,survey_date, by = c("tagid", "survey_name")) %>%
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(survey_date=value) %>% select(-item, -value)                                 
+```
+
+Prepare PSQI_MEQ
+```{r}
+qualtricsData_raw_psqi_meq<-filter(qualtricsData_raw_long, grepl("^PSQI",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!survey_name=="TAG - Parent Questionnaires") %>%
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_psqi_meq<-left_join(qualtricsData_raw_psqi_meq,survey_date, by = c("tagid", "survey_name")) %>%
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(survey_date=value) %>% select(-item, -value)                                 
+```
+
+Prepare YRBS
+```{r}
+qualtricsData_raw_yrbs<-filter(qualtricsData_raw_long, grepl("^YRBS",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!survey_name=="TAG - Parent Questionnaires") %>%
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_yrbs<-left_join(qualtricsData_raw_yrbs,survey_date, by = c("tagid", "survey_name")) %>%
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(survey_date=value) %>% select(-item, -value)                                 
+```
+
+Prepare HAIR
+```{r}
+qualtricsData_raw_hair<-filter(qualtricsData_raw_long, grepl("^HAIR",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!survey_name=="TAG - Parent Questionnaires") %>%
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_hair<-left_join(qualtricsData_raw_hair,survey_date, by = c("tagid", "survey_name")) %>%
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(survey_date=value) %>% select(-item, -value)                                 
+```
+
+Prepare Parent CBCL
+```{r}
+x <- c("sport","hobby","clubs","chores","friends","get_along","grades","other_sub","specialed","what_kind","rep_grade","reasons","school_prob","disability","best","VIII")
+qualtricsData_raw_cbcl <-filter(qualtricsData_raw_long, grepl("Parent",survey_name)) %>% 
+  filter(!is.na(value)) %>%
+  distinct(tagid,item,value,.keep_all = TRUE) 
+  filter(grepl(paste(x, collapse = "|"),item)) %>% 
+  spread(item,value)
+
+%>%
+  
+filter(grepl("sport",item))
+qualtricsData_raw_cbcl<-left_join(qualtricsData_raw_cbcl,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(sports_des1=I_Sports_1_TEXT,
+         sports_des2=I_Sports_2_TEXT,
+         sports_des3=I_Sports_3_TEXT,
+         sports_time1=as.numeric(Sport_Time_1),
+         sports_well1=as.numeric(Sport_Well_1),
+         sports_time2=as.numeric(Sport_Time_2),
+         sports_well2=as.numeric(Sport_Well_2),
+         sports_time3=as.numeric(Sport_Time_3),
+         sports_well3=as.numeric(Sport_Well_3),
+         activities_des1=II_Hobbies_1_TEXT,
+         activities_time1=(as.numeric(Hobby_Time_1)-1),
+         activities_well1=(as.numeric(Hobby_Well_1)-1),
+         activities_des2=II_Hobbies_2_TEXT,
+         activities_time2=(as.numeric(Hobby_Time_2)-1),
+         activities_well2=(as.numeric(Hobby_Well_2)-1),
+         activities_des3=II_Hobbies_3_TEXT,
+         activities_time3=(as.numeric(Hobby_Time_3)-1),
+         activities_well3=(as.numeric(Hobby_Well_3)-1),
+         clubs_des1=III_Clubs_1_TEXT,
+         clubs_active1=(as.numeric(ClubActive_1)-1),
+         clubs_des2=III_Clubs_2_TEXT,
+         clubs_active2=(as.numeric(ClubActive_2)-1),
+         clubs_des3=III_Clubs_3_TEXT,
+         clubs_active3=(as.numeric(ClubActive_3)-1),
+         chores_des1=IV_Chores_1_TEXT,
+         chores_well1=(as.numeric(Chore_Well_1)-1),
+         chores_des2=IV_Chores_2_TEXT,
+         chores_well2=(as.numeric(Chore_Well_2)-1),
+         chores_des3=IV_Chores_3_TEXT,
+         chores_well3=(as.numeric(Chore_Well_3)-1),
+         friends=V_Friends,
+         friends_time=FriendTime,
+         interp_siblings=(as.numeric(How_Well_Get_Along_Sibs)-1),
+         interp_kids=(as.numeric(How_Well_Get_Along_Kids)-1),
+         interp_parents=(as.numeric(How_Well_Behave_Parents)-1),
+         interp_alone=(as.numeric(How_Well_Play_Work_Alone)-1),
+         cbcl1=VIII_1,
+         cbcl2=VIII_2,
+         cbcl3=VIII_3,
+         cbcl4=VIII_4,
+         cbcl5=VIII_5,
+         cbcl6=VIII_6,
+         cbcl7=VIII_7,
+         cbcl8=VIII_8,
+         cbcl9=VIII_9,
+         cbcl10=VIII_10,
+         cbcl11=VIII_11,
+         cbcl12=VIII_12,
+         cbcl13=VIII_13,
+         cbcl14=VIII_14,
+         cbcl15=VIII_15,
+         cbcl16=VIII_16,
+         cbcl17=VIII_17,
+         cbcl18=VIII_18,
+         cbcl19=VIII_19,
+         cbcl20=VIII_20,
+         cbcl21=VIII_21,
+         cbcl22=VIII_22,
+         cbcl23=VIII_23,
+         cbcl24=VIII_24,
+         cbcl25=VIII_25,
+         cbcl26=VIII_26,
+         cbcl27=VIII_27,
+         cbcl28=VIII_28,
+         cbcl29=VIII_29,
+         cbcl30=VIII_30,
+         cbcl31=VIII_31,
+         cbcl32=VIII_32,
+         cbcl33=VIII_33,
+         cbcl34=VIII_34,
+         cbcl35=VIII_35,
+         cbcl36=VIII_36,
+         cbcl37=VIII_37,
+         cbcl38=VIII_38,
+         cbcl39=VIII_39,
+         cbcl40=VIII_40,
+         cbcl41=VIII_41,
+         cbcl42=VIII_42,
+         cbcl43=VIII_43,
+         cbcl44=VIII_44,
+         cbcl45=VIII_45,
+         cbcl46=VIII_46,
+         cbcl47=VIII_47,
+         cbcl48=VIII_48,
+         cbcl49=VIII_49,
+         cbcl50=VIII_50,
+         cbcl51=VIII_51,
+         cbcl52=VIII_52,
+         cbcl53=VIII_53,
+         cbcl54=VIII_54,
+         cbcl55=VIII_55,
+         cbcl56a=VIII_56a,
+         cbcl56b=VIII_56b,
+         cbcl56c=VIII_56c,
+         cbcl56d=VIII_56d,
+         cbcl56e=VIII_56e,
+         cbcl56f=VIII_56f,
+         cbcl56g=VIII_56g,
+         cbcl56h=as.numeric(VIII_56h),
+         cbcl57=VIII_57,
+         cbcl58=VIII_58,
+         cbcl59=VIII_59,
+         cbcl60=VIII_60,
+         cbcl61=VIII_61,
+         cbcl62=VIII_62,
+         cbcl63=VIII_63,
+         cbcl64=VIII_64,
+         cbcl65=VIII_65,
+         cbcl66=VIII_66,
+         cbcl67=VIII_67,
+         cbcl68=VIII_68,
+         cbcl69=VIII_69,
+         cbcl70=as.numeric(VIII_70),
+         cbcl71=VIII_71,
+         cbcl72=VIII_72,
+         cbcl73=VIII_73,
+         cbcl74=VIII_74,
+         cbcl75=VIII_75,
+         cbcl76=VIII_76,
+         cbcl77=VIII_77,
+         cbcl78=VIII_78,
+         cbcl79=VIII_79,
+         cbcl80=VIII_80,
+         cbcl81=VIII_81,
+         cbcl82=VIII_82,
+         cbcl83=VIII_83,
+         cbcl84=VIII_84,
+         cbcl85=VIII_85,
+         cbcl86=VIII_86,
+         cbcl87=VIII_87,
+         cbcl88=VIII_88,
+         cbcl89=VIII_89,
+         cbcl90=VIII_90,
+         cbcl91=VIII_91,
+         cbcl92=VIII_92,
+         cbcl93=VIII_93,
+         cbcl94=VIII_94,
+         cbcl95=VIII_95,
+         cbcl96=VIII_96,
+         cbcl97=VIII_97,
+         cbcl98=VIII_98,
+         cbcl99=VIII_99,
+         cbcl100=VIII_100,
+         cbcl101=VIII_101,
+         cbcl102=VIII_102,
+         cbcl103=VIII_103,
+         cbcl104=VIII_104,
+         cbcl105=VIII_105,
+         cbcl106=VIII_106,
+         cbcl107=VIII_107,
+         cbcl108=VIII_108,
+         cbcl109=VIII_109,
+         cbcl110=VIII_110,
+         cbcl111=VIII_111,
+         cbcl112=VIII_112,
+         cbcl_emotional_raw=999,
+         cbcl_emotional=999,
+         cbcl_anxious_raw=999,
+         cbcl_anxious=999,
+         cbcl_somatic_c_raw=999,
+         cbcl_somatic_c=999,
+         cbcl_withdrawn_raw=999,
+         cbcl_withdrawn=999,
+         cbcl_sleep_raw=999,
+         cbcl_sleep=999,
+         cbcl_attention_raw=999,
+         cbcl_attention=999,
+         cbcl_aggressive_raw=999,
+         cbcl_aggressive=999,
+         cbcl_internal_raw=999,
+         cbcl_internal=999,
+         cbcl_external_raw=999,
+         cbcl_external=999,
+         cbcl_total_raw=999,
+         cbcl_total=999,
+         cbcl_affective_raw=999,
+         cbcl_affective=999,
+         cbcl_anxiety_raw=999,
+         cbcl_anxiety=999,
+         cbcl_pervasive_raw=999,
+         cbcl_pervasive=999,
+         cbcl_adhd_raw=999,
+         cbcl_adhd=999,
+         cbcl_oppositional_raw=999,
+         cbcl_oppositional=999,
+         cbcl_social_p_raw=999,
+         cbcl_social_p=999,
+         cbcl_thought_raw=999,
+         cbcl_thought=999,
+         cbcl_rulebreak_raw=999,
+         cbcl_rulebreak=999,
+         cbcl_activities_raw=999,
+         cbcl_activities=999,
+         cbcl_social_c_raw=999,
+         cbcl_social_c=999,
+         cbcl_school_raw=999,
+         cbcl_school=999,
+         cbcl_total_c_raw=999,
+         cbcl_total_c=999,
+         cbcl_somatic_p_raw=999,
+         cbcl_somatic_p=999,
+         cbcl_conduct_raw=999,
+         cbcl_conduct=999,
+         cbcl_sct_raw=999,
+         cbcl_sct=999,
+         cbcl_ocd_raw=999,
+         cbcl_ocd=999,
+         cbcl_ptsd_raw=999,
+         cbcl_ptsd=999,
+         cbcl_depresspr=999,
+         cbcl_depresspr_raw=999)
+```
+
+Prepare Parent-report PDS
+```{r}
+qualtricsData_raw_parent_pds <-filter(qualtricsData_raw_long, grepl("Parent",survey_name)) %>% 
+  filter(grepl("PDS",item)) %>%
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_parent_pds<-left_join(qualtricsData_raw_parent_pds,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value)
+```
+
+Prepare Parent-report CES_D 
+```{r}
+qualtricsData_raw_parent_cesd <-filter(qualtricsData_raw_long, grepl("Parent",survey_name)) %>% 
+  filter(grepl("CES_D",item)) %>%
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_parent_cesd<-left_join(qualtricsData_raw_parent_cesd,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value)
+```
+
+Prepare Parent-report DEM/SES
+```{r}
+x <- c("^Sib","Ethn","Edu","Inc","Free_Lunch","Gender")
+qualtricsData_raw_dem <-filter(qualtricsData_raw_long, grepl("Parent",survey_name)) %>% 
+  filter(grepl(paste(x, collapse = "|"),item)) %>%
+  mutate(value=as.numeric(value)) %>%
+  filter(!is.na(value)) %>%
+  filter(!is.na(value)) %>%
+  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  spread(item,value) %>%
+  filter(!tagid=="TAG070")
+
+qualtricsData_raw_dem<-left_join(qualtricsData_raw_dem,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(Income=ifelse(Income==1,"<25000",
+                       ifelse(Income==2,"25-40,000",
+                              ifelse(Income==3,"40-75,000",
+                                     ifelse(Income==4,"75-100,000",
+                                            ifelse(Income==5,">100,000",
+                                                   NA))))),
+         Income=ordered(Income, levels=c("<25000","25-40,000","40-75,000","75-100,000",">100,000")),
+         MomEdu=as.factor(ifelse(P_Gender==2,P_Edu,Spouse_Edu)),
+         DadEdu=as.factor(ifelse(P_Gender==2,Spouse_Edu,P_Edu)))
+
+
+         
+           DadEthnic=ifelse(DadEthnic_1==1,1,
+                          ifelse(DadEthnic_2==1,2,
+                                 ifelse(DadEthnic_3==1,3,
+                                        ifelse(DadEthnic_4==1,4,
+                                               ifelse(DadEthnic_5==1,5,
+                                                      ifelse(DadEthnic_6==1,6,
+                                                             ifelse(DadEthnic_7==7,
+                                                                    NA))))))))
+
+,
+         MomEthnic=ifelse(DadEthnic_1==1,1,
+                          ifelse(DadEthnic_2==1,2,
+                                 ifelse(DadEthnic_3==1,3,
+                                        ifelse(DadEthnic_4==1,4,
+                                               ifelse(DadEthnic_5==1,5,
+                                                      ifelse(DadEthnic_6==1,6,
+                                                             ifelse(DadEthnic_7==7,
+                                                                    NA))))))))
+  
+```
+
+PROBLEMS:
+Prepare DSHI 
+```{r}
+qualtricsData_raw_dshi<-filter(qualtricsData_raw_long, grepl("DSHI",item)) %>% distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  mutate(value=replace(value, value==1, "Y")) %>%
+  mutate(value=replace(value, value==2, "N")) %>%
+  spread(item,value)
+
+qualtricsData_raw_dshi<-left_join(qualtricsData_raw_dshi,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(dshi_totalscore=-999)
+
+```
+
+VISUALIZATION
+```{r}
+library(ggplot2)
+theme_set(theme_gray(base_size = 18))
+
+#PDS
+qualtricsData_raw_pds$pdss_int<-as.integer(qualtricsData_raw_pds$pdss)
+ggplot(qualtricsData_raw_pds, aes(x=pdss_int)) + geom_bar() + theme(axis.title.x=element_blank(), axis.title.y=element_blank()) + ggtitle("PDS")
+
+ggplot(qualtricsData_raw_pds, aes(x=adrenf2)) + geom_bar() + theme(axis.title.x=element_blank(), axis.title.y=element_blank()) + ggtitle("Adrenarche")
+
+ggplot(qualtricsData_raw_pds, aes(x=gonadf2)) + geom_bar() + theme(axis.title.x=element_blank(), axis.title.y=element_blank()) + ggtitle("Gonadarche")
+
+#Income
+ggplot(qualtricsData_raw_dem[!is.na(qualtricsData_raw_dem$Income),], aes(x=Income)) + geom_bar() + theme(axis.text.x = element_text(angle=90), axis.title.x=element_blank(), axis.title.y=element_blank()) + ggtitle("Income")
+
+#MotherEdu
+Labels <- c("Public School","High School Dip","Trade School","Associate's Deg","Undergrad","Postgrad","Other")
+ggplot(qualtricsData_raw_dem[!is.na(qualtricsData_raw_dem$MomEdu),], aes(x=MomEdu)) + geom_bar() + scale_x_discrete(labels=Labels) + theme(axis.text.x = element_text(angle=90), axis.title.x=element_blank(), axis.title.y=element_blank()) + ggtitle("Mother's Education")
+
+#FatherEdu
+Labels <- c("Public School","High School Dip","Trade School","Associate's Deg","Undergrad","Postgrad","Other")
+ggplot(qualtricsData_raw_dem[!is.na(qualtricsData_raw_dem$DadEdu),], aes(x=DadEdu)) + geom_bar() + scale_x_discrete(labels=Labels) + theme(axis.text.x = element_text(angle=90), axis.title.x=element_blank(), axis.title.y=element_blank()) + ggtitle("Father's Education")
+
+```
+
+CURRENT N CHECK
+```{r}
+Names <- ls(pattern= "qualtricsData")
+Objects <- as.data.frame(Names)
+Size <- nrow(paste(Objects$Names[1],noquotes))
+  mutate(Size = nrow(Names))
+size <- lapply(Objects$Names, nrow)
+
+```
+
+DEMO
+```{r}
+x <- c("Ethnicity_1","Ethnicity_2","Ethnicity_3","Ethnicity_4","Ethnicity_5","Ethnicity_6","Ethnicity_7","Ethnicity_8","Ethnicity_9","Ethnicity_10","Ethnicity_11","Ethnicity_7_TEXT")
+
+qualtricsData_raw_parent_demo <-filter(qualtricsData_raw_long, grepl("Parent",survey_name)) %>% 
+  filter(grepl(paste(x, collapse = "|"),item)) %>%
+  mutate(value=as.numeric(value)) %>% 
+  distinct(tagid,item,.keep_all = TRUE) %>% 
+  spread(item,value)
+
+qualtricsData_raw_parent_demo<-left_join(qualtricsData_raw_parent_demo,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(ethnicity=ifelse(Ethnicity_2==1,"Hispanic",
+                              "NonHispanic")) %>%
+  mutate(race=ifelse((Ethnicity_1 == 1) & (is.na(Ethnicity_2)) & (is.na(Ethnicity_3)) & (is.na(Ethnicity_4)) & (is.na(Ethnicity_5)) & (is.na(Ethnicity_6)) & (is.na(Ethnicity_10)), 1,
+                     ifelse((Ethnicity_2 == 1) & (is.na(Ethnicity_1)) & (is.na(Ethnicity_3)) & (is.na(Ethnicity_4)) & (is.na(Ethnicity_5)) & (is.na(Ethnicity_6)) & (is.na(Ethnicity_10)), 2,
+                             ifelse((Ethnicity_3 == 1) & (is.na(Ethnicity_1)) & (is.na(Ethnicity_2)) & (is.na(Ethnicity_4)) & (is.na(Ethnicity_5)) & (is.na(Ethnicity_6)) & (is.na(Ethnicity_10)), 3,
+                                     ifelse((Ethnicity_4 == 1) & (is.na(Ethnicity_1)) & (is.na(Ethnicity_2)) & (is.na(Ethnicity_3)) & (is.na(Ethnicity_5)) & (is.na(Ethnicity_6)) & (is.na(Ethnicity_10)), 4,
+                                            ifelse((Ethnicity_5 == 1) & (is.na(Ethnicity_1)) & (is.na(Ethnicity_2)) & (is.na(Ethnicity_3)) & (is.na(Ethnicity_4)) & (is.na(Ethnicity_6)) & (is.na(Ethnicity_10)), 5,
+                                                   ifelse((Ethnicity_6 == 1) & (is.na(Ethnicity_1)) & (is.na(Ethnicity_2)) & (is.na(Ethnicity_3)) & (is.na(Ethnicity_4)) & (is.na(Ethnicity_10)), 6,
+                                                          ifelse((Ethnicity_10 == 1) & (is.na(Ethnicity_1)) & (is.na(Ethnicity_2)) & (is.na(Ethnicity_3)) & (is.na(Ethnicity_4)) & (is.na(Ethnicity_5)) & (is.na(Ethnicity_10)), 10,
+                                                          "multiple"))))))))
+
+qualtricsData_raw_hisp <- qualtricsData_raw_parent_demo[order(qualtricsData_raw_parent_demo$survey_date),] %>% filter(ethnicity=="Hispanic" & survey_date > "2016-05-01")
+qualtricsData_raw_nonhisp <- qualtricsData_raw_parent_demo[order(qualtricsData_raw_parent_demo$survey_date),] %>% filter(is.na(ethnicity)  & survey_date > "2016-05-01") 
+
+redcapData_merged <- merge(redcapData_merged, qualtricsData_raw_parent_demo, by = "tagid", all.x=T)
+checkDemo <- redcapData_merged[,c("tagid","sa_date","ethnicity","race")]
+checkDemo <- checkDemo[order(checkDemo$sa_date),]
+
+
+qualtricsData_raw_parent_demo <-filter(qualtricsData_raw_long, grepl("Parent",survey_name)) %>% 
+  filter(grepl(paste(x, collapse = "|"),item)) %>%
+  mutate(value=as.numeric(value)) %>% 
+  distinct(tagid,item,.keep_all = TRUE) %>% 
+  spread(item,value)
