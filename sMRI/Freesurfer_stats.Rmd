@@ -50,14 +50,33 @@ freesurfer_subjects="/Volumes/TDS/ppcd_nii/sMRI/subjects/"
 subs<-list.files(path = freesurfer_subjects, pattern = "sub")
 # extract info
 asegcolnames<-c("Index","SegId","NVoxels","Volume_mm3","StructName","normMean","normStdDev","normMin","normMax","normRange")
-extract_amygdala_vol= function(sub){
+extract_vols= function(sub){
   aseg<-read.table(paste0(freesurfer_subjects,sub,"/stats/aseg.stats"))
   colnames(aseg)<-asegcolnames
-  amygdala_vol<-aseg %>% filter(grepl("Left-Amygdala",StructName)) %>% select(Volume_mm3)
-  cbind(sub,amygdala_vol)}
-outputlist<-lapply(subs,extract_amygdala_vol)
+  amygdala_vol<-sum(aseg %>% filter(grepl("Left-Amygdala",StructName)) %>% select(Volume_mm3),
+                    aseg %>% filter(grepl("Right-Amygdala",StructName)) %>% select(Volume_mm3))
+  caudate_vol<-sum(aseg %>% filter(grepl("Left-Caudate",StructName)) %>% select(Volume_mm3),
+                    aseg %>% filter(grepl("Right-Caudate",StructName)) %>% select(Volume_mm3))
+  hippocampus_vol<-sum(aseg %>% filter(grepl("Left-Hippocampus",StructName)) %>% select(Volume_mm3),
+                    aseg %>% filter(grepl("Right-Hippocampus",StructName)) %>% select(Volume_mm3))
+  nacc_vol<-sum(aseg %>% filter(grepl("Left-Accumbens-area",StructName)) %>% select(Volume_mm3),
+                    aseg %>% filter(grepl("Right-Accumbens-area",StructName)) %>% select(Volume_mm3))
+  thalamus_vol<-sum(aseg %>% filter(grepl("Left-Thalamus-Proper",StructName)) %>% select(Volume_mm3),
+                    aseg %>% filter(grepl("Right-Thalamus-Proper",StructName)) %>% select(Volume_mm3))
+  putamen_vol<-sum(aseg %>% filter(grepl("Left-Putamen",StructName)) %>% select(Volume_mm3),
+                    aseg %>% filter(grepl("Right-Putamen",StructName)) %>% select(Volume_mm3))
+  cbind(sub,amygdala_vol,caudate_vol,hippocampus_vol,nacc_vol,thalamus_vol,putamen_vol)}
+outputlist<-lapply(subs,extract_vols)
 output.df<-as.data.frame(do.call(rbind,outputlist)) %>% 
-  mutate(amygdala_vol=Volume_mm3) %>% select (-Volume_mm3)
-amygdala_volumes <- ggplot(output.df,aes(x=sub, y=amygdala_vol))
-amygdala_volumes + geom_point()
+  mutate(amygdala_vol=as.numeric(levels(amygdala_vol))[amygdala_vol],
+         caudate_vol=as.numeric(levels(caudate_vol))[caudate_vol],
+         nacc_vol=as.numeric(levels(nacc_vol))[nacc_vol],
+         hippocampus_vol=as.numeric(levels(hippocampus_vol))[hippocampus_vol],
+         thalamus_vol=as.numeric(levels(thalamus_vol))[thalamus_vol],
+         putamen_vol=as.numeric(levels(putamen_vol))[putamen_vol])
+long<-gather(output.df, "sub", "parcel", 2:7)
+colnames(long)<-c("sub","parcel","volume")
+subcortical_volumes<-ggplot(long, aes(x=parcel, y=volume, color=parcel)) +
+  geom_violin(trim=FALSE)
+subcortical_volumes
 ```
