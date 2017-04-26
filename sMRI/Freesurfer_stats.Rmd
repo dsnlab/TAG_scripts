@@ -18,7 +18,7 @@ if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
 lapply(packages, library, character.only = TRUE)
 ```
 
-Extract freesurfer stats
+Extract FreeSurfer preprocessing stats
 ```{r Extract and plot run times, echo=TRUE}
 # Set directory
 freesurfer_subjects="/Volumes/TDS/ppcd_nii/sMRI/subjects/"
@@ -39,4 +39,25 @@ output.df<-as.data.frame(do.call(rbind,outputlist)) %>%
 times <- ggplot((output.df %>% select(-status.file.for.recon.all)),
                 aes(x=sub, y=runtime, fill=runtime))
 times + geom_bar(colour="black", stat="identity") 
+```
+
+
+Plot structural MRI info
+```{r Extract and plot structural MRI info, echo=TRUE}
+# Set directory
+freesurfer_subjects="/Volumes/TDS/ppcd_nii/sMRI/subjects/"
+# create sub list based on folders within the freesurfer subjects folder
+subs<-list.files(path = freesurfer_subjects, pattern = "sub")
+# extract info
+asegcolnames<-c("Index","SegId","NVoxels","Volume_mm3","StructName","normMean","normStdDev","normMin","normMax","normRange")
+extract_amygdala_vol= function(sub){
+  aseg<-read.table(paste0(freesurfer_subjects,sub,"/stats/aseg.stats"))
+  colnames(aseg)<-asegcolnames
+  amygdala_vol<-aseg %>% filter(grepl("Left-Amygdala",StructName)) %>% select(Volume_mm3)
+  cbind(sub,amygdala_vol)}
+outputlist<-lapply(subs,extract_amygdala_vol)
+output.df<-as.data.frame(do.call(rbind,outputlist)) %>% 
+  mutate(amygdala_vol=Volume_mm3) %>% select (-Volume_mm3)
+amygdala_volumes <- ggplot(output.df,aes(x=sub, y=amygdala_vol))
+amygdala_volumes + geom_point()
 ```
