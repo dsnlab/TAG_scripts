@@ -8,7 +8,7 @@
 
 # Set folder names
 dicomsubid=$1
-dicomdir="/Volumes/psych-cog/dsnlab/TAG/DICOMS/${dicomsubid}"
+dicomdir=$(echo "/Volumes/psych-cog/dsnlab/TAG/DICOMS/${dicomsubid}"*)
 inputdir="/Volumes/psych-cog/dsnlab/TAG/clean_nii"
 outputdir="/Volumes/psych-cog/dsnlab/TAG/clean_nii/BIDS"
 
