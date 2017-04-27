@@ -53,12 +53,14 @@ times + geom_bar(colour="black", stat="identity")
 Plot structural MRI info
 ```{r Extract and plot structural MRI info, echo=TRUE}
 # Set directory
-freesurfer_subjects="/Volumes/TDS/ppcd_nii/sMRI/subjects/"
+#freesurfer_subjects="/Volumes/TDS/ppcd_nii/sMRI/subjects/"
+freesurfer_subjects="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/freesurfer6/"
 # create sub list based on folders within the freesurfer subjects folder
 subs<-list.files(path = freesurfer_subjects, pattern = "sub")
 # extract info
 asegcolnames<-c("Index","SegId","NVoxels","Volume_mm3","StructName","normMean","normStdDev","normMin","normMax","normRange")
 extract_vols= function(sub){
+  if (file.exists((paste0(freesurfer_subjects,sub,"/stats/aseg.stats")))){
   aseg<-read.table(paste0(freesurfer_subjects,sub,"/stats/aseg.stats"))
   colnames(aseg)<-asegcolnames
   amygdala_vol<-sum(aseg %>% filter(grepl("Left-Amygdala",StructName)) %>% select(Volume_mm3),
@@ -74,6 +76,7 @@ extract_vols= function(sub){
   putamen_vol<-sum(aseg %>% filter(grepl("Left-Putamen",StructName)) %>% select(Volume_mm3),
                     aseg %>% filter(grepl("Right-Putamen",StructName)) %>% select(Volume_mm3))
   cbind(sub,amygdala_vol,caudate_vol,hippocampus_vol,nacc_vol,thalamus_vol,putamen_vol)}
+}
 outputlist<-lapply(subs,extract_vols)
 output.df<-as.data.frame(do.call(rbind,outputlist)) %>% 
   mutate(amygdala_vol=as.numeric(levels(amygdala_vol))[amygdala_vol],
