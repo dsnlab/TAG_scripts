@@ -8,38 +8,58 @@ output: html_document
 # Begin script
 
 Load required packages
-```{r, echo=FALSE}
+```{r, message=FALSE, warning=FALSE, include=FALSE}
 ## Load required packages ##
-packages <- c("lme4", "nlme", "ggplot2", "zoo","dplyr", "tidyr", "knitr",
-              "parallel", "data.table", "lubridate","qualtRics")
+packages <- c("lme4", "nlme", "ggplot2", "dplyr", "tidyr", "knitr",
+              "parallel", "data.table", "lubridate","xml2","devtools")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 lapply(packages, library, character.only = TRUE)
+install_github('jflournoy/qualtrics')
+library(qualtrics)
+rm(packages)
 ```
 
 Extract qualtrics data from website
 ```{r, include=FALSE}
-tagqualtricstoken<-readChar("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/qualtrics_TAG_token.txt",nchars = file.info("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/qualtrics_TAG_token.txt")$size) 
-qualtRics::registerApiKey(tagqualtricstoken)
-current_surveys <- qualtRics::getSurveys("https://oregon.qualtrics.com/")
+credsFile<-'/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/credentials.yaml.DEFAULT'
+creds<-creds_from_file(credsFile)
 
-sess1_surveys<-current_surveys %>% filter(grepl("Sess 1",name))
-home_surveys<-current_surveys %>% filter(grepl("Home",name))
-sess2_surveys<-current_surveys %>% filter(grepl("Sess 2",name))
-parent_surveys<-current_surveys %>% filter(grepl("Parent",name))
+survey_info<-qualtrics::get_surveys(creds) %>% 
+  filter(!grepl("NV", SurveyName)) %>% 
+  dplyr::select(SurveyID, SurveyName)
 
-surveys_to_process<-bind_rows(sess1_surveys,sess2_surveys,home_surveys,parent_surveys)
+get_survey_data<-function(surveysDF,pid_col="SID"){
+  #Takes the data.frame that is returned by `get_surveys`
+  #Returns a long format data.frame of survey data with names
+  # "SID variable name"         "item"        "value"       "survey_name"
+  survey_data<-survey_info %>% 
+    group_by(SurveyID) %>%
+    do(
+      survey_name=.$SurveyName[[1]],
+      survey_data=qualtrics::get_survey_responses(
+        creds,
+        surveyid=.$SurveyID[[1]])
+    )
+  long_survey_data<-survey_data %>% 
+    filter(dim(survey_data)[1]>0) %>%
+    do({
+      gather_cols<-names(.$survey_data)[!grepl(pid_col,names(.$survey_data))]
+      aDF<-gather_(.$survey_data,
+                   'item',
+                   'value',
+                   gather_cols)
+      aDF$survey_name<-.$survey_name
+      aDF
+    })
+  long_survey_data
+}
 
-for (i in 1:length(surveys_to_process$id)){
-getSurvey(surveys_to_process$id[i],
-                      format = "csv",
-                      save_dir="/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Working/",
-                      "https://oregon.qualtrics.com/",
-                      verbose=TRUE)}
 
+long_survey_data<-get_survey_data(survey_info,pid_col="SID") %>% mutate(value = ifelse(value == -99, NA, value))
+rm(creds,credsFile,get_survey_data)
 ```
-
 
 Load and clean redcap info
 ```{r}
@@ -54,15 +74,11 @@ redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
   filter(!subject_spit_id=="TAG_001P") %>%
   mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid))
+rm(redcapData_dob,redcapData,redcapData_sessiondates)
 ```
 
 Load and clean qualtrics (from scratch)
 ```{r}
-qualtrics_test<-merge(survey)
-
-
-
-
 qualtricsData_raw_long <- read.csv(paste0(processed_data,"qualtrics/TAG_auto_raw_qualtrics_long.csv"), header = TRUE, stringsAsFactors = FALSE)
 qualtricsData_raw_long <- qualtricsData_raw_long %>% mutate(tagid=sprintf("TAG%03s",SID)) %>% select(tagid, item, value, survey_name) %>% filter(!tagid=="TAG000")
 
