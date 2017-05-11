@@ -22,7 +22,7 @@ rm(packages)
 ```
 
 Extract qualtrics data from website
-```{r, include=FALSE}
+```{r, message=FALSE, warning=FALSE, include=FALSE}
 credsFile<-'/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/credentials.yaml.DEFAULT'
 creds<-creds_from_file(credsFile)
 
@@ -30,11 +30,11 @@ survey_info<-qualtrics::get_surveys(creds) %>%
   filter(!grepl("NV", SurveyName)) %>% 
   dplyr::select(SurveyID, SurveyName)
 
-get_survey_data<-function(surveysDF,pid_col="SID"){
+get_survey_data<-function(surveysDF,pid_col){
   #Takes the data.frame that is returned by `get_surveys`
   #Returns a long format data.frame of survey data with names
   # "SID variable name"         "item"        "value"       "survey_name"
-  survey_data<-survey_info %>% 
+  survey_data<-surveysDF %>% 
     group_by(SurveyID) %>%
     do(
       survey_name=.$SurveyName[[1]],
@@ -56,8 +56,9 @@ get_survey_data<-function(surveysDF,pid_col="SID"){
   long_survey_data
 }
 
-
 long_survey_data<-get_survey_data(survey_info,pid_col="SID") %>% mutate(value = ifelse(value == -99, NA, value))
+embedded_qs<-survey_info %>% filter(SurveyName=="TAG - Home Qs - V3 - with SID embedded")
+sortbyqid_data<-get_survey_data(embedded_qs,pid_col="qid") %>% mutate(value = ifelse(value == -99, NA, value))
 rm(creds,credsFile,get_survey_data)
 ```
 
@@ -79,9 +80,43 @@ rm(redcapData_dob,redcapData,redcapData_sessiondates)
 
 Load and clean qualtrics (from scratch)
 ```{r}
-qualtricsData_raw_long <- read.csv(paste0(processed_data,"qualtrics/TAG_auto_raw_qualtrics_long.csv"), header = TRUE, stringsAsFactors = FALSE)
-qualtricsData_raw_long <- qualtricsData_raw_long %>% mutate(tagid=sprintf("TAG%03s",SID)) %>% select(tagid, item, value, survey_name) %>% filter(!tagid=="TAG000")
+cleaned_survey_data<- long_survey_data %>% 
+  mutate(tagid=ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID)) %>%
+  select(tagid, item, value, survey_name) %>%
+  filter(!tagid=="TAG000",
+         !tagid=="TAG999") %>%
+  mutate(tagid=ifelse(tagid=="013 ", "TAG013", tagid))
 
+IDs<-unique(cleaned_survey_data$tagid)
+
+#Not sure what to do about the missing ID data
+missingID<-cleaned_survey_data %>%
+  filter(tagid=="")
+
+# Need to fix the IDs of participants
+# who showed an error with their qualtrics
+# home questionnaires
+misIDkey<-read.csv("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/qidkey.csv")
+TAGHomeQ<-sortbyqid_data
+for (i in 1:length(misIDkey$qid)){
+TAGHomeQ <- TAGHomeQ %>%
+  mutate(value=ifelse(qid==as.character(misIDkey$qid[i]) && item=="SID",
+                      as.character(misIDkey$SID[i]),value))
+}
+gather_cols<-unique(TAGHomeQ$item)
+TAGEmbeddedHomeQ_Gathered <- TAGHomeQ %>% 
+  spread(item,value) %>%
+  mutate(tagid=ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID))
+test1 <- TAGEmbeddedHomeQ_Gathered[c(227,2,1,3:226)]
+test2<-gather(test1,"item","value",3:227)
+
+cleaned_survey_data2<-bind_rows(cleaned_survey_data,test2)
+cleaned_survey_data3<-cleaned_survey_data2 %>% distinct(tagid,item,value,survey_name,.keep_all = TRUE)
+cleaned_survey_data<-cleaned_survey_data3 %>% filter(!tagid=="") %>% filter(!tagid=="SV_eqvWqPtsOO4uqPP")
+
+rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sortbyqid_data,TAGEmbeddedHomeQ_Gathered,TAGHomeQ,
+   test1,test2)
+rm(long_survey_data)
 ```
 
 Prepare subject identifying information
