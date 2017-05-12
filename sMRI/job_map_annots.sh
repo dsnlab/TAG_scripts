@@ -16,7 +16,7 @@ echo -e "\nSetting up AFNI"
 module use /projects/tau/packages/Modules/modulefiles/
 module load afni
 
-rsfMRIdir="/projects/dsnlab/tag/rsfMRI/subjects/"
+rsfMRIdir="/projects/dsnlab/tag/bids_data/derivatives/rsfMRIpreproc/"
 templatedir="/projects/dsnlab/tag/sMRI/templates/"
 
 echo -e "\nFreesurfer Home is $FREESURFER_HOME"
@@ -61,3 +61,4 @@ for label in $lhlabels; do
 	rm $SUBJECTS_DIR/$SUBID/mri/fromannots/"${label}".nii.gz
 	mv $SUBJECTS_DIR/$SUBID/mri/fromannots/"${label}"_final.nii.gz $SUBJECTS_DIR/$SUBID/mri/fromannots/"${label}".nii.gz
  done
+
