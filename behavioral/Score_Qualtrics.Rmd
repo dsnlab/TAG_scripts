@@ -64,7 +64,7 @@ rm(creds,credsFile,get_survey_data)
 
 Load and clean redcap info
 ```{r}
-redcapData <- read.csv("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Working/redcap_dates.csv", header = TRUE, stringsAsFactors = FALSE)
+redcapData <- read.csv("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/redcap_dates.csv", header = TRUE, stringsAsFactors = FALSE)
 redcapData_dob<-redcapData %>%
   select(dob,subject_spit_id) %>%
   filter(!dob=="")
