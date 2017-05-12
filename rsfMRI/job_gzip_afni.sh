@@ -18,7 +18,7 @@ echo ${SUBID}
 # set subject and group identifiers
 subj="${SUBID}"
 echo $subj
-group_id=tds
+group_id=tag
 echo $group_id
 pipeline=rsfMRI_preproc
 
