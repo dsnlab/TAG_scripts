@@ -12,7 +12,7 @@ echo "job_SUMA.sh ran on $(date) $line"
 
 echo -e "\nSetting Up Freesurfer6.0"
 
-source /projects/dsnlab/tag/sMRI/scripts/SetUpFreeSurfer.sh 
+source /projects/dsnlab/tag/TAG_scripts/sMRI/SetUpFreeSurfer.sh 
 
 echo -e "\nSetting up AFNI"
 

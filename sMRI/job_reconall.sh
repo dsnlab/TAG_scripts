@@ -10,7 +10,7 @@
 
 echo -e "\nSetting Up Freesurfer6.0"
 
-source /projects/dsnlab/tag/sMRI/scripts/SetUpFreeSurfer.sh 
+source /projects/dsnlab/tag/TAG_scripts/sMRI/SetUpFreeSurfer.sh 
 
 echo -e "\nFreesurfer Home is $FREESURFER_HOME"
 
