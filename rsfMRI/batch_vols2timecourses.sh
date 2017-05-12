@@ -10,8 +10,8 @@
 STUDY=/projects/dsnlab/tag
 
 # Set subject list
-#SUBJLIST=`cat subject_list.txt`
-SUBJLIST=`cat test.txt`
+SUBJLIST=`cat subject_list.txt`
+#SUBJLIST=`cat test.txt`
 
 
 for SUBJ in $SUBJLIST
