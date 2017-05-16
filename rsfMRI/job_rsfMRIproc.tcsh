@@ -24,7 +24,7 @@ set subj="${SUBID}"
 echo $subj
 set group_id=tag
 echo $group_id
-set pipeline=rsfMRI_preproc
+set pipeline=rsfMRI_preproc_noFDscrub
 
 # set data directories
 set top_dir=/projects/dsnlab/"${group_id}"
@@ -65,7 +65,6 @@ afni_proc.py -subj_id $subj                                \
 -regress_make_corr_vols aeseg FSvent                       \
 -regress_anaticor_fast                                     \
 -regress_anaticor_label FSWe                               \
--regress_censor_motion 0.2                                 \
 -regress_censor_outliers 0.1                               \
 -regress_bandpass 0.008 0.09                               \
 -regress_apply_mot_types demean deriv                      \
