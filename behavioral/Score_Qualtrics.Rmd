@@ -7,6 +7,7 @@ output: html_document
 
 Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
+getwd()
 workdir<-as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
 ```
 
@@ -124,7 +125,7 @@ rm(redcapData_dob,redcapData,redcapData_sessiondates)
 
 Prepare GUIDs
 ```{r}
-redcap_NDA_info <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_nda_consent.csv"),
+redcap_NDA_info <- read.csv(paste0(workdir,"RDoCdb/Confidential/redcap_nda_consent.csv"),
                             header = TRUE,
                             stringsAsFactors = FALSE)
 redcapNDA_sessiondates<-redcap_NDA_info %>%
@@ -139,6 +140,7 @@ redcap_NDA_info<-merge(redcapNDA_sessiondates,redcapNDA_data) %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
   filter(!subject_spit_id=="TAG_001P") %>%
   mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid))
+
 rm(redcapNDA_data,redcapNDA_sessiondates)
 
 guid_colnames<-colnames(read.csv(paste0(workdir,"RDoCdb/templates/guid_sample_template.csv"),
@@ -147,7 +149,7 @@ guid_colnames<-colnames(read.csv(paste0(workdir,"RDoCdb/templates/guid_sample_te
                           nrow=1))
 
 consentedlist<-(redcap_NDA_info %>%
-  filter(nda_consent___1==1) %>%
+  filter(nda_consent___1==1 & nda_consent___2==1) %>%
   select(tagid))[[1]]
 
 prepareGUIDs=function(subID){
@@ -170,9 +172,12 @@ prepareGUIDs=function(subID){
 
 guid_batch<-lapply(consentedlist,prepareGUIDs)
 guid_batch.df<-as.data.frame(do.call(rbind,guid_batch))
-
+guid_batch.df<-cbind(guid_colnames[1],guid_batch.df)
+colnames(guid_batch.df) <- guid_colnames
+guid_batch.df$ID <-row.names(guid_batch.df)
+print("All done!")
+rm(guid_batch,guid_colnames,consentedlist,redcap_NDA_info)
 ```
-
 
 Prepare subject identifying information
 ```{r}
