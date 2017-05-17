@@ -1,14 +1,17 @@
 ---
 title: "Score_Qualtrics"
-author: "Cameron, Kate & Nandi"
-date: "20 April 2017 dude"
+author: "Kate, Cameron, & Nandi"
+date: "17 May 2017"
 output: html_document
 ---
 
-# Begin script
+Set working directory
+```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
+workdir<-as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
+```
 
 Load required packages
-```{r, message=FALSE, warning=FALSE, include=FALSE}
+```{r Load packages, message=FALSE, warning=FALSE, include=FALSE}
 ## Load required packages ##
 packages <- c("lme4", "nlme", "ggplot2", "dplyr", "tidyr", "knitr",
               "parallel", "data.table", "lubridate","xml2","devtools")
@@ -22,8 +25,8 @@ rm(packages)
 ```
 
 Extract qualtrics data from website
-```{r, message=FALSE, warning=FALSE, include=FALSE}
-credsFile<-'/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/credentials.yaml.DEFAULT'
+```{r Extract Qualtrics, message=FALSE, warning=FALSE, include=FALSE}
+credsFile<-paste0(workdir,"Questionnaires/Confidential/credentials.yaml.DEFAULT")
 creds<-creds_from_file(credsFile)
 
 survey_info<-qualtrics::get_surveys(creds) %>% 
@@ -62,24 +65,8 @@ sortbyqid_data<-get_survey_data(embedded_qs,pid_col="qid") %>% mutate(value = if
 rm(creds,credsFile,get_survey_data)
 ```
 
-Load and clean redcap info
-```{r}
-redcapData <- read.csv("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/redcap_dates.csv", header = TRUE, stringsAsFactors = FALSE)
-redcapData_dob<-redcapData %>%
-  select(dob,subject_spit_id) %>%
-  filter(!dob=="")
-redcapData_sessiondates<-redcapData %>%
-  select(sa_date,sb_date,subject_spit_id) %>%
-  filter(!sa_date=="")
-redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
-  mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
-  filter(!subject_spit_id=="TAG_001P") %>%
-  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid))
-rm(redcapData_dob,redcapData,redcapData_sessiondates)
-```
-
-Load and clean qualtrics (from scratch)
-```{r}
+Clean qualtrics (from scratch)
+```{r Clean qualtrics, message=FALSE, warning=FALSE, include=FALSE}
 cleaned_survey_data<- long_survey_data %>% 
   mutate(tagid=ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID)) %>%
   select(tagid, item, value, survey_name) %>%
@@ -96,7 +83,7 @@ missingID<-cleaned_survey_data %>%
 # Need to fix the IDs of participants
 # who showed an error with their qualtrics
 # home questionnaires
-misIDkey<-read.csv("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/qidkey.csv")
+misIDkey<-read.csv(paste0(workdir,"Questionnaires/Confidential/qidkey.csv"))
 TAGHomeQ<-sortbyqid_data
 for (i in 1:length(misIDkey$qid)){
 TAGHomeQ <- TAGHomeQ %>%
@@ -118,6 +105,74 @@ rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sort
    test1,test2)
 rm(long_survey_data)
 ```
+
+Load and clean redcap info
+```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
+redcapData <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE)
+redcapData_dob<-redcapData %>%
+  select(dob,subject_spit_id) %>%
+  filter(!dob=="")
+redcapData_sessiondates<-redcapData %>%
+  select(sa_date,sb_date,subject_spit_id) %>%
+  filter(!sa_date=="")
+redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
+  mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
+  filter(!subject_spit_id=="TAG_001P") %>%
+  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid))
+rm(redcapData_dob,redcapData,redcapData_sessiondates)
+```
+
+Prepare GUIDs
+```{r}
+redcap_NDA_info <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_nda_consent.csv"),
+                            header = TRUE,
+                            stringsAsFactors = FALSE)
+redcapNDA_sessiondates<-redcap_NDA_info %>%
+  select(sa_date,sb_date,subject_spit_id) %>%
+  filter(!sa_date=="" & !sb_date=="") %>%
+  distinct()
+redcapNDA_data<-redcap_NDA_info %>%
+  select(-sa_date,-sb_date) %>%
+  filter(!participant_first_name=="") %>%
+  distinct()
+redcap_NDA_info<-merge(redcapNDA_sessiondates,redcapNDA_data) %>%
+  mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
+  filter(!subject_spit_id=="TAG_001P") %>%
+  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid))
+rm(redcapNDA_data,redcapNDA_sessiondates)
+
+guid_colnames<-colnames(read.csv(paste0(workdir,"RDoCdb/templates/guid_sample_template.csv"),
+                          header = TRUE,
+                          stringsAsFactors = FALSE,
+                          nrow=1))
+
+consentedlist<-(redcap_NDA_info %>%
+  filter(nda_consent___1==1) %>%
+  select(tagid))[[1]]
+
+prepareGUIDs=function(subID){
+  sub_NDA_info<-redcap_NDA_info %>% filter(tagid==subID)
+  assign(guid_colnames[2], sub_NDA_info$participant_first_name)
+  assign(guid_colnames[3], ifelse(sub_NDA_info$participant_middle_name=="No Middle Name",
+                                  "",
+                                  sub_NDA_info$participant_middle_name))
+  assign(guid_colnames[4], sub_NDA_info$participant_last_name)
+  assign(guid_colnames[5], month(parse_date_time(sub_NDA_info$dob[1], order=c('mdy'))))
+  assign(guid_colnames[6], day(parse_date_time(sub_NDA_info$dob[1], order=c('mdy'))))
+  assign(guid_colnames[7], year(parse_date_time(sub_NDA_info$dob[1], order=c('mdy'))))
+  assign(guid_colnames[8], sub_NDA_info$participant_city_of_birth)
+  assign(guid_colnames[9],"F")
+  assign(guid_colnames[10],ifelse(sub_NDA_info$participant_middle_name=="No Middle Name","NO","YES"))
+  assign(guid_colnames[11],"YES")
+  cbind(get(guid_colnames[2]),get(guid_colnames[3]),get(guid_colnames[4]),get(guid_colnames[5]),get(guid_colnames[6]),
+        get(guid_colnames[7]),get(guid_colnames[8]),get(guid_colnames[9]),get(guid_colnames[10]),get(guid_colnames[11]))
+}
+
+guid_batch<-lapply(consentedlist,prepareGUIDs)
+guid_batch.df<-as.data.frame(do.call(rbind,guid_batch))
+
+```
+
 
 Prepare subject identifying information
 ```{r}

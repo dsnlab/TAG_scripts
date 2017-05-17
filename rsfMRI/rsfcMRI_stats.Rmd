@@ -21,8 +21,7 @@ lapply(packages, library, character.only = TRUE)
 Extract FreeSurfer preprocessing stats
 ```{r Extract and plot run times, echo=TRUE}
 # Set directory
-#freesurfer_subjects="/Volumes/TDS/ppcd_nii/sMRI/subjects/"
-freesurfer_subjects="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/freesurfer6/"
+rsfcMRI="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/rs"
 # create sub list based on folders within the freesurfer subjects folder
 subs<-list.files(path = freesurfer_subjects, pattern = "sub")
 # extract info
