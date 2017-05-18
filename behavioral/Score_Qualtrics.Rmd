@@ -8,7 +8,7 @@ output: html_document
 Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
-workdir<-as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
+workdir=as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
 ```
 
 Load required packages
@@ -100,11 +100,26 @@ test2<-gather(test1,"item","value",3:227)
 
 cleaned_survey_data2<-bind_rows(cleaned_survey_data,test2)
 cleaned_survey_data3<-cleaned_survey_data2 %>% distinct(tagid,item,value,survey_name,.keep_all = TRUE)
+
+# Remove missing data and the duplicated data from the embedded ID home questionnaires
 cleaned_survey_data<-cleaned_survey_data3 %>% filter(!tagid=="") %>% filter(!tagid=="SV_eqvWqPtsOO4uqPP")
+
+# Change the one participant with a ghost SID
+cleaned_survey_data <- cleaned_survey_data %>%
+  mutate(tagid=ifelse(tagid=="078\177","TAG078",tagid))
 
 rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sortbyqid_data,TAGEmbeddedHomeQ_Gathered,TAGHomeQ,
    test1,test2)
 rm(long_survey_data)
+`
+surveyed=unique(cleaned_survey_data$tagid)
+surveyed
+
+print(paste0("A total of ",length(surveyed)," participants have completed surveys!"))
+print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Home",survey_name)))$tagid))," participants have completed home surveys!"))
+print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Sess 1",survey_name)))$tagid))," participants have completed Session 1 surveys!"))
+print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Sess 2",survey_name)))$tagid))," participants have completed Session 2 surveys!"))
+
 ```
 
 Load and clean redcap info
@@ -119,7 +134,9 @@ redcapData_sessiondates<-redcapData %>%
 redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
   filter(!subject_spit_id=="TAG_001P") %>%
-  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid))
+  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid)) %>%
+  mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
+  select(-subject_spit_id)
 rm(redcapData_dob,redcapData,redcapData_sessiondates)
 ```
 
@@ -179,18 +196,9 @@ print("All done!")
 rm(guid_batch,guid_colnames,consentedlist,redcap_NDA_info)
 ```
 
-Prepare subject identifying information
-```{r}
-participant_info <- redcapData %>%
-  mutate(tagid=sprintf("TAG%03d",SID)) %>%
-  arrange(tagid) %>%
-  select(-age, -SID) %>%
-  filter(!is.na(dob))
-```
-
 Create survey date info  
 ```{r}
-survey_date<-filter(qualtricsData_raw_long, grepl("EndDate",item))
+survey_date<-filter(cleaned_survey_data, grepl("EndDate",item))
 ```
 
 Figure out duplicates
