@@ -47,10 +47,11 @@ else
    cd "$subj"
 endif
 
+
 # run afni_proc.py to create a single subject processing script
 afni_proc.py -subj_id $subj                                \
 -script $pipeline.proc.$subj -scr_overwrite                          \
--blocks despike align volreg mask scale regress      \
+-blocks despike align volreg blur mask scale regress      \
 -copy_anat $anat_dir/"${subj}"_SurfVol.nii.gz                          \
 -anat_follower_ROI aaseg anat $anat_dir/aparc.a2009s+aseg_rank.nii.gz   \
 -anat_follower_ROI aeseg epi  $anat_dir/aparc.a2009s+aseg_rank.nii.gz   \
@@ -59,19 +60,20 @@ afni_proc.py -subj_id $subj                                \
 -anat_follower_erode FSvent FSWe                           \
 -dsets $epi_dir/"${subj}"_ses-wave1_task-rest_run-01_bold.nii.gz $epi_dir/"${subj}"_ses-wave1_task-rest_run-02_bold.nii.gz \
 -tcat_remove_first_trs 5                                  \
--outlier_count yes \
 -volreg_align_to MIN_OUTLIER                               \
 -volreg_align_e2a                                          \
 -volreg_interp -Fourier \
 -mask_test_overlap yes \
 -scale_max_val 200 \
--regress_apply_mot_types demean deriv \
--regress_censor_motion .2 \
--regress_censor_prev yes \
 -regress_ROI_PC FSvent 3                                   \
 -regress_make_corr_vols aeseg FSvent                       \
 -regress_anaticor_fast                                     \
 -regress_anaticor_label FSWe                               \
+-regress_censor_outliers 0.1                               \
+-regress_bandpass 0.008 0.09                               \
+-regress_apply_mot_types demean deriv                      \
+-regress_est_blur_epits                                    \
+-regress_est_blur_errts                                    \
 -regress_run_clustsim no
 
 tcsh -xef $pipeline.proc.$subj
