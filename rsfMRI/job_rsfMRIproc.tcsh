@@ -63,6 +63,7 @@ afni_proc.py -subj_id $subj                                \
 -volreg_align_to MIN_OUTLIER                               \
 -volreg_align_e2a                                          \
 -volreg_interp -Fourier \
+-mask_apply epi \
 -mask_test_overlap yes \
 -scale_max_val 200 \
 -regress_ROI_PC FSvent 3                                   \
