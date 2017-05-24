@@ -471,14 +471,14 @@ qualtricsData_raw_carersoc<-left_join(qualtricsData_raw_carersoc,survey_date, by
 
 Prepare CES-DC 
 ```{r}
-qualtricsData_raw_cesd<-filter(qualtricsData_raw_long, grepl("CES_DC",item)) %>% 
+CESDC<-filter(cleaned_survey_data, grepl("CES_DC",item)) %>% 
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
   distinct(tagid,item,value,.keep_all = TRUE) %>% 
   spread(item,value)
 
-qualtricsData_raw_cesd<-left_join(qualtricsData_raw_cesd,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+CESDC_scored<-left_join(CESDC,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(survey_date=value) %>% select(-item, -value) %>%
   mutate(CES_DC_4=ifelse(CES_DC_4==0,3,
                                 ifelse(CES_DC_4==1,2,
