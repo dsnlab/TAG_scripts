@@ -1,14 +1,15 @@
 ---
-title: "Jessica Depression"
+title: "Flannery Depression Project"
 author: "Kate & Jessica WITH JOHN"
 date: "May 24, 2017"
 output: html_document
 ---
 
+Load required packages
 ```{r Load Required Packages, message=FALSE, warning=FALSE, include=FALSE}
 ## Load required packages ##
 packages <-  c("lme4", "nlme", "ggplot2", "zoo", "dplyr", "tidyr", "knitr",
-              "parallel", "data.table", "lubridate", "plyr")
+              "parallel", "data.table", "lubridate")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
@@ -32,21 +33,26 @@ redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
   mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
   select(-subject_spit_id)
 
-CESDC<-read.csv(paste0("/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/Jessica_Depression/CESDC_scored.csv"),header = TRUE)
-
-sublist<-CESDC %>%
-  mutate(subid=paste0("sub-",tagid)) %>%
-  select(subid)
+CESDC<-read.csv(paste0("/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/Jessica_Depression/CESDC_scored.csv"),header = TRUE) %>%
+  mutate(sub=paste0("sub-",tagid)) %>%
+  select(sub, CES_DC_total, CES_DC_mean)
 
 rm(redcapData_dob,redcapData,redcapData_sessiondates)
 ```
 
+Filter sublist
+```{r}
+sublist<-sublist %>%
+  filter(!sub=="sub-TAG000") %>%
+  mutate(sub=as.character(sub))
+  
+```
 
 Get timecourses
 ```{r}
 numcores<-detectCores()[1]
 scrubbingThreshold<-.2
-sub_base_dir="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/"
+sub_base_dir="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/rsfMRI_preproc_noFDscrub/"
 parcellation_list_dir='/projects/dsnlab/tag/TAG_scripts/sMRI/templates/lists/'
 # https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
 jessparcels<-as.data.frame(rbind("aseg_18","aseg_54","aseg_17","aseg_53","lh.L_a24_ROI","rh.R_a24_ROI")) %>%
@@ -75,7 +81,7 @@ collectAndCorTimecourses <- function(sub, parcels, scrubbingThreshold, sub_base_
     mutate(index=1:n()) %>% filter(!is.na(V1))
   sub_dir <- paste0(sub_base_dir,sub,"/",sub,".results/")
   #get the motion information and censor properly
-  fdfile <- data.frame(motion=read.table(paste0(sub_dir,"motion_",sub,"_censor.1D"))$V1) %>%
+  fdfile <- data.frame(motion=read.table(paste0(sub_dir,"motion_",sub,"_enorm.1D"))$V1) %>%
     mutate(index=1:n(),
            censor_raw=motion>scrubbingThreshold, #censor if over the threshold
            censor_1after=censor_raw | lag(censor_raw,1, default=F), #censor 1 after any censored vols
@@ -127,7 +133,7 @@ collectAndCorTimecourses <- function(sub, parcels, scrubbingThreshold, sub_base_
   #   filter(grepl("aseg", coi))
 }
 
-system.time(jess_cois <- mclapply(as.list(sublist$subid),
+system.time(jess_cois <- mclapply(as.list(sublist$sub),
                                     collectAndCorTimecourses, 
                                     parcels=rois,
                                     scrubbingThreshold=scrubbingThreshold, 
@@ -136,7 +142,7 @@ system.time(jess_cois <- mclapply(as.list(sublist$subid),
 print(object.size(jess_cois), quote = FALSE, units = "Mb")
 
 # bind list of data.tables into one long data.table and filter by frames remaining (< 5 mins)
-system.time*(jess_coisDT <- do.call(bind_rows, jess_cois) %>% 
+system.time(jess_coisDT <- do.call(bind_rows, jess_cois) %>% 
               filter(Framesremaining >= 385) %>%
               select(-Blurps, -Numcensored, -Framesremaining) %>%  #we don't need these columns anymore
               as.data.table)
@@ -145,113 +151,46 @@ rm(jess_cois);gc() #remove list, and garbage collect
 save(jess_coisDT,file = "/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/Jessica_Depression/jess_coisDT.RDS")
 ```
 
-Get behavioral data together
-```{r}
-# ACES
-
-## TDS1: This data is stored within pre- and post- files, relative to IRB approval of additional questionnaires
-df1<-plyr::rbind.fill(read.csv("/Volumes/TDS/behavior/Qualtrics/TDS-1-PRE-auto_scored_scales_wide.csv", header=TRUE),
-                      read.csv("/Volumes/TDS/behavior/Qualtrics/TDS-1-POST-auto_scored_scales_wide.csv", header=TRUE))
-# load pre/post, remove blank rows, and merge
-df1<-cbind(SID=df1$SID, select(df1,starts_with("ACE_ace_abuse")), select(df1,starts_with("ACE_ace_neglect")),
-          select(df1,starts_with("ACE_ace_hh")), select(df1,starts_with("ACE_ace_hh")))
-# subset relevant items: abuse, neglect, hh
-
-## TDS2
-df2<-read.csv("/Volumes/TDS/behavior/Qualtrics/TDS-2-auto_scored_scales_wide.csv", header=TRUE) # load data
-df2<-cbind(SID=df2$SID, select(df2,starts_with("ACE_ace_abuse")),  select(df2,starts_with("ACE_ace_neglect")),
-          select(df2,starts_with("ACE_ace_hh")), select(df2,starts_with("ACE_ace_hh"))) # subset relevant items: abuse, neglect, hh
-
-## Data cleaning
-df_aces<- rbind.fill(df1, df2) %>% filter(is.na(.$SID)==FALSE) # merge TDS1 and TDS2, remove NA rows
-
-fn <- substr(df_aces$SID,1,1)
-df_aces$group= ifelse(fn %in% "1", "comm", 
-                      ifelse(fn %in% "3", "dhs",
-                             "jj"))
-
-demographicsDF<-df_aces %>%
-  mutate(abuse=ACE_ace_abuse_score,
-         neglect=ACE_ace_neglect_score,
-         sub=paste0("sub-",SID)) %>%
-  select(sub, abuse, neglect, group) %>%
-  filter(!group=="jj") %>%
-  filter(!is.na(abuse))
-
-```
-
-
 IN PROG: Analysis 
 ```{r}
 rerun_models=TRUE
 
-gordon_cois<-distinct(gordon_coisDT, coi)
+jess_cois<-distinct(jess_coisDT, coi)
 
 if(rerun_models){
   system.time(
-    gordon_models<-mclapply(
-      as.list(gordon_cois$coi)[1:50], 
-      demodata=demographicsDF,
-      coidat=gordon_coisDT,
-      mc.cores=1,
-      FUN=function(coi_name, demodata, coidat){
-        adf<-merge(as.data.table(filter(coidat,coi==coi_name)),
+    jess_models<-mclapply(
+      X=as.list(jess_cois$coi), 
+      demodata=CESDC,
+      coidata=jess_coisDT,
+      mc.cores=numcores,
+      FUN=function(coi_name, demodata, coidata){
+        adf<-merge(as.data.table(filter(coidata,coi==coi_name)),
                    demodata,
                    by='sub',
                    allow.cartesian=T)
         null_mod=(lme(cor ~ 1,
                       method="ML",
                       random = ~1|sub,
-                      data=adf))
-        neglect_mod=(lme(cor ~ neglect,
+                      data=(adf %>%
+                           filter(!is.na(CES_DC_total)))))
+        depression_mod=(lme(cor ~ CES_DC_total,
                          method="ML",
                          random = ~1|sub,
-                         data=adf))
-        neglect_abuse_main_mod=(lme(cor ~ neglect + abuse,
-                                    method="ML",
-                                    random = ~1|sub,
-                                    data=adf))
-        neglect_abuse_int_mod=(lme(cor ~ neglect * abuse,
-                                   method="ML",
-                                   random = ~1|sub,
-                                   data=adf))
-        mod_comp<-anova(null_mod,neglect_mod,neglect_abuse_main_mod,neglect_abuse_int_mod)
-        if (mod_comp$'p-value'[4]<.05 &
-            mod_comp$AIC[4]<mod_comp$AIC[3] &
-            mod_comp$AIC[4]<mod_comp$AIC[2] &
-            mod_comp$AIC[4]<mod_comp$AIC[1]){
-          coiname<- as.character(coi_name)
-          chisq <- mod_comp[4,8]
-          pval <- round(mod_comp[4,9],4)
-          AIC <- mod_comp[4,4]
-          nullAIC <- mod_comp[1,4]
-          mod <- list(neglect_abuse_main_mod)
-          mod_type <- "neglect and abuse interaction model"
-          cbind(coiname,chisq,pval,AIC,nullAIC,mod_type,mod)
-          retDF<-as.data.table(retDF)
-        } else if (mod_comp$'p-value'[3]<.05 &
-                   mod_comp$AIC[3]<mod_comp$AIC[2] &
-                   mod_comp$AIC[3]<mod_comp$AIC[1]) {
-          coiname<- as.character(coi_name)
-          chisq <- mod_comp[3,8]
-          pval <- round(mod_comp[3,9],4)
-          AIC <- mod_comp[3,4]
-          nullAIC <- mod_comp[1,4]
-          mod <- list(neglect_abuse_main_mod)
-          mod_type <- "neglect and abuse main model"
-          retDF<-cbind(coiname,chisq,pval,AIC,nullAIC,mod_type,mod)
-          as.data.table(retDF)
-        } else if (mod_comp$'p-value'[2]<.05 &
-                   mod_comp$AIC[2]<mod_comp$AIC[1]){
+                         data=(adf %>%
+                           filter(!is.na(CES_DC_total)))))
+        mod_comp<-anova(null_mod,depression_mod)
+        if (mod_comp$'p-value'[2]<.05 &
+            mod_comp$AIC[2]<mod_comp$AIC[1]){
           coiname<- as.character(coi_name)
           chisq <- mod_comp[2,8]
           pval <- round(mod_comp[2,9],4)
           AIC <- mod_comp[2,4]
           nullAIC <- mod_comp[1,4]
-          mod <- list(neglect_mod)
-          mod_type <- "neglect only model"
-          retDF<-cbind(coiname,chisq,pval,AIC,nullAIC,mod_type,mod)
-          as.data.table(retDF)
+          mod <- list(depression_mod)
+          mod_type <- "depression model"
+          cbind(coiname,chisq,pval,AIC,nullAIC,mod_type,mod)
+          retDF<-as.data.table(retDF)
         } else {
           coiname= as.character(coi_name)
           chisq <- "NA"
@@ -265,12 +204,12 @@ if(rerun_models){
         }
       }
     ))
-  print(object.size(gordon_models), units='Mb')
-  gordon_modelsDT <- bind_rows(gordon_models)
-  print(object.size(gordon_modelsDT), units='Mb')
-  rm(gordon_models);gc()
-  saveRDS(gordon_modelsDT, paste0(workdir,"gordon_modelsDT.RDS"))
+  print(object.size(jess_models), units='Mb')
+  jess_modelsDT <- bind_rows(jess_models)
+  print(object.size(jess_modelsDT), units='Mb')
+  rm(jess_models);gc()
+  saveRDS(jess_modelsDT, paste0("/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/Jessica_Depression/jess_modelsDT.RDS"))
 } else {
-  gordon_modelsDT <- readRDS(paste0(workdir,"gordon_modelsDT.RDS"))
+  jess_modelsDT <- readRDS(paste0("/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/Jessica_Depression/jess_modelsDT.RDS"))
 }
 ```

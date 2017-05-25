@@ -18,75 +18,43 @@ if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
 lapply(packages, library, character.only = TRUE)
 ```
 
-Extract FreeSurfer preprocessing stats
+Extract Resting state preprocessing stats
 ```{r Extract and plot run times, echo=TRUE}
 # Set directory
-rsfcMRI="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/rs"
-# create sub list based on folders within the freesurfer subjects folder
-subs<-list.files(path = freesurfer_subjects, pattern = "sub")
+rsfcMRI_subjects="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/rsfMRI_preproc_noFDscrub/"
+# create sub list based on folders within the resting state subjects folder
+subs<-list.files(path = rsfcMRI_subjects, pattern = "sub")
 # extract info
-extract_freesurfer_runinfo= function(sub){
-  if (nrow(read.csv(paste0(freesurfer_subjects,sub,"/scripts/recon-all.done")))>1){
-    log<-read.csv(paste0(freesurfer_subjects,sub,"/scripts/recon-all-status.log"))
-    finaloutput<-tail(log,1)
-    recon_done<-read.csv(paste0(freesurfer_subjects,sub,"/scripts/recon-all.done"))
-    runtime<-recon_done %>% filter(grepl("RUNTIME",.[[1]]))
-    runtime<-as.character(runtime[[1]])
-    runtime<-substring(runtime,first=15,last=(nchar(runtime)))
-    cbind(sub,runtime,finaloutput)
-    } else {
-      runtime<-"NA"
-      status.file.for.recon.all<-"NA"
-      cbind(sub,runtime,status.file.for.recon.all)
-    }
+extract_rsfcMRI_runinfo= function(sub){
+if (file.exists(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))){
+      log<-read.csv(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))
+      preproc_complete="yes"
+      blurps<-nrow(log %>% filter(.[[1]]>scrubbingThreshold))
+      potential<-(nrow(log)-(blurps*2))
+      viable<-ifelse(potential>=385,"yes","no")
+      cbind(sub,blurps,potential,viable,preproc_complete)
+    } else{
+      preproc_complete="no"
+      blurps<-NA
+      potential<-NA
+      viable<-"no"
+      cbind(sub,blurps,potential,viable,preproc_complete)
+      }
 }
-outputlist<-lapply(subs,extract_freesurfer_runinfo)
+outputlist<-lapply(subs,extract_rsfcMRI_runinfo)
 output.df<-as.data.frame(do.call(rbind,outputlist)) %>% 
-  mutate(runtime=as.numeric(levels(runtime))[runtime])
-times <- ggplot((output.df %>% select(-status.file.for.recon.all)),
-                aes(x=sub, y=runtime, fill=runtime))
-times + geom_bar(colour="black", stat="identity") 
+  mutate(blurps=as.numeric(levels(blurps))[blurps],
+         potential=as.numeric(levels(potential))[potential]) %>%
+  mutate(potential=ifelse(potential<0,0,potential))
+
+useable <- ggplot((output.df %>% select(-blurps)),
+                aes(x=sub, y=(potential*.78)/60, fill=viable))
+useable + geom_bar(colour="black", stat="identity") 
+
+sublist<-output.df %>%
+  mutate(sub=as.character(sub)) %>%
+  filter(!is.na(potential)) %>%
+  select(sub)
+print(paste0(nrow(output.df%>%filter(viable=="yes"))," are viable"))
 ```
 
-
-Plot structural MRI info
-```{r Extract and plot structural MRI info, echo=TRUE}
-# Set directory
-#freesurfer_subjects="/Volumes/TDS/ppcd_nii/sMRI/subjects/"
-freesurfer_subjects="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/freesurfer6/"
-# create sub list based on folders within the freesurfer subjects folder
-subs<-list.files(path = freesurfer_subjects, pattern = "sub")
-# extract info
-asegcolnames<-c("Index","SegId","NVoxels","Volume_mm3","StructName","normMean","normStdDev","normMin","normMax","normRange")
-extract_vols= function(sub){
-  if (file.exists((paste0(freesurfer_subjects,sub,"/stats/aseg.stats")))){
-  aseg<-read.table(paste0(freesurfer_subjects,sub,"/stats/aseg.stats"))
-  colnames(aseg)<-asegcolnames
-  amygdala_vol<-sum(aseg %>% filter(grepl("Left-Amygdala",StructName)) %>% select(Volume_mm3),
-                    aseg %>% filter(grepl("Right-Amygdala",StructName)) %>% select(Volume_mm3))
-  caudate_vol<-sum(aseg %>% filter(grepl("Left-Caudate",StructName)) %>% select(Volume_mm3),
-                    aseg %>% filter(grepl("Right-Caudate",StructName)) %>% select(Volume_mm3))
-  hippocampus_vol<-sum(aseg %>% filter(grepl("Left-Hippocampus",StructName)) %>% select(Volume_mm3),
-                    aseg %>% filter(grepl("Right-Hippocampus",StructName)) %>% select(Volume_mm3))
-  nacc_vol<-sum(aseg %>% filter(grepl("Left-Accumbens-area",StructName)) %>% select(Volume_mm3),
-                    aseg %>% filter(grepl("Right-Accumbens-area",StructName)) %>% select(Volume_mm3))
-  thalamus_vol<-sum(aseg %>% filter(grepl("Left-Thalamus-Proper",StructName)) %>% select(Volume_mm3),
-                    aseg %>% filter(grepl("Right-Thalamus-Proper",StructName)) %>% select(Volume_mm3))
-  putamen_vol<-sum(aseg %>% filter(grepl("Left-Putamen",StructName)) %>% select(Volume_mm3),
-                    aseg %>% filter(grepl("Right-Putamen",StructName)) %>% select(Volume_mm3))
-  cbind(sub,amygdala_vol,caudate_vol,hippocampus_vol,nacc_vol,thalamus_vol,putamen_vol)}
-}
-outputlist<-lapply(subs,extract_vols)
-output.df<-as.data.frame(do.call(rbind,outputlist)) %>% 
-  mutate(amygdala_vol=as.numeric(levels(amygdala_vol))[amygdala_vol],
-         caudate_vol=as.numeric(levels(caudate_vol))[caudate_vol],
-         nacc_vol=as.numeric(levels(nacc_vol))[nacc_vol],
-         hippocampus_vol=as.numeric(levels(hippocampus_vol))[hippocampus_vol],
-         thalamus_vol=as.numeric(levels(thalamus_vol))[thalamus_vol],
-         putamen_vol=as.numeric(levels(putamen_vol))[putamen_vol])
-long<-gather(output.df, "sub", "parcel", 2:7)
-colnames(long)<-c("sub","parcel","volume")
-subcortical_volumes<-ggplot(long, aes(x=parcel, y=volume, color=parcel)) +
-  geom_violin(trim=FALSE)
-subcortical_volumes
-```
