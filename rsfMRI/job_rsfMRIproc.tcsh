@@ -44,6 +44,8 @@ if (! -d ./"$subj") then
    cd "$subj"
 else
    echo 'Directory for "$subj" exists'
+   rm -r "$subj"   
+   mkdir "$subj"
    cd "$subj"
 endif
 
