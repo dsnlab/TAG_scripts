@@ -111,8 +111,8 @@ cleaned_survey_data <- cleaned_survey_data %>%
 rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sortbyqid_data,TAGEmbeddedHomeQ_Gathered,TAGHomeQ,
    test1,test2)
 rm(long_survey_data)
-`
-surveyed=unique(cleaned_survey_data$tagid)
+
+surveyed<-unique(cleaned_survey_data$tagid)
 surveyed
 
 print(paste0("A total of ",length(surveyed)," participants have completed surveys!"))
@@ -196,9 +196,56 @@ print("All done!")
 rm(guid_batch,guid_colnames,consentedlist,redcap_NDA_info)
 ```
 
-Create survey date info  
+Get Survey Date info
 ```{r}
-survey_date<-filter(cleaned_survey_data, grepl("EndDate",item))
+survey_date<-filter(cleaned_survey_data, grepl("EndDate",item)) %>%
+  filter(!survey_name=="Sharing Task Experience Survey") %>%
+  mutate(value=as.Date(value),
+         survey_type=ifelse(grepl("Sess 1",survey_name),"Sess 1",
+                            ifelse(grepl("Sess 2",survey_name),"Sess 2",
+                                   ifelse(grepl("Parent",survey_name),"Parent",
+                                          ifelse(grepl("Home",survey_name),"Home",
+                                                 NA))))) %>%
+  filter(!survey_type=="Parent") %>%
+  dplyr::arrange(value)
+graph_dates<-ggplot(survey_date, aes(x=value, y=tagid, group=tagid)) +
+  geom_line(aes(colour="black"), alpha=.5) +
+  geom_point(aes(colour = survey_type)) +
+  scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") +
+  theme(axis.text.y=element_blank())
+graph_dates
+
+timebetween=function(subid){
+  tag_id <- as.character(subid)
+  start <- strptime((survey_date %>%
+    filter(tagid==tag_id) %>%
+    filter(survey_type=="Sess 1") %>%
+    select(value) %>%
+      arrange(value))[[1]][[1]], format="%Y - %m - %d") 
+  if (nrow(survey_date %>%
+    filter(tagid==tag_id) %>%
+    filter(survey_type=="Sess 2"))>0) {
+  end <- strptime((survey_date %>%
+    filter(tagid==tag_id) %>%
+    filter(survey_type=="Sess 2") %>%
+    select(value) %>%
+      arrange(desc(value)))[[1]][[1]], format="%Y - %m - %d")
+    totaldays<-(end-start)
+    } else {
+      end <- "NA"
+      totaldays<-"NA"
+    }
+  as.data.frame(cbind(tag_id, totaldays))
+}
+output.df<-lapply(as.list(unique(survey_date$tagid)),timebetween)
+output.df<-as.data.frame(do.call(rbind,output.df)) %>% 
+  mutate(totaldays=round(as.numeric(levels(totaldays))[totaldays]),0)
+time_between <- ggplot(output.df,
+                aes(x=tag_id, y=totaldays, fill=totaldays))
+time_between + geom_bar(colour="black", stat="identity")
+
+
+
 ```
 
 Figure out duplicates
@@ -424,14 +471,14 @@ qualtricsData_raw_carersoc<-left_join(qualtricsData_raw_carersoc,survey_date, by
 
 Prepare CES-DC 
 ```{r}
-qualtricsData_raw_cesd<-filter(qualtricsData_raw_long, grepl("CES_DC",item)) %>% 
+CESDC<-filter(cleaned_survey_data, grepl("CES_DC",item)) %>% 
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
   distinct(tagid,item,value,.keep_all = TRUE) %>% 
   spread(item,value)
 
-qualtricsData_raw_cesd<-left_join(qualtricsData_raw_cesd,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+CESDC_scored<-left_join(CESDC,survey_date, by = c("tagid", "survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(survey_date=value) %>% select(-item, -value) %>%
   mutate(CES_DC_4=ifelse(CES_DC_4==0,3,
                                 ifelse(CES_DC_4==1,2,
