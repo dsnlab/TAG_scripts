@@ -108,8 +108,7 @@ cleaned_survey_data<-cleaned_survey_data3 %>% filter(!tagid=="") %>% filter(!tag
 cleaned_survey_data <- cleaned_survey_data %>%
   mutate(tagid=ifelse(tagid=="078\177","TAG078",tagid))
 
-rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sortbyqid_data,TAGEmbeddedHomeQ_Gathered,TAGHomeQ,
-   test1,test2)
+rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sortbyqid_data,TAGEmbeddedHomeQ_Gathered,TAGHomeQ,test1,test2,i,gather_cols,IDs)
 rm(long_survey_data)
 
 surveyed<-unique(cleaned_survey_data$tagid)
@@ -119,6 +118,8 @@ print(paste0("A total of ",length(surveyed)," participants have completed survey
 print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Home",survey_name)))$tagid))," participants have completed home surveys!"))
 print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Sess 1",survey_name)))$tagid))," participants have completed Session 1 surveys!"))
 print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Sess 2",survey_name)))$tagid))," participants have completed Session 2 surveys!"))
+
+rm(surveyed)
 
 ```
 
@@ -156,7 +157,10 @@ redcapNDA_data<-redcap_NDA_info %>%
 redcap_NDA_info<-merge(redcapNDA_sessiondates,redcapNDA_data) %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
   filter(!subject_spit_id=="TAG_001P") %>%
-  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid))
+  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid),
+         dob=as.Date(dob),
+         sa_date=as.Date(sa_date),
+         sb_date=as.Date(sb_date))
 
 rm(redcapNDA_data,redcapNDA_sessiondates)
 
@@ -176,24 +180,32 @@ prepareGUIDs=function(subID){
                                   "",
                                   sub_NDA_info$participant_middle_name))
   assign(guid_colnames[4], sub_NDA_info$participant_last_name)
-  assign(guid_colnames[5], month(parse_date_time(sub_NDA_info$dob[1], order=c('mdy'))))
-  assign(guid_colnames[6], day(parse_date_time(sub_NDA_info$dob[1], order=c('mdy'))))
-  assign(guid_colnames[7], year(parse_date_time(sub_NDA_info$dob[1], order=c('mdy'))))
+  assign(guid_colnames[5], month(parse_date_time(sub_NDA_info$dob[1], order=c('ymd'))))
+  assign(guid_colnames[6], day(parse_date_time(sub_NDA_info$dob[1], order=c('ymd'))))
+  assign(guid_colnames[7], year(parse_date_time(sub_NDA_info$dob[1], order=c('ymd'))))
   assign(guid_colnames[8], sub_NDA_info$participant_city_of_birth)
   assign(guid_colnames[9],"F")
   assign(guid_colnames[10],ifelse(sub_NDA_info$participant_middle_name=="No Middle Name","NO","YES"))
   assign(guid_colnames[11],"YES")
-  cbind(get(guid_colnames[2]),get(guid_colnames[3]),get(guid_colnames[4]),get(guid_colnames[5]),get(guid_colnames[6]),
+  cbind(subID,get(guid_colnames[2]),get(guid_colnames[3]),get(guid_colnames[4]),get(guid_colnames[5]),get(guid_colnames[6]),
         get(guid_colnames[7]),get(guid_colnames[8]),get(guid_colnames[9]),get(guid_colnames[10]),get(guid_colnames[11]))
 }
 
 guid_batch<-lapply(consentedlist,prepareGUIDs)
 guid_batch.df<-as.data.frame(do.call(rbind,guid_batch))
+guid_batch_ids<-guid_batch.df %>%
+  select(subID) %>%
+  mutate(ID=row.names(guid_batch.df),
+         tagid=sprintf("TAG%03s",subID)) %>%
+  select(-subID)
+guid_batch.df<- guid_batch.df %>% select(-subID)
 guid_batch.df<-cbind(guid_colnames[1],guid_batch.df)
 colnames(guid_batch.df) <- guid_colnames
 guid_batch.df$ID <-row.names(guid_batch.df)
-print("All done!")
+print(paste0("GUID batch created for ",nrow(guid_batch.df)," participants!"))
 rm(guid_batch,guid_colnames,consentedlist,redcap_NDA_info)
+write.csv(guid_batch.df,file=paste0(workdir,"RDoCDb/confidential/GUID_batch_",Sys.Date(),".csv"),row.names = FALSE)
+write.csv(guid_batch_ids,file=paste0(workdir,"RDoCDb/confidential/GUID_batch_subIDkey_",Sys.Date(),".csv"),row.names = FALSE)
 ```
 
 Get Survey Date info
@@ -245,44 +257,15 @@ time_between <- ggplot(output.df,
 time_between + geom_bar(colour="black", stat="identity")
 ```
 
-IN PROG: Figure out duplicates
-```{r}
-#Step 1: Define your questionnaire measure. Possibilities: K_SRQ, IRI, PDS
-questionnaire<-"^Ethnicity"
-
-# Now highlight the next segment until you read # STOP # and run
-checkoutduplicates<-filter(cleaned_survey_data, grepl(questionnaire,item)) %>% 
-  mutate(value=as.numeric(value)) %>%
-  filter(!is.na(value)) %>%
-  distinct(tagid,item,value,.keep_all = FALSE)
-
-duplicates<-checkoutduplicates %>%
-  spread(item,value)
-
-# STOP #
-######################
-
-# Now check each of the rows #
-checkoutduplicates[647:658,]
-
-# To figure out the timestamp just enter in one of the rows from above here:
-rownum<-450
-qualtricsData_raw_long %>%
-  filter(tagid %in% checkoutduplicates$tagid[rownum]) %>%
-  filter(survey_name %in% checkoutduplicates$survey_name[rownum]) %>%
-  filter(item=="EndDate")
-# Now compare the timestamps to those in Google Calendar for TAG
-
-```
-
 Prepare NDAR template
 ```{r}
 # Before running this you must have generated GUIDs for each participant to be uploaded
 # Load the subject key which has the original TAGID, an anonymized ID, and the GUID
-ndar_key<-
+ndar_key<-left_join(read.csv(file=paste0(workdir,"RDoCdb/Confidential/GUID_Batch_Current/GUID_batch_subIDkey.csv"),stringsAsFactors = FALSE),
+                    read.csv(file=paste0(workdir,"RDoCdb/Confidential/TAG_RDoC_key.csv"),stringsAsFactors = FALSE),by="tagid")
 
 # NDAR requires a constrained answer for a participants "race"
-{ethnicity_long<-cleaned_survey_data %>%
+ethnicity_long<-cleaned_survey_data %>%
   filter(grepl("Ethnicity",item)) %>%
   filter(!value=="") %>%
   arrange(tagid) %>%
@@ -316,7 +299,7 @@ figure_out_ethnicity=function(subid){
     cbind(subid,race)
   }
 }
-ndar_ethnicity<-lapply(as.list(unique(ethnicity$tagid)),figure_out_ethnicity)
+ndar_ethnicity<-lapply(as.list(unique(ethnicity_long$tagid)),figure_out_ethnicity)
 ndar_ethnicity.df<-data.frame(matrix(unlist(ndar_ethnicity), nrow=length(ndar_ethnicity), byrow=T),stringsAsFactors=FALSE)
 
 ndar_race<- ndar_ethnicity.df %>%
@@ -326,7 +309,7 @@ ndar_race<- ndar_ethnicity.df %>%
   mutate(race=ifelse(race=="Asian white","More than one race",
                      ifelse(race=="Caucasian ","White",
                             ifelse(race=="1/4 Mexican / white","More than one race",
-                                   ifelse(race=="Jewish","Unknown or not reported",race)))))}
+                                   ifelse(race=="Jewish","Unknown or not reported",race)))))
 
 #
 participants_ndar_data <- redcap_cleaned %>%
@@ -352,9 +335,7 @@ participants_ndar_data <- redcap_cleaned %>%
          comments_misc="Wave1 Session1",
          study="UO TAG Study")
 participants_ndar_data<-left_join(ndar_race,participants_ndar_data, by="tagid")
-
-
-participants_ndar_data<-left_join(subjectkey,participants_ndar_data, by="tagid") %>%
+participants_ndar_data<-left_join(ndar_key,participants_ndar_data, by="tagid") %>%
   mutate(src_subject_id=anontagid) %>%
   select(-tagid,-sa_date,-dob,-anontagid) %>%
   filter(!is.na(subjectkey))
@@ -1987,17 +1968,7 @@ ggplot(qualtricsData_raw_dem[!is.na(qualtricsData_raw_dem$DadEdu),], aes(x=DadEd
 
 ```
 
-CURRENT N CHECK
-```{r}
-Names <- ls(pattern= "qualtricsData")
-Objects <- as.data.frame(Names)
-Size <- nrow(paste(Objects$Names[1],noquotes))
-  mutate(Size = nrow(Names))
-size <- lapply(Objects$Names, nrow)
-
-```
-
-DEMO
+DEPRECATED: DEMO
 ```{r}
 x <- c("Ethnicity_1","Ethnicity_2","Ethnicity_3","Ethnicity_4","Ethnicity_5","Ethnicity_6","Ethnicity_7","Ethnicity_8","Ethnicity_9","Ethnicity_10","Ethnicity_11","Ethnicity_7_TEXT")
 
@@ -2034,3 +2005,34 @@ qualtricsData_raw_parent_demo <-filter(qualtricsData_raw_long, grepl("Parent",su
   mutate(value=as.numeric(value)) %>% 
   distinct(tagid,item,.keep_all = TRUE) %>% 
   spread(item,value)
+```
+
+IN PROG: Figure out duplicates
+```{r}
+#Step 1: Define your questionnaire measure. Possibilities: K_SRQ, IRI, PDS
+questionnaire<-"^Ethnicity"
+
+# Now highlight the next segment until you read # STOP # and run
+checkoutduplicates<-filter(cleaned_survey_data, grepl(questionnaire,item)) %>% 
+  mutate(value=as.numeric(value)) %>%
+  filter(!is.na(value)) %>%
+  distinct(tagid,item,value,.keep_all = FALSE)
+
+duplicates<-checkoutduplicates %>%
+  spread(item,value)
+
+# STOP #
+######################
+
+# Now check each of the rows #
+checkoutduplicates[647:658,]
+
+# To figure out the timestamp just enter in one of the rows from above here:
+rownum<-450
+qualtricsData_raw_long %>%
+  filter(tagid %in% checkoutduplicates$tagid[rownum]) %>%
+  filter(survey_name %in% checkoutduplicates$survey_name[rownum]) %>%
+  filter(item=="EndDate")
+# Now compare the timestamps to those in Google Calendar for TAG
+
+```
