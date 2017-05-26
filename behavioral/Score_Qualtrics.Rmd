@@ -1,7 +1,7 @@
 ---
 title: "Score_Qualtrics"
 author: "Kate, Cameron, & Nandi"
-date: "17 May 2017"
+date: "26 May 2017"
 output: html_document
 ---
 
@@ -243,18 +243,15 @@ output.df<-as.data.frame(do.call(rbind,output.df)) %>%
 time_between <- ggplot(output.df,
                 aes(x=tag_id, y=totaldays, fill=totaldays))
 time_between + geom_bar(colour="black", stat="identity")
-
-
-
 ```
 
-Figure out duplicates
+IN PROG: Figure out duplicates
 ```{r}
 #Step 1: Define your questionnaire measure. Possibilities: K_SRQ, IRI, PDS
 questionnaire<-"^Ethnicity"
 
 # Now highlight the next segment until you read # STOP # and run
-checkoutduplicates<-filter(qualtricsData_raw_long, grepl(questionnaire,item)) %>% 
+checkoutduplicates<-filter(cleaned_survey_data, grepl(questionnaire,item)) %>% 
   mutate(value=as.numeric(value)) %>%
   filter(!is.na(value)) %>%
   distinct(tagid,item,value,.keep_all = FALSE)
@@ -278,16 +275,113 @@ qualtricsData_raw_long %>%
 
 ```
 
+Prepare NDAR template
+```{r}
+# Before running this you must have generated GUIDs for each participant to be uploaded
+# Load the subject key which has the original TAGID, an anonymized ID, and the GUID
+ndar_key<-
+
+# NDAR requires a constrained answer for a participants "race"
+{ethnicity_long<-cleaned_survey_data %>%
+  filter(grepl("Ethnicity",item)) %>%
+  filter(!value=="") %>%
+  arrange(tagid) %>%
+  select(-survey_name) %>%
+  arrange(tagid)
+
+figure_out_ethnicity=function(subid){
+  subethnicity<-ethnicity_long %>%
+                       filter(tagid==as.character(subid))
+  numethnicity<-nrow(subethnicity %>%
+                       filter(!item=="Ethnicity_7_TEXT"))
+  if (numethnicity<2 & (nrow(subethnicity)==1)){
+    race=ifelse(subethnicity$item=="Ethnicity_1","Black or African American",
+                     ifelse(subethnicity$item=="Ethnicity_2","Unknown or not reported",
+                            ifelse(subethnicity$item=="Ethnicity_3","American Indian/Alaska Native Asian",
+                                   ifelse(subethnicity$item=="Ethnicity_4","White",
+                                          ifelse(subethnicity$item=="Ethnicity_5","Asian",
+                                                 ifelse(subethnicity$item=="Ethnicity_10","Hawaiian or Pacific Islander",
+                                                        ifelse(subethnicity$item=="Ethnicity_7",value,
+                                                               ifelse(subethnicity$item=="Ethnicity_6","More than one race",
+                                                                      ifelse(subethnicity$item=="Ethnicity_8","Unknown or not reported",
+                                                                             ifelse(subethnicity$item=="Ethnicity_9","Unknown or not reported",""))))))))))
+    cbind(subid,race)
+  } else if (numethnicity<2 & (nrow(subethnicity)==2)){
+    race=as.character(subethnicity %>%
+                       filter(item=="Ethnicity_7_TEXT") %>%
+                        select(value))
+    cbind(subid,race)
+  } else if (numethnicity>1) {
+    race="More than one race"
+    cbind(subid,race)
+  }
+}
+ndar_ethnicity<-lapply(as.list(unique(ethnicity$tagid)),figure_out_ethnicity)
+ndar_ethnicity.df<-data.frame(matrix(unlist(ndar_ethnicity), nrow=length(ndar_ethnicity), byrow=T),stringsAsFactors=FALSE)
+
+ndar_race<- ndar_ethnicity.df %>%
+  mutate(tagid=.[[1]],
+         race=.[[2]]) %>%
+  select(tagid, race) %>%
+  mutate(race=ifelse(race=="Asian white","More than one race",
+                     ifelse(race=="Caucasian ","White",
+                            ifelse(race=="1/4 Mexican / white","More than one race",
+                                   ifelse(race=="Jewish","Unknown or not reported",race)))))}
+
+#
+participants_ndar_data <- redcap_cleaned %>%
+  filter(!is.na(dob),!is.na(sb_date)) %>%
+  select(tagid, sa_date, dob) %>%
+  arrange(tagid) %>%
+  mutate(src_subject_id=tagid,
+         interview_date=paste0(sprintf("%02d",month(sa_date)),"/",sprintf("%02d",day(sa_date)),"/",year(sa_date)),
+         interview_age=round((interval(start = dob, end = sa_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         phenotype="Typical Control",
+         phenotype_description="Typical Control",
+         twins_study="No",
+         sibling_study="No",
+         family_study="No",
+         sample_taken="Yes",
+         sample_id_original="Session1_Saliva",
+         sample_description="saliva",
+         biorepository_name="NA",
+         sample_id_biorepository="NA",
+         patient_id_biorepository="NA",
+         site="University of Oregon",
+         comments_misc="Wave1 Session1",
+         study="UO TAG Study")
+participants_ndar_data<-left_join(ndar_race,participants_ndar_data, by="tagid")
+
+
+participants_ndar_data<-left_join(subjectkey,participants_ndar_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid) %>%
+  select(-tagid,-sa_date,-dob,-anontagid) %>%
+  filter(!is.na(subjectkey))
+
+ndar_subject <- as.list(read.csv(paste0(workdir,"RDoCdb/templates/ndar_subject01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+ndar_subject_df<-data.frame(ndar_subject)
+ndar_subject_df<-bind_rows(ndar_subject_df,participants_ndar_data)
+ndar_subject_df_header<-rep(NA,length(ndar_subject_df))
+ndar_subject_df_header[1]<-read.csv(paste0(template_data,"ndar_subject01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+ndar_subject_df_header[2]<-read.csv(paste0(template_data,"ndar_subject01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+part2<-colnames(ndar_subject_df)
+part3<-as.matrix(ndar_subject_df)
+colnames(part3)<-NULL
+together<-rbind(ndar_subject_df_header,part2,part3)
+write.table(together,file = paste0(analysis_root,"Output/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+```
+
 Prepare BFI-10
 ```{r}
-qualtricsData_raw_bfi10<-filter(qualtricsData_raw_long, grepl("BFI",item)) %>% 
+BFI10<-filter(cleaned_survey_data, grepl("BFI",item)) %>% 
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
   spread(item,value)
 
-qualtricsData_raw_bfi10<-left_join(qualtricsData_raw_bfi10,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(survey_date=value) %>% select(-item, -value) %>%
   mutate(BFI_10_1=ifelse(BFI_10_1==1,5,
                         ifelse(BFI_10_1==2,4,
@@ -318,33 +412,116 @@ qualtricsData_raw_bfi10<-left_join(qualtricsData_raw_bfi10,survey_date, by = c("
                                ifelse(BFI_10_7==3,3,
                                       ifelse(BFI_10_7==4,2,
                                              ifelse(BFI_10_7==5,1,
-                                                    BFI_10_7))))),
-         BFI_10_10=ifelse(BFI_10_10==1,5,
-                        ifelse(BFI_10_10==2,4,
-                               ifelse(BFI_10_10==3,3,
-                                      ifelse(BFI_10_10==4,2,
-                                             ifelse(BFI_10_10==5,1,
-                                                    BFI_10_10))))),
-      BFI10_extra_N=2,
-      BFI10_extra_missing=rowSums(is.na(cbind(BFI_10_1,BFI_10_6))),
-      BFI10_extra_total=rowSums(cbind(BFI_10_1,BFI_10_6), na.rm=F),
-      BFI10_extra_mean=rowMeans(cbind(BFI_10_1,BFI_10_6), na.rm=T),
-      BFI10_agree_N=2,
-      BFI10_agree_missing=rowSums(is.na(cbind(BFI_10_2,BFI_10_7))),
-      BFI10_agree_total=rowSums(cbind(BFI_10_2,BFI_10_7), na.rm=F),
-      BFI10_agree_mean=rowMeans(cbind(BFI_10_2,BFI_10_7), na.rm=T),
-      BFI10_consc_N=2,
-      BFI10_consc_missing=rowSums(is.na(cbind(BFI_10_3,BFI_10_8))),
-      BFI10_consc_total=rowSums(cbind(BFI_10_3,BFI_10_8), na.rm=F),
-      BFI10_consc_mean=rowMeans(cbind(BFI_10_3,BFI_10_8), na.rm=T),
-      BFI10_neuro_N=2,
-      BFI10_neuro_missing=rowSums(is.na(cbind(BFI_10_4,BFI_10_9))),
-      BFI10_neuro_total=rowSums(cbind(BFI_10_4,BFI_10_9), na.rm=F),
-      BFI10_neuro_mean=rowMeans(cbind(BFI_10_4,BFI_10_9), na.rm=T),
-      BFI10_open_N=2,
-      BFI10_open_missing=rowSums(is.na(cbind(BFI_10_5,BFI_10_10))),
-      BFI10_open_total=rowSums(cbind(BFI_10_5,BFI_10_10), na.rm=F),
-      BFI10_open_mean=rowMeans(cbind(BFI_10_5,BFI_10_10), na.rm=T))
+                                                    BFI_10_7)))))) %>%
+  mutate(BFI10_extra_N=2,
+         BFI10_extra_missing=rowSums(is.na(cbind(BFI_10_1,BFI_10_6))),
+         BFI10_extra_total=rowSums(cbind(BFI_10_1,BFI_10_6), na.rm=F),
+         BFI10_extra_mean=rowMeans(cbind(BFI_10_1,BFI_10_6), na.rm=T),
+         BFI10_agree_N=2,
+         BFI10_agree_missing=rowSums(is.na(cbind(BFI_10_2,BFI_10_7))),
+         BFI10_agree_total=rowSums(cbind(BFI_10_2,BFI_10_7), na.rm=F),
+         BFI10_agree_mean=rowMeans(cbind(BFI_10_2,BFI_10_7), na.rm=T),
+         BFI10_consc_N=2,
+         BFI10_consc_missing=rowSums(is.na(cbind(BFI_10_3,BFI_10_8))),
+         BFI10_consc_total=rowSums(cbind(BFI_10_3,BFI_10_8), na.rm=F),
+         BFI10_consc_mean=rowMeans(cbind(BFI_10_3,BFI_10_8), na.rm=T),
+         BFI10_neuro_N=2,
+         BFI10_neuro_missing=rowSums(is.na(cbind(BFI_10_4,BFI_10_9))),
+         BFI10_neuro_total=rowSums(cbind(BFI_10_4,BFI_10_9), na.rm=F),
+         BFI10_neuro_mean=rowMeans(cbind(BFI_10_4,BFI_10_9), na.rm=T),
+         BFI10_open_N=2,
+         BFI10_open_missing=rowSums(is.na(cbind(BFI_10_5,BFI_10_10))),
+         BFI10_open_total=rowSums(cbind(BFI_10_5,BFI_10_10), na.rm=F),
+         BFI10_open_mean=rowMeans(cbind(BFI_10_5,BFI_10_10), na.rm=T))
+
+## Save it
+write.csv(BFI10_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/BFI10_Wave1.csv"))
+
+## Graph it
+BFI10_Wave1_totals<-BFI10_Wave1 %>%
+  select(tagid,BFI10_neuro_total,BFI10_open_total,BFI10_consc_total,BFI10_agree_total,BFI10_extra_total) %>%
+  mutate(Neuroticism=BFI10_neuro_total,
+         Opennes=BFI10_open_total,
+         Conscientiousness=BFI10_consc_total,
+         Agreeableness=BFI10_agree_total,
+         Extraversion=BFI10_extra_total) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("BFI10",item))
+BFI10_Wave1_totals_graph<-ggplot(BFI10_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)
+
+BFI10_Wave1_means<-BFI10_Wave1 %>%
+  select(tagid,BFI10_neuro_mean,BFI10_open_mean,BFI10_consc_mean,BFI10_agree_mean,BFI10_extra_mean) %>%
+  mutate(Neuroticism=BFI10_neuro_mean,
+         Opennes=BFI10_open_mean,
+         Conscientiousness=BFI10_consc_mean,
+         Agreeableness=BFI10_agree_mean,
+         Extraversion=BFI10_extra_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("BFI10",item))
+BFI10_Wave1_means_graph<-ggplot(BFI10_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)
+
+## Make RDOC ready file
+ndar_bfi10_data <- ndar_subject %>%
+  select(subjectkey, src_subject_id, study, site)
+ndar_bfi10_data <- ndar_socreward_data %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         comments_misc=paste0(visit=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
+                                           ifelse(grepl("Session 1",survey_name),"Wave1 Session1",
+                                                  ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
+                                                         ifelse(grepl("Session 2",survey_name),"Wave1 Session2",
+                                                                ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",
+                                                                       NA))))),"; doi:10.3389/fpsyg.2014.00201; Question about kissing not collected."),
+         version_form="Child version",
+         gender="F",
+         ksrq_1=K_SRQ_1,
+         ksrq_2=K_SRQ_2,
+         ksrq_3=K_SRQ_3,
+         ksrq_4=K_SRQ_4,
+         ksrq_5=K_SRQ_5,
+         ksrq_6=K_SRQ_6,
+         ksrq_7=K_SRQ_7,
+         ksrq_8=K_SRQ_8,
+         ksrq_9=K_SRQ_9,
+         ksrq_10=K_SRQ_10,
+         ksrq_11=K_SRQ_11,
+         ksrq_12=K_SRQ_12,
+         ksrq_13=-99,
+         ksrq_14=K_SRQ_13,
+         ksrq_15=K_SRQ_14,
+         ksrq_16=K_SRQ_15,
+         ksrq_17=K_SRQ_16,
+         ksrq_18=K_SRQ_17,
+         ksrq_19=K_SRQ_18,
+         ksrq_20=K_SRQ_19,
+         ksrq_21=K_SRQ_20,
+         ksrq_22=K_SRQ_21,
+         ksrq_23=K_SRQ_22,
+         ksrq_adm=rowSums(cbind(K_SRQ_1,K_SRQ_7,K_SRQ_11,K_SRQ_17), na.rm=T),
+         krsq_negsoc=rowSums(cbind(K_SRQ_3,K_SRQ_5,K_SRQ_13,K_SRQ_16), na.rm=T),
+         krsq_pass=rowSums(cbind(K_SRQ_12,K_SRQ_20,K_SRQ_22), na.rm=T),
+         krsq_prosoc=rowSums(cbind(K_SRQ_2,K_SRQ_6,K_SRQ_15,K_SRQ_18,K_SRQ_21), na.rm=T),
+         krsq_sex=rowSums(cbind(K_SRQ_9,K_SRQ_19), na.rm=T),
+         krsq_social=rowSums(cbind(K_SRQ_4,K_SRQ_10,K_SRQ_14), na.rm=T))
+ndar_socreward_data <- left_join(subjectkey,ndar_socreward_data, by="src_subject_id") %>%
+  mutate(src_subject_id=anontagid) %>%
+  filter(!is.na(subjectkey)) %>%
+  select(-contains("K_SRQ"),-dob,-survey_date,-survey_name,-tagid,-anontagid)
+ndar_socreward_data[, 10:32][is.na(ndar_socreward_data[, 10:32])] <- 88
+ndar_socreward_data[, 33:38][is.na(ndar_socreward_data[, 33:38])] <- 999
+ndar_subject_df<-bind_rows(socreward_df,ndar_socreward_data)
+
+bfi10_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/bfi1001_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+bfi10_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/bfi1001_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+bfi10_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/bfi1001_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+part2<-colnames(ndar_subject_df)
+part3<-as.matrix(ndar_subject_df)
+colnames(part3)<-NULL
+together<-rbind(socreward_df_header,part2,part3)
+write.table(together,file = paste0(analysis_root,"Output/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+
 ```
 
 Prepare CAMM
