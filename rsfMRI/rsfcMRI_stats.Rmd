@@ -20,6 +20,7 @@ lapply(packages, library, character.only = TRUE)
 
 Extract Resting state preprocessing stats
 ```{r Extract and plot run times, echo=TRUE}
+scrubbingThreshold<-.2
 # Set directory
 rsfcMRI_subjects="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/rsfMRI_preproc_noFDscrub/"
 # create sub list based on folders within the resting state subjects folder
