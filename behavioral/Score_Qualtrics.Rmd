@@ -280,7 +280,7 @@ figure_out_ethnicity=function(subid){
   if (numethnicity<2 & (nrow(subethnicity)==1)){
     race=ifelse(subethnicity$item=="Ethnicity_1","Black or African American",
                      ifelse(subethnicity$item=="Ethnicity_2","Unknown or not reported",
-                            ifelse(subethnicity$item=="Ethnicity_3","American Indian/Alaska Native Asian",
+                            ifelse(subethnicity$item=="Ethnicity_3","American Indian/Alaska Native",
                                    ifelse(subethnicity$item=="Ethnicity_4","White",
                                           ifelse(subethnicity$item=="Ethnicity_5","Asian",
                                                  ifelse(subethnicity$item=="Ethnicity_10","Hawaiian or Pacific Islander",
@@ -334,23 +334,26 @@ participants_ndar_data <- redcap_cleaned %>%
          site="University of Oregon",
          comments_misc="Wave1 Session1",
          study="UO TAG Study")
-participants_ndar_data<-left_join(ndar_race,participants_ndar_data, by="tagid")
+participants_ndar_data<-left_join(participants_ndar_data,(ndar_race %>%
+                                                            filter(tagid %in% ndar_key$tagid)), by="tagid") %>%
+  mutate(race=ifelse(is.na(race),"Unknown or not reported",race))
 participants_ndar_data<-left_join(ndar_key,participants_ndar_data, by="tagid") %>%
-  mutate(src_subject_id=anontagid) %>%
-  select(-tagid,-sa_date,-dob,-anontagid) %>%
-  filter(!is.na(subjectkey))
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  select(-tagid,-sa_date,-dob,-anontagid,-ID,-guid) 
+
 
 ndar_subject <- as.list(read.csv(paste0(workdir,"RDoCdb/templates/ndar_subject01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 ndar_subject_df<-data.frame(ndar_subject)
 ndar_subject_df<-bind_rows(ndar_subject_df,participants_ndar_data)
 ndar_subject_df_header<-rep(NA,length(ndar_subject_df))
-ndar_subject_df_header[1]<-read.csv(paste0(template_data,"ndar_subject01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
-ndar_subject_df_header[2]<-read.csv(paste0(template_data,"ndar_subject01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+ndar_subject_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/ndar_subject01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+ndar_subject_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/ndar_subject01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
 part2<-colnames(ndar_subject_df)
 part3<-as.matrix(ndar_subject_df)
 colnames(part3)<-NULL
 together<-rbind(ndar_subject_df_header,part2,part3)
-write.table(together,file = paste0(analysis_root,"Output/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 ```
 
 Prepare BFI-10
@@ -429,7 +432,9 @@ BFI10_Wave1_totals<-BFI10_Wave1 %>%
   gather('item','value',2:length(.)) %>%
   filter(!grepl("BFI10",item))
 BFI10_Wave1_totals_graph<-ggplot(BFI10_Wave1_totals, aes(x=value, colour=item)) +
-  geom_density(alpha=.3)
+  geom_density(alpha=.3)+
+  ggtitle(paste0("BFI Wave1 means for ",length(unique(BFI10_Wave1_totals$tagid))," participants"))
+
 
 BFI10_Wave1_means<-BFI10_Wave1 %>%
   select(tagid,BFI10_neuro_mean,BFI10_open_mean,BFI10_consc_mean,BFI10_agree_mean,BFI10_extra_mean) %>%
@@ -441,67 +446,44 @@ BFI10_Wave1_means<-BFI10_Wave1 %>%
   gather('item','value',2:length(.)) %>%
   filter(!grepl("BFI10",item))
 BFI10_Wave1_means_graph<-ggplot(BFI10_Wave1_means, aes(x=value, colour=item)) +
-  geom_density(alpha=.3)
+  geom_density(alpha=.3) +
+  ggtitle(paste0("BFI Wave1 means for ",length(unique(BFI10_Wave1_means$tagid))," participants"))
 
 ## Make RDOC ready file
-ndar_bfi10_data <- ndar_subject %>%
-  select(subjectkey, src_subject_id, study, site)
-ndar_bfi10_data <- ndar_socreward_data %>%
+ndar_bfi10_data <- left_join(BFI10_Wave1,redcap_cleaned,by="tagid") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
-         comments_misc=paste0(visit=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
-                                           ifelse(grepl("Session 1",survey_name),"Wave1 Session1",
-                                                  ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
-                                                         ifelse(grepl("Session 2",survey_name),"Wave1 Session2",
-                                                                ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",
-                                                                       NA))))),"; doi:10.3389/fpsyg.2014.00201; Question about kissing not collected."),
-         version_form="Child version",
          gender="F",
-         ksrq_1=K_SRQ_1,
-         ksrq_2=K_SRQ_2,
-         ksrq_3=K_SRQ_3,
-         ksrq_4=K_SRQ_4,
-         ksrq_5=K_SRQ_5,
-         ksrq_6=K_SRQ_6,
-         ksrq_7=K_SRQ_7,
-         ksrq_8=K_SRQ_8,
-         ksrq_9=K_SRQ_9,
-         ksrq_10=K_SRQ_10,
-         ksrq_11=K_SRQ_11,
-         ksrq_12=K_SRQ_12,
-         ksrq_13=-99,
-         ksrq_14=K_SRQ_13,
-         ksrq_15=K_SRQ_14,
-         ksrq_16=K_SRQ_15,
-         ksrq_17=K_SRQ_16,
-         ksrq_18=K_SRQ_17,
-         ksrq_19=K_SRQ_18,
-         ksrq_20=K_SRQ_19,
-         ksrq_21=K_SRQ_20,
-         ksrq_22=K_SRQ_21,
-         ksrq_23=K_SRQ_22,
-         ksrq_adm=rowSums(cbind(K_SRQ_1,K_SRQ_7,K_SRQ_11,K_SRQ_17), na.rm=T),
-         krsq_negsoc=rowSums(cbind(K_SRQ_3,K_SRQ_5,K_SRQ_13,K_SRQ_16), na.rm=T),
-         krsq_pass=rowSums(cbind(K_SRQ_12,K_SRQ_20,K_SRQ_22), na.rm=T),
-         krsq_prosoc=rowSums(cbind(K_SRQ_2,K_SRQ_6,K_SRQ_15,K_SRQ_18,K_SRQ_21), na.rm=T),
-         krsq_sex=rowSums(cbind(K_SRQ_9,K_SRQ_19), na.rm=T),
-         krsq_social=rowSums(cbind(K_SRQ_4,K_SRQ_10,K_SRQ_14), na.rm=T))
-ndar_socreward_data <- left_join(subjectkey,ndar_socreward_data, by="src_subject_id") %>%
-  mutate(src_subject_id=anontagid) %>%
-  filter(!is.na(subjectkey)) %>%
-  select(-contains("K_SRQ"),-dob,-survey_date,-survey_name,-tagid,-anontagid)
-ndar_socreward_data[, 10:32][is.na(ndar_socreward_data[, 10:32])] <- 88
-ndar_socreward_data[, 33:38][is.na(ndar_socreward_data[, 33:38])] <- 999
-ndar_subject_df<-bind_rows(socreward_df,ndar_socreward_data)
-
+         bfi10_1=BFI_10_1,
+         bfi10_2=BFI_10_2,
+         bfi10_3=BFI_10_3,
+         bfi10_4=BFI_10_4,
+         bfi10_5=BFI_10_5,
+         bfi10_6=BFI_10_6,
+         bfi10_7=BFI_10_7,
+         bfi10_8=BFI_10_8,
+         bfi10_9=BFI_10_9,
+         bfi10_10=BFI_10_10
+  )
+ndar_bfi10_data <- left_join(ndar_key,ndar_bfi10_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("BFI",ignore.case = FALSE),-dob,-survey_date,-survey_type,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid)
 bfi10_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/bfi1001_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
 bfi10_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/bfi1001_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
 bfi10_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/bfi1001_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
-part2<-colnames(ndar_subject_df)
-part3<-as.matrix(ndar_subject_df)
+
+bfi10_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/bfi1001_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+bfi10_temp_df<-data.frame(bfi10_temp)
+ndar_bfi10_data<-bind_rows(bfi10_temp_df,ndar_bfi10_data)
+
+part2<-colnames(ndar_bfi10_data)
+part3<-as.matrix(ndar_bfi10_data)
 colnames(part3)<-NULL
-together<-rbind(socreward_df_header,part2,part3)
-write.table(together,file = paste0(analysis_root,"Output/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+together<-rbind(bfi10_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 
 ```
 
