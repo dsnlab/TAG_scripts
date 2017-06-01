@@ -141,8 +141,8 @@ redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
 rm(redcapData_dob,redcapData,redcapData_sessiondates)
 ```
 
-Prepare GUIDs
-```{r}
+DO NOT RUN: Prepare GUIDs
+```{r, eval=FALSE, include=FALSE}
 redcap_NDA_info <- read.csv(paste0(workdir,"RDoCdb/Confidential/redcap_nda_consent.csv"),
                             header = TRUE,
                             stringsAsFactors = FALSE)
@@ -353,7 +353,7 @@ part2<-colnames(ndar_subject_df)
 part3<-as.matrix(ndar_subject_df)
 colnames(part3)<-NULL
 together<-rbind(ndar_subject_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+#write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 ```
 
 Prepare BFI-10
@@ -433,7 +433,7 @@ BFI10_Wave1_totals<-BFI10_Wave1 %>%
   filter(!grepl("BFI10",item))
 BFI10_Wave1_totals_graph<-ggplot(BFI10_Wave1_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("BFI Wave1 means for ",length(unique(BFI10_Wave1_totals$tagid))," participants"))
+  ggtitle(paste0("BFI Wave1 total for ",length(unique(BFI10_Wave1_totals$tagid))," participants"))
 
 
 BFI10_Wave1_means<-BFI10_Wave1 %>%
@@ -483,21 +483,20 @@ part2<-colnames(ndar_bfi10_data)
 part3<-as.matrix(ndar_bfi10_data)
 colnames(part3)<-NULL
 together<-rbind(bfi10_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+#write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 
 ```
 
 Prepare CAMM
 ```{r}
-qualtricsData_raw_camm<-filter(qualtricsData_raw_long, grepl("CAMM",item)) %>% 
+CAMM<-filter(cleaned_survey_data, grepl("CAMM",item)) %>% 
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  filter(!tagid=="TAG015") %>%
+  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
   spread(item,value)
 
-qualtricsData_raw_camm<-left_join(qualtricsData_raw_camm,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
+CAMM_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(survey_date=value) %>% select(-item, -value) %>%
   mutate(CAMM_1=ifelse(CAMM_1==4,0,
                         ifelse(CAMM_1==3,1,
@@ -553,17 +552,168 @@ qualtricsData_raw_camm<-left_join(qualtricsData_raw_camm,survey_date, by = c("ta
                                       ifelse(CAMM_9==1,3,
                                              ifelse(CAMM_9==0,4,
                                                     NA))))),
-         CAMM_10=ifelse(CAMM_10==5,0,
-                        ifelse(CAMM_10==4,3,
-                               ifelse(CAMM_10==3,2,
-                                      ifelse(CAMM_10==2,1,
-                                             ifelse(CAMM_10==1,0,
+         CAMM_10=ifelse(CAMM_10==4,0,
+                        ifelse(CAMM_10==3,1,
+                               ifelse(CAMM_10==2,2,
+                                      ifelse(CAMM_10==1,3,
+                                             ifelse(CAMM_10==0,4,
                                                     NA))))),
  CAMM_N=10,
  CAMM_missing=rowSums(is.na(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10))),
  CAMM_mean=rowMeans(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10), na.rm=T),
  CAMM_total=rowSums(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10), na.rm=F))
+
+## Save it
+write.csv(CAMM_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CAMM_Wave1.csv"))
+
+## Graph it
+CAMM_Wave1_total_graph<-ggplot(CAMM_Wave1, aes(x=CAMM_total, colour="deeppink")) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Child and Adolescent Mindfulness Wave1 totals for ",length(CAMM_Wave1$CAMM_total[!is.na(CAMM_Wave1$CAMM_total)])," participants"))
+
+CAMM_Wave1_mean_graph<-ggplot(CAMM_Wave1, aes(x=CAMM_mean, colour="deeppink")) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Child and Adolescent Mindfulness Wave1 means for ",length(CAMM_Wave1$CAMM_mean[!is.na(CAMM_Wave1$CAMM_mean)])," participants"))
+
+## Make RDOC ready file
+ndar_camm_data <- left_join(CAMM_Wave1,redcap_cleaned,by="tagid") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         camm_1=CAMM_1,
+         camm_2=CAMM_2,
+         camm_3=CAMM_3,
+         camm_4=CAMM_4,
+         camm_5=CAMM_5,
+         camm_6=CAMM_6,
+         camm_7=CAMM_7,
+         camm_8=CAMM_8,
+         camm_9=CAMM_9,
+         camm_10=CAMM_10,
+         camm_tot=CAMM_total
+  )
+ndar_camm_data <- left_join(ndar_key,ndar_camm_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("CAMM",ignore.case = FALSE),-dob,-survey_date,-survey_type,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid)
+camm_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/camm01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+camm_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/camm01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+camm_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/camm01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+camm_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/camm01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+camm_temp_df<-data.frame(camm_temp)
+ndar_camm_data<-bind_rows(camm_temp_df,ndar_camm_data)
+
+part2<-colnames(ndar_camm_data)
+part3<-as.matrix(ndar_camm_data)
+colnames(part3)<-NULL
+together<-rbind(camm_df_header,part2,part3)
+#write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/camm01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 ```
+
+IN PROG: Prepare PBIP
+```{r}
+PBIP<-filter(cleaned_survey_data, grepl("PBIP",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+PBIP_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         tsmfemale=9,
+         tsmmale=9999,
+         tsmboth=9,
+         tsftsg=PBIP_1,
+         tsftphg=PBIP_3)
+
+```
+
+Prepare PDS
+```{r}
+PDS<-filter(cleaned_survey_data, grepl("PDS",item)) %>% 
+  mutate(value=as.numeric(value)) %>%
+  filter(!survey_name=="TAG - Parent Questionnaires") %>%
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(peta=PDS_F1,
+         petb=PDS_F2,
+         petc=PDS_F3,
+         petd=PDS_F4,
+         pete=PDS_F5,
+         fpete=PDS_F6,
+         petaf=ifelse(PDS_F1==1,1,
+                       ifelse(PDS_F1==2,2,
+                              ifelse(PDS_F1==3,3,
+                                     ifelse(PDS_F1==4,5,
+                                            NA)))),
+         petbf=ifelse(PDS_F2==1,1,
+                       ifelse(PDS_F2==2,2,
+                              ifelse(PDS_F2==3,4,
+                                     ifelse(PDS_F2==4,5,
+                                            NA)))),
+         petcf=ifelse(PDS_F3==1,1,
+                       ifelse(PDS_F3==2,2,
+                              ifelse(PDS_F3==3,4,
+                                     ifelse(PDS_F3==4,5,
+                                            NA)))),
+         petdf=ifelse(PDS_F4==1,1,
+                       ifelse(PDS_F4==2,3,
+                              ifelse(PDS_F4==3,4,
+                                     ifelse(PDS_F4==4,5,
+                                            NA)))),         
+         petef=ifelse(PDS_F6==0,1,
+                       ifelse(PDS_F6==1,5,
+                              NA))) %>%
+  mutate(adrenf=rowMeans(cbind(petbf,petcf),na.rm=F)) %>%
+  mutate(adrenf2=ifelse(adrenf==1,1,
+                        ifelse(petb==1 & adrenf==1.5,1,
+                               ifelse(petb==2 & adrenf==1.5,2,
+                                      ifelse(adrenf==2,2,
+                                             ifelse(adrenf==2.5,3,
+                                                    ifelse(adrenf==3,3,
+                                                           ifelse(adrenf==3.5,4,
+                                                                  ifelse(adrenf==4,4,
+                                                                         ifelse(adrenf==4.5,5,
+                                                                                ifelse(adrenf==5,5,
+                                                                                       NA))))))))))) %>%
+  mutate(gonadf=rowMeans(cbind(petaf,petdf),na.rm=F)) %>%
+  mutate(gonadf2=ifelse(gonadf==1 & petef==1,1,
+                       ifelse(gonadf==1.5 & petef==1,1,
+                              ifelse(gonadf==2 & petef==1,2,
+                                     ifelse(gonadf==2.5 & petef==1,2,
+                                            ifelse(gonadf==3 & petef==1,3,
+                                                   ifelse(gonadf==3.5 & petef==1,3,
+                                                          ifelse(gonadf==4 & petef==1,3,
+                                                              ifelse(gonadf==4.5 & petef==1,4,
+                                                                     ifelse(gonadf==5 & petef==1,4,
+                                                                            ifelse(gonadf==1 & petef==5,2,
+                                                                                   ifelse(gonadf==1.5 & petef==5,3,
+                                                                                          ifelse(gonadf==2 & petef==5,4,
+                                                                                                 ifelse(gonadf==2.5 & petef==5,4,
+                                                                                                        ifelse(gonadf==3 & petef==5,4,
+                                                                                                               ifelse(gonadf==3.5 & petef==5,5,
+                                                                                                                      ifelse(gonadf==4 & petef==5,5,
+                                                                                                                             ifelse(gonadf==4.5 & petef==5,5,
+                                                                                                                                    ifelse(gonadf==5 & petef==5,5,
+                                                                                                                                           NA))))))))))))))))))) %>%
+  mutate(pdss=rowMeans(cbind(adrenf2,gonadf2),na.rm=F))                                            
+## Save it
+write.csv(PDS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PDS_Wave1.csv"))
+```
+
+
 
 Prepare CARE-R Soc
 ```{r}
@@ -1438,100 +1588,6 @@ qualtricsData_raw_panasc<-filter(qualtricsData_raw_long, grepl("PANAS",item)) %>
 qualtricsData_raw_panasc<-left_join(qualtricsData_raw_panasc,survey_date, by = c("tagid", "survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = FALSE) %>%
   mutate(survey_date=value) %>% select(-item, -value) 
-```
-
-Prepare PBIP
-```{r}
-qualtricsData_raw_pbip<-filter(qualtricsData_raw_long, grepl("PBIP",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>%
-  filter(!tagid=="TAG114") %>%
-  filter(!tagid=="TAG078") %>%
-  spread(item,value)
-
-qualtricsData_raw_pbip<-left_join(qualtricsData_raw_pbip,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value)  %>%
-  mutate(pbip=rowMeans(cbind(PBIP_1A,PBIP_2A),na.rm=F)) 
-```
-
-Prepare PDS
-```{r}
-qualtricsData_raw_pds<-filter(qualtricsData_raw_long, grepl("PDS",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!survey_name=="TAG - Parent Questionnaires") %>%
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = FALSE) %>% 
-  filter(!tagid=="TAG015") %>%
-  filter(!tagid=="TAG078") %>%
-  spread(item,value)
-
-qualtricsData_raw_pds<-left_join(qualtricsData_raw_pds,survey_date, by = c("tagid", "survey_name")) %>%
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
-  mutate(peta=PDS_F1,
-         petb=PDS_F2,
-         petc=PDS_F3,
-         petd=PDS_F4,
-         pete=PDS_F5,
-         fpete=PDS_F6,
-         petaf=ifelse(PDS_F1==1,1,
-                       ifelse(PDS_F1==2,2,
-                              ifelse(PDS_F1==3,3,
-                                     ifelse(PDS_F1==4,5,
-                                            NA)))),
-         petbf=ifelse(PDS_F2==1,1,
-                       ifelse(PDS_F2==2,2,
-                              ifelse(PDS_F2==3,4,
-                                     ifelse(PDS_F2==4,5,
-                                            NA)))),
-         petcf=ifelse(PDS_F3==1,1,
-                       ifelse(PDS_F3==2,2,
-                              ifelse(PDS_F3==3,4,
-                                     ifelse(PDS_F3==4,5,
-                                            NA)))),
-         petdf=ifelse(PDS_F4==1,1,
-                       ifelse(PDS_F4==2,3,
-                              ifelse(PDS_F4==3,4,
-                                     ifelse(PDS_F4==4,5,
-                                            NA)))),         
-         petef=ifelse(PDS_F6==0,1,
-                       ifelse(PDS_F6==1,5,
-                              NA))) %>%
-  mutate(adrenf=rowMeans(cbind(petbf,petcf),na.rm=F)) %>%
-  mutate(adrenf2=ifelse(adrenf==1,1,
-                        ifelse(petb==1 & adrenf==1.5,1,
-                               ifelse(petb==2 & adrenf==1.5,2,
-                                      ifelse(adrenf==2,2,
-                                             ifelse(adrenf==2.5,3,
-                                                    ifelse(adrenf==3,3,
-                                                           ifelse(adrenf==3.5,4,
-                                                                  ifelse(adrenf==4,4,
-                                                                         ifelse(adrenf==4.5,5,
-                                                                                ifelse(adrenf==5,5,
-                                                                                       NA))))))))))) %>%
-  mutate(gonadf=rowMeans(cbind(petaf,petdf),na.rm=F)) %>%
-  mutate(gonadf2=ifelse(gonadf==1 & petef==1,1,
-                       ifelse(gonadf==1.5 & petef==1,1,
-                              ifelse(gonadf==2 & petef==1,2,
-                                     ifelse(gonadf==2.5 & petef==1,2,
-                                            ifelse(gonadf==3 & petef==1,3,
-                                                   ifelse(gonadf==3.5 & petef==1,3,
-                                                          ifelse(gonadf==4 & petef==1,3,
-                                                              ifelse(gonadf==4.5 & petef==1,4,
-                                                                     ifelse(gonadf==5 & petef==1,4,
-                                                                            ifelse(gonadf==1 & petef==5,2,
-                                                                                   ifelse(gonadf==1.5 & petef==5,3,
-                                                                                          ifelse(gonadf==2 & petef==5,4,
-                                                                                                 ifelse(gonadf==2.5 & petef==5,4,
-                                                                                                        ifelse(gonadf==3 & petef==5,4,
-                                                                                                               ifelse(gonadf==3.5 & petef==5,5,
-                                                                                                                      ifelse(gonadf==4 & petef==5,5,
-                                                                                                                             ifelse(gonadf==4.5 & petef==5,5,
-                                                                                                                                    ifelse(gonadf==5 & petef==5,5,
-                                                                                                                                           NA))))))))))))))))))) %>%
-  mutate(pdss=rowMeans(cbind(adrenf2,gonadf2),na.rm=F))                                            
 ```
 
 Prepare PSS
