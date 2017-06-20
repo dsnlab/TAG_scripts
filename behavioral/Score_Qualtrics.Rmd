@@ -1,7 +1,7 @@
 ---
 title: "Score_Qualtrics"
 author: "Kate, Cameron, & Nandi"
-date: "26 May 2017"
+date: "15 July 2017"
 output: html_document
 ---
 
@@ -255,6 +255,8 @@ output.df<-as.data.frame(do.call(rbind,output.df)) %>%
 time_between <- ggplot(output.df,
                 aes(x=tag_id, y=totaldays, fill=totaldays))
 time_between + geom_bar(colour="black", stat="identity")
+
+rm(time_between,graph_dates)
 ```
 
 Prepare NDAR template
@@ -354,15 +356,30 @@ part3<-as.matrix(ndar_subject_df)
 colnames(part3)<-NULL
 together<-rbind(ndar_subject_df_header,part2,part3)
 #write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(ndar_key,ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,output.df,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
 ```
 
 Prepare BFI-10
 ```{r}
-BFI10<-filter(cleaned_survey_data, grepl("BFI",item)) %>% 
+BFI10<-left_join(filter(cleaned_survey_data, grepl("BFI",item)) %>% 
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
-  spread(item,value)
+  spread(item,value),redcap_cleaned %>%
+  filter(!is.na(dob),!is.na(sa_date)) %>%
+  select(tagid, sa_date, sb_date, dob),by="tagid")
+
+BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_enddate=value) %>% 
+  select(-item, -value) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,as.Date(qualtrics_enddate)
+                                                 )))))
+
+
 
 BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
@@ -419,7 +436,7 @@ BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>%
          BFI10_open_mean=rowMeans(cbind(BFI_10_5,BFI_10_10), na.rm=T))
 
 ## Save it
-write.csv(BFI10_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/BFI10_Wave1.csv"))
+#write.csv(BFI10_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/BFI10_Wave1.csv"))
 
 ## Graph it
 BFI10_Wave1_totals<-BFI10_Wave1 %>%
@@ -564,7 +581,7 @@ CAMM_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>%
  CAMM_total=rowSums(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10), na.rm=F))
 
 ## Save it
-write.csv(CAMM_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CAMM_Wave1.csv"))
+#write.csv(CAMM_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CAMM_Wave1.csv"))
 
 ## Graph it
 CAMM_Wave1_total_graph<-ggplot(CAMM_Wave1, aes(x=CAMM_total, colour="deeppink")) +
@@ -613,27 +630,6 @@ together<-rbind(camm_df_header,part2,part3)
 #write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/camm01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 ```
 
-IN PROG: Prepare PBIP
-```{r}
-PBIP<-filter(cleaned_survey_data, grepl("PBIP",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
-  spread(item,value)
-
-PBIP_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
-  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
-         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
-         gender="F",
-         tsmfemale=9,
-         tsmmale=9999,
-         tsmboth=9,
-         tsftsg=PBIP_1,
-         tsftphg=PBIP_3)
-
-```
 
 Prepare PDS
 ```{r}
@@ -712,6 +708,29 @@ PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>%
 ## Save it
 write.csv(PDS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PDS_Wave1.csv"))
 ```
+
+IN PROG: Prepare PBIP
+```{r}
+PBIP<-filter(cleaned_survey_data, grepl("PBIP",item)) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(!is.na(value)) %>% 
+  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+  spread(item,value)
+
+PBIP_Wave1<-left_join(PBIP,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         tsmfemale=9,
+         tsmmale=9999,
+         tsmboth=9,
+         tsftsg=PBIP_1,
+         tsftphg=PBIP_3)
+
+```
+
 
 
 
