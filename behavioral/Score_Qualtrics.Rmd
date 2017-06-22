@@ -842,7 +842,7 @@ write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/pds01.csv"),sep
 
 ```
 
-IN PROG: Prepare PBIP
+Prepare PBIP
 ```{r}
 PBIP<-left_join(filter(cleaned_survey_data, grepl("PBIP",item)) %>% 
   mutate(value=as.numeric(value)) %>%
@@ -1047,15 +1047,24 @@ rm(together,part2,part3,carersoc_df_header,carersoc_temp,carersoc_temp_df,CARE_R
 
 Prepare CES-DC 
 ```{r}
-CESDC<-filter(cleaned_survey_data, grepl("CES_DC",item)) %>% 
+CESDC<-left_join(filter(cleaned_survey_data, grepl("CES_DC",item)) %>% 
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  spread(item,value)
+  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+  spread(item,value),redcap_cleaned %>%
+  filter(!is.na(dob),!is.na(sa_date)) %>%
+  select(tagid, sa_date, sb_date, dob),by="tagid")
 
-CESDC_scored<-left_join(CESDC,survey_date, by = c("tagid", "survey_name")) %>% 
+CESDC_Wave1<-left_join(CESDC,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(qualtrics_date=value) %>% 
+  select(-item, -value) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(CES_DC_4=ifelse(CES_DC_4==0,3,
                                 ifelse(CES_DC_4==1,2,
                                      ifelse(CES_DC_4==2,1,
@@ -1080,82 +1089,258 @@ CES_DC_C=20,
 CES_DC_missing=rowSums(is.na(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20))),
 CES_DC_mean=rowMeans(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20), na.rm=T),
 CES_DC_total=rowSums(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20), na.rm=F))
+
+## Save it
+write.csv(CESDC_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CESDC_Wave1.csv"))
+
+## Graph it
+CESDC_Wave1_totals_graph<-ggplot(CESDC_Wave1, aes(x=CES_DC_total, colour="deeppink")) +
+  geom_density(alpha=.3,show.legend = FALSE)+
+  ggtitle(paste0("CESD-C total scores for ",length(CESDC_Wave1$CES_DC_total[!is.na(CESDC_Wave1$CES_DC_total)])," Wave 1 participants"))
+
+CESDC_Wave1_means_graph<-ggplot(CESDC_Wave1, aes(x=CES_DC_mean, colour="dodgerblue")) +
+  geom_density(alpha=.3, show.legend = FALSE)+
+  ggtitle(paste0("CESD-C mean scores for ",length(CESDC_Wave1$CES_DC_mean[!is.na(CESDC_Wave1$CES_DC_mean)])," Wave 1 participants"))
+
+## Make RDOC ready file
+ndar_cesdc_data <- left_join(CESDC_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         version_form="Child version (CES-DC)",
+         comments_misc=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
+                              ifelse(grepl("Session 1",survey_name),"Wave1 Session1",
+                                     ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
+                                            ifelse(grepl("Session 2",survey_name),"Wave1 Session2",
+                                                   ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",NA))))),
+         gender="F",bothered_by_things=CES_DC_1,
+         appetite_poor=CES_DC_2,
+         couldnt_shake_blues=CES_DC_3,
+         just_as_good_people=CES_DC_4,
+         trouble_keeping_mind=CES_DC_5,
+         felt_depressed=CES_DC_6,
+         everything_effort=CES_DC_7,
+         hopeful_future=CES_DC_8,
+         failure_life=CES_DC_9,
+         fearful=CES_DC_10,
+         sleep_restless=CES_DC_11,
+         happy=CES_DC_12,
+         talked_less_usual=CES_DC_13,
+         felt_lonely=CES_DC_14,
+         people_unfriendly=CES_DC_15,
+         enjoyed_life=CES_DC_16,
+         crying_spells=CES_DC_17,
+         felt_sad=CES_DC_18,
+         felt_people_dislike_me=CES_DC_19,
+         couldnt_get_going=CES_DC_20,
+         rarely_none_total=999,
+         occasionally_total=999,
+         some_little_total=999,
+         most_time_total=999,
+         cesd_score=ifelse(!is.na(CES_DC_total),CES_DC_total,"999"))
+
+ndar_cesdc_data <- left_join(ndar_key,ndar_cesdc_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("CES",ignore.case = FALSE),-dob,-survey_date,-survey_type,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid)
+cesdc_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/ces_d01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+cesdc_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/ces_d01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+cesdc_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/ces_d01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+cesdc_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/ces_d01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+cesdc_temp_df<-data.frame(cesdc_temp)
+ndar_cesdc_data<-bind_rows(cesdc_temp_df,ndar_cesdc_data)
+
+part2<-colnames(ndar_cesdc_data)
+part3<-as.matrix(ndar_cesdc_data)
+colnames(part3)<-NULL
+together<-rbind(cesdc_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ces_d01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,cesdc_df_header,cesdc_temp,cesdc_temp_df,CESDC,CESDC_Wave1,CESDC_Wave1_means_graph,CESDC_Wave1_totals_graph)
 ```
 
 Prepare CRQ
 ```{r}
-qualtricsData_raw_crq<-filter(qualtricsData_raw_long, grepl("CRQ",item)) %>% 
+CRQ<-left_join(filter(cleaned_survey_data, grepl("CRQ",item)) %>% 
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  filter(!tagid=="TAG070") %>%
-  filter(!tagid=="TAG015") %>%
-  spread(item,value)
+  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+  spread(item,value),redcap_cleaned %>%
+  filter(!is.na(dob),!is.na(sa_date)) %>%
+  select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_crq<-left_join(qualtricsData_raw_crq,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
+CRQ_Wave1<-left_join(CRQ,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>% 
+  select(-item, -value) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(CRQ_N=27,
          CRQ_missing=rowSums(is.na(cbind(CRQ_1,CRQ_2,CRQ_3,CRQ_4,CRQ_5,CRQ_6,CRQ_7,CRQ_8,CRQ_9,CRQ_10,CRQ_11,CRQ_12,CRQ_13,CRQ_14,CRQ_15,CRQ_16,CRQ_17,CRQ_18,CRQ_19,CRQ_20,CRQ_21,CRQ_22,CRQ_23,CRQ_24,CRQ_25,CRQ_26,CRQ_27))),
          CRQ_mean=rowMeans(cbind(CRQ_1,CRQ_2,CRQ_3,CRQ_4,CRQ_5,CRQ_6,CRQ_7,CRQ_8,CRQ_9,CRQ_10,CRQ_11,CRQ_12,CRQ_13,CRQ_14,CRQ_15,CRQ_16,CRQ_17,CRQ_18,CRQ_19,CRQ_20,CRQ_21,CRQ_22,CRQ_23,CRQ_24,CRQ_25,CRQ_26,CRQ_27),na.rm=T),
-         CRQ_total=rowSums(cbind(CRQ_1,CRQ_2,CRQ_3,CRQ_4,CRQ_5,CRQ_6,CRQ_7,CRQ_8,CRQ_9,CRQ_10,CRQ_11,CRQ_12,CRQ_13,CRQ_14,CRQ_15,CRQ_16,CRQ_17,CRQ_18,CRQ_19,CRQ_20,CRQ_21,CRQ_22,CRQ_23,CRQ_24,CRQ_25,CRQ_26,CRQ_27), na.rm=F))
+         CRQ_total=rowSums(cbind(CRQ_1,CRQ_2,CRQ_3,CRQ_4,CRQ_5,CRQ_6,CRQ_7,CRQ_8,CRQ_9,CRQ_10,CRQ_11,CRQ_12,CRQ_13,CRQ_14,CRQ_15,CRQ_16,CRQ_17,CRQ_18,CRQ_19,CRQ_20,CRQ_21,CRQ_22,CRQ_23,CRQ_24,CRQ_25,CRQ_26,CRQ_27), na.rm=F),
+         CRQ_rehashing_total=rowSums(cbind(CRQ_13,CRQ_14,CRQ_15,CRQ_16,CRQ_17,CRQ_18,CRQ_19,CRQ_20,CRQ_21,CRQ_22,CRQ_23,CRQ_24,CRQ_25,CRQ_26,CRQ_27), na.rm=F),
+         CRQ_rehashing_mean=round(rowMeans(cbind(CRQ_13,CRQ_14,CRQ_15,CRQ_16,CRQ_17,CRQ_18,CRQ_19,CRQ_20,CRQ_21,CRQ_22,CRQ_23,CRQ_24,CRQ_25,CRQ_26,CRQ_27), na.rm=T),3),
+         CRQ_mulling_total=rowSums(cbind(CRQ_3,CRQ_4,CRQ_7,CRQ_8,CRQ_9,CRQ_11,CRQ_12), na.rm=F),
+         CRQ_mulling_mean=round(rowMeans(cbind(CRQ_3,CRQ_4,CRQ_7,CRQ_8,CRQ_9,CRQ_11,CRQ_12), na.rm=T),3),
+         CRQ_problemtalk_total=rowSums(cbind(CRQ_2,CRQ_5,CRQ_6,CRQ_10), na.rm=F),
+         CRQ_problemtalk_mean=round(rowMeans(cbind(CRQ_2,CRQ_5,CRQ_6,CRQ_10), na.rm=T),3))
+
+## Save it
+write.csv(CRQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CRQ_Wave1.csv"))
+
+## Graph it
+CRQ_Wave1_totals<-CRQ_Wave1 %>%
+  select(tagid,CRQ_rehashing_total,CRQ_mulling_total,CRQ_problemtalk_total) %>%
+  mutate(Rehashing=CRQ_rehashing_total,
+         Mulling=CRQ_mulling_total,
+         Problem_Talk=CRQ_problemtalk_total) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("CRQ_",item))
+CRQ_Wave1_totals_graph<-ggplot(CRQ_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("CRQ total subscores for ",length(CRQ_Wave1$CRQ_total[!is.na(CRQ_Wave1$CRQ_total)])," participants"))
+
+CRQ_Wave1_means<-CRQ_Wave1 %>%
+  select(tagid,CRQ_rehashing_mean,CRQ_mulling_mean,CRQ_problemtalk_mean) %>%
+  mutate(Rehashing=CRQ_rehashing_mean,
+         Mulling=CRQ_mulling_mean,
+         Problem_Talk=CRQ_problemtalk_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("CRQ_",item))
+CRQ_Wave1_means_graph<-ggplot(CRQ_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("CRQ mean subscores for ",length(CRQ_Wave1$CRQ_mean[!is.na(CRQ_Wave1$CRQ_mean)])," participants"))
+
+## Make RDOC ready file
+ndar_crq_data <- left_join(CRQ_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         corumq_1=CRQ_1,
+         corumq_2=CRQ_2,
+         corumq_3=CRQ_3,
+         corumq_4=CRQ_4,
+         corumq_5=CRQ_5,
+         corumq_6=CRQ_6,
+         corumq_7=CRQ_7,
+         corumq_8=CRQ_8,
+         corumq_9=CRQ_9,
+         corumq_10=CRQ_10,
+         corumq_11=CRQ_11,
+         corumq_12=CRQ_12,
+         corumq_13=CRQ_13,
+         corumq_14=CRQ_14,
+         corumq_15=CRQ_15,
+         corumq_16=CRQ_16,
+         corumq_17=CRQ_17,
+         corumq_18=CRQ_18,
+         corumq_19=CRQ_19,
+         corumq_20=CRQ_20,
+         corumq_21=CRQ_21,
+         corumq_22=CRQ_22,
+         corumq_23=CRQ_23,
+         corumq_24=CRQ_24,
+         corumq_25=CRQ_25,
+         corumq_26=CRQ_26,
+         corumq_27=CRQ_27
+  )
+ndar_crq_data <- left_join(ndar_key,ndar_crq_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("CRQ",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid)
+crq_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+crq_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+crq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+crq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+crq_temp_df<-data.frame(crq_temp)
+ndar_crq_data<-bind_rows(crq_temp_df,ndar_crq_data)
+
+part2<-colnames(ndar_crq_data)
+part3<-as.matrix(ndar_crq_data)
+colnames(part3)<-NULL
+together<-rbind(crq_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/crq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,crq_df_header,crq_temp,crq_temp_df,CRQ,CRQ_Wave1,CRQ_Wave1_means,CRQ_Wave1_means_graph,CRQ_Wave1_totals,CRQ_Wave1_totals_graph)
 ```
 
 Prepare CTQ
 ```{r}
-qualtricsData_raw_ctq<-filter(qualtricsData_raw_long, grepl("CTQ",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  spread(item,value)
+CTQ<-left_join(filter(cleaned_survey_data, grepl("CTQ",item)) %>%
+                 filter(!is.na(value)) %>% 
+                 filter(!value=="") %>%
+                 filter(!grepl("TEXT",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_ctq<-left_join(qualtricsData_raw_ctq,survey_date, by = c("tagid", "survey_name")) %>%
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
+CTQ_Wave1<-left_join(CTQ,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>% 
+  select(-item, -value, -contains("TEXT")) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                          ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                          ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(CTQ_1=CTQ_1..1,
          CTQ_2=ifelse(CTQ_2..1==1,5,
-                         ifelse(CTQ_2..1==2,4,
-                                ifelse(CTQ_2..1==3,3,
-                                       ifelse(CTQ_2..1==4,2,
-                                               ifelse(CTQ_2..1==5,1,
-                                                      NA))))),
+                      ifelse(CTQ_2..1==2,4,
+                             ifelse(CTQ_2..1==3,3,
+                                    ifelse(CTQ_2..1==4,2,
+                                           ifelse(CTQ_2..1==5,1,
+                                                  NA))))),
          CTQ_3=CTQ_3..1,
          CTQ_4=CTQ_4..1,
          CTQ_5=ifelse(CTQ_5..1==1,5,
-                         ifelse(CTQ_5..1==2,4,
-                                ifelse(CTQ_5..1==3,3,
-                                       ifelse(CTQ_5..1==4,2,
-                                              ifelse(CTQ_5..1==5,1,
-                                                     NA))))),
+                      ifelse(CTQ_5..1==2,4,
+                             ifelse(CTQ_5..1==3,3,
+                                    ifelse(CTQ_5..1==4,2,
+                                           ifelse(CTQ_5..1==5,1,
+                                                  NA))))),
          CTQ_6=CTQ_6..1,
          CTQ_7=ifelse(CTQ_7..1==1,5,
-                         ifelse(CTQ_7..1==2,4,
-                                ifelse(CTQ_7..1==3,3,
-                                       ifelse(CTQ_7..1==4,2,
-                                              ifelse(CTQ_7..1==5,1,
-                                                     NA))))),
+                      ifelse(CTQ_7..1==2,4,
+                             ifelse(CTQ_7..1==3,3,
+                                    ifelse(CTQ_7..1==4,2,
+                                           ifelse(CTQ_7..1==5,1,
+                                                  NA))))),
          CTQ_8=CTQ_8..1,
          CTQ_9=CTQ_9..1,
          CTQ_10=CTQ_10..1,
          CTQ_11=CTQ_11..1,
          CTQ_12=CTQ_12..1,
          CTQ_13=ifelse(CTQ_13..1==1,5,
-                         ifelse(CTQ_13..1==2,4,
-                                ifelse(CTQ_13..1==3,3,
-                                       ifelse(CTQ_13..1==4,2,
-                                              ifelse(CTQ_13..1==5,1,
-                                                     NA))))),
+                       ifelse(CTQ_13..1==2,4,
+                              ifelse(CTQ_13..1==3,3,
+                                     ifelse(CTQ_13..1==4,2,
+                                            ifelse(CTQ_13..1==5,1,
+                                                   NA))))),
          CTQ_14=CTQ_14..1,
          CTQ_15=CTQ_15..1,
          CTQ_16=CTQ_16..1,
          CTQ_17=CTQ_17..1,
          CTQ_18=CTQ_18..1,
          CTQ_19=ifelse(CTQ_19..1==1,5,
-                         ifelse(CTQ_19..1==2,4,
-                                ifelse(CTQ_19..1==3,3,
-                                       ifelse(CTQ_19..1==4,2,
-                                               ifelse(CTQ_19..1==5,1,
-                                                      NA))))),
+                       ifelse(CTQ_19..1==2,4,
+                              ifelse(CTQ_19..1==3,3,
+                                     ifelse(CTQ_19..1==4,2,
+                                            ifelse(CTQ_19..1==5,1,
+                                                   NA))))),
          CTQ_20=CTQ_20..1,
          CTQ_21=CTQ_21..1,
          CTQ_22=CTQ_22..1,
@@ -1163,17 +1348,85 @@ qualtricsData_raw_ctq<-left_join(qualtricsData_raw_ctq,survey_date, by = c("tagi
          CTQ_24=CTQ_24..1,
          CTQ_25=CTQ_25..1,
          CTQ_26=ifelse(CTQ_26..1==1,5,
-                         ifelse(CTQ_26..1==2,4,
-                                ifelse(CTQ_26..1==3,3,
-                                       ifelse(CTQ_26..1==4,2,
-                                              ifelse(CTQ_26..1==5,1,
-                                                     NA))))),
+                       ifelse(CTQ_26..1==2,4,
+                              ifelse(CTQ_26..1==3,3,
+                                     ifelse(CTQ_26..1==4,2,
+                                            ifelse(CTQ_26..1==5,1,
+                                                   NA))))),
          CTQ_27=CTQ_27..1,
          CTQ_28=CTQ_28..1,
          CTQ_N=28,
          CTQ_missing=rowSums(is.na(cbind(CTQ_1,CTQ_2,CTQ_3,CTQ_4,CTQ_5,CTQ_6,CTQ_7,CTQ_8,CTQ_9,CTQ_10,CTQ_11,CTQ_12,CTQ_13,CTQ_14,CTQ_15,CTQ_16,CTQ_17,CTQ_18,CTQ_19,CTQ_20,CTQ_21,CTQ_22,CTQ_23,CTQ_24,CTQ_25,CTQ_26,CTQ_27,CTQ_28))),
-         CTW_mean=rowMeans(cbind(CTQ_1,CTQ_2,CTQ_3,CTQ_4,CTQ_5,CTQ_6,CTQ_7,CTQ_8,CTQ_9,CTQ_10,CTQ_11,CTQ_12,CTQ_13,CTQ_14,CTQ_15,CTQ_16,CTQ_17,CTQ_18,CTQ_19,CTQ_20,CTQ_21,CTQ_22,CTQ_23,CTQ_24,CTQ_25,CTQ_26,CTQ_27,CTQ_28),na.rm=T),
+         CTQ_mean=round(rowMeans(cbind(CTQ_1,CTQ_2,CTQ_3,CTQ_4,CTQ_5,CTQ_6,CTQ_7,CTQ_8,CTQ_9,CTQ_10,CTQ_11,CTQ_12,CTQ_13,CTQ_14,CTQ_15,CTQ_16,CTQ_17,CTQ_18,CTQ_19,CTQ_20,CTQ_21,CTQ_22,CTQ_23,CTQ_24,CTQ_25,CTQ_26,CTQ_27,CTQ_28),na.rm=T),3),
          CTQ_total=rowSums(cbind(CTQ_1,CTQ_2,CTQ_3,CTQ_4,CTQ_5,CTQ_6,CTQ_7,CTQ_8,CTQ_9,CTQ_10,CTQ_11,CTQ_12,CTQ_13,CTQ_14,CTQ_15,CTQ_16,CTQ_17,CTQ_18,CTQ_19,CTQ_20,CTQ_21,CTQ_22,CTQ_23,CTQ_24,CTQ_25,CTQ_26,CTQ_27,CTQ_28), na.rm=F))
+
+## Save it
+write.csv(CTQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CTQ_Wave1.csv"))
+
+## Graph it
+CTQ_Wave1_totals_graph<-ggplot(CTQ_Wave1, aes(x=CTQ_total, colour="deeppink")) +
+  geom_density(alpha=.3,show.legend = FALSE)+
+  ggtitle(paste0("CTQ total scores for ",length(CTQ_Wave1$CTQ_total[!is.na(CTQ_Wave1$CTQ_total)])," Wave 1 participants"))
+
+CTQ_Wave1_means_graph<-ggplot(CTQ_Wave1, aes(x=CTQ_mean, colour="dodgerblue")) +
+  geom_density(alpha=.3, show.legend = FALSE)+
+  ggtitle(paste0("CTQ mean scores for ",length(CTQ_Wave1$CTQ_mean[!is.na(CTQ_Wave1$CTQ_mean)])," Wave 1 participants"))
+
+
+## Make RDOC ready file
+ndar_ctq_data <- left_join(CTQ_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         ctq_01=CTQ_1,
+         ctq_02=CTQ_2,
+         ctq_03=CTQ_3,
+         ctq_04=CTQ_4,
+         ctq_05=CTQ_5,
+         ctq_06=CTQ_6,
+         ctq_07=CTQ_7,
+         ctq_08=CTQ_8,
+         ctq_09=CTQ_9,
+         ctq_10=CTQ_10,
+         ctq_11=CTQ_11,
+         ctq_12=CTQ_12,
+         ctq_13=CTQ_13,
+         ctq_14=CTQ_14,
+         ctq_15=CTQ_15,
+         ctq_16=CTQ_16,
+         ctq_17=CTQ_17,
+         ctq_18=CTQ_18,
+         ctq_19=CTQ_19,
+         ctq_20=CTQ_20,
+         ctq_21=CTQ_21,
+         ctq_22=CTQ_22,
+         ctq_23=CTQ_23,
+         ctq_24=CTQ_24,
+         ctq_25=CTQ_25,
+         ctq_26=CTQ_26,
+         ctq_27=CTQ_27,
+         ctq_28=CTQ_28)
+ndar_crq_data <- left_join(ndar_key,ndar_crq_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("CTQ",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid)
+crq_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+crq_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+crq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+crq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+crq_temp_df<-data.frame(crq_temp)
+ndar_crq_data<-bind_rows(crq_temp_df,ndar_crq_data)
+
+part2<-colnames(ndar_crq_data)
+part3<-as.matrix(ndar_crq_data)
+colnames(part3)<-NULL
+together<-rbind(crq_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/crq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,crq_df_header,crq_temp,crq_temp_df,CRQ,CRQ_Wave1,CRQ_Wave1_means,CRQ_Wave1_means_graph,CRQ_Wave1_totals,CRQ_Wave1_totals_graph)
 ```
 
 Prepare DIT
