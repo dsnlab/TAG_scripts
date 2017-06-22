@@ -502,7 +502,7 @@ BFI10_Wave1_totals<-BFI10_Wave1 %>%
   filter(!grepl("BFI10",item))
 BFI10_Wave1_totals_graph<-ggplot(BFI10_Wave1_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("BFI Wave1 total for ",length(unique(BFI10_Wave1_totals$tagid))," participants"))
+  ggtitle(paste0("BFI Wave1 total for ",length(BFI10_Wave1_totals$tagid[!is.na(BFI10_Wave1_totals$tagid)])," participants"))
 
 
 BFI10_Wave1_means<-BFI10_Wave1 %>%
@@ -516,7 +516,7 @@ BFI10_Wave1_means<-BFI10_Wave1 %>%
   filter(!grepl("BFI10",item))
 BFI10_Wave1_means_graph<-ggplot(BFI10_Wave1_means, aes(x=value, colour=item)) +
   geom_density(alpha=.3) +
-  ggtitle(paste0("BFI Wave1 means for ",length(unique(BFI10_Wave1_means$tagid))," participants"))
+  ggtitle(paste0("BFI Wave1 means for ",length(BFI10_Wave1_means$tagid[!is.na(BFI10_Wave1_means$tagid)])," participants"))
 
 ## Make RDOC ready file
 ndar_bfi10_data <- left_join(BFI10_Wave1,redcap_cleaned,by="tagid") %>%
@@ -787,13 +787,14 @@ PDS_Wave1_pdss_graph<-ggplot(PDS_Wave1, aes(x=pdss, colour="deeppink")) +
   ggtitle(paste0("PDSS scores for ",length(PDS_Wave1$pdss[!is.na(PDS_Wave1$pdss)])," Wave 1 participants"))
 
 options(scipen=999)
-PDS_Wave1_pdss_by_age_graph<-ggplot((left_join(PDS_Wave1,redcap_cleaned,by="tagid") %>%
+PDS_withage<-(left_join(PDS_Wave1,redcap_cleaned,by="tagid") %>%
                                        filter(!is.na(survey_date),!survey_date=="")%>%
-  mutate(age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "years")),2))), aes(x=age,y=pdss)) +
+  mutate(age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "years")),2)))
+PDS_Wave1_pdss_by_age_graph<-ggplot(PDS_withage, aes(x=age,y=pdss)) +
   geom_point(show.legend = FALSE)+
-  ggtitle(paste0("PDSS by age for ",length(PDS_Wave1$pdss[!is.na(PDS_Wave1$pdss)])," Wave 1 participants. r = ",
-                 round(cor.test(test$age,test$pdss,use=na.or.complete)[[4]],3)," p = ",
-                 cor.test(test$age,test$pdss,use=na.or.complete)[[3]]))
+  ggtitle(paste0("PDSS by age for ",length(PDS_withage$pdss[!is.na(PDS_withage$pdss)])," Wave 1 participants. r = ",
+                 round(cor.test(PDS_withage$age,PDS_withage$pdss,use=na.or.complete)[[4]],3)," p = ",
+                 cor.test(PDS_withage$age,PDS_withage$pdss,use=na.or.complete)[[3]]))
 
 ## Make RDOC ready file
 ndar_pds_data <- left_join(PDS_Wave1,redcap_cleaned,by="tagid") %>%
@@ -823,7 +824,8 @@ ndar_pds_data <- left_join(ndar_key,ndar_pds_data, by="tagid") %>%
          subjectkey=guid) %>%
   filter(!is.na(subjectkey),
          !interview_age=="") %>%
-  select(-contains("PDS",ignore.case = FALSE),-dob,-survey_date,-survey_type,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid)
+  select(-contains("PDS",ignore.case = FALSE),-dob,-survey_date,-survey_type,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,
+         -contains("pet"),-contains("adren"),-contains("gonad"),-weight,-height,-pdss)
 pds_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/pds01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
 pds_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/pds01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
 pds_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/pds01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
@@ -842,42 +844,153 @@ write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/pds01.csv"),sep
 
 IN PROG: Prepare PBIP
 ```{r}
-PBIP<-filter(cleaned_survey_data, grepl("PBIP",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
+PBIP<-left_join(filter(cleaned_survey_data, grepl("PBIP",item)) %>% 
+  mutate(value=as.numeric(value)) %>%
   filter(!is.na(value)) %>% 
   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
-  spread(item,value)
+  spread(item,value),
+  redcap_cleaned %>%
+  filter(!is.na(dob),!is.na(sa_date)) %>%
+  select(tagid, sa_date, sb_date, dob),by="tagid")
 
 PBIP_Wave1<-left_join(PBIP,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
+  mutate(qualtrics_date=value) %>% 
+  select(-item, -value) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob,-PBIP_1_Drawing,-PBIP_1_Question,-PBIP_2_Question,-PBIP_2_Drawing) %>%
+  mutate(stage=rowMeans(cbind(PBIP_1A,PBIP_2A),na.rm=T)) %>%
+  filter(!stage=="NaN")
+## Save it
+write.csv(PBIP_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PBIP_Wave1.csv"))
+
+
+## Graph it
+PBIP_Wave1_pbip_graph<-ggplot(PBIP_Wave1, aes(x=stage, colour="deeppink")) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Tanner stage for ",length(PBIP_Wave1$stage[!is.na(PBIP_Wave1$stage)])," Wave 1 participants"))
+
+options(scipen=999)
+PBIP_PDS_Wave1<-left_join(PBIP_Wave1,read.csv(paste0(workdir,"Questionnaires/Wave_1/PDS_Wave1.csv"),header=TRUE,stringsAsFactors = FALSE))
+PBIP_Wave1_pbip_by_pds_graph<-ggplot(PBIP_PDS_Wave1, aes(x=pdss,y=stage)) +
+  geom_point(show.legend = FALSE)+
+  ggtitle(paste0("PDSS by age for ",length(PBIP_PDS_Wave1$stage[!is.na(PBIP_PDS_Wave1$stage)])," Wave 1 participants. r = ",
+                 round(cor.test(PBIP_PDS_Wave1$stage,PBIP_PDS_Wave1$pdss,use=na.or.complete)[[4]],3)," p = ",
+                 cor.test(PBIP_PDS_Wave1$stage,PBIP_PDS_Wave1$pdss,use=na.or.complete)[[3]]))
+
+## Make RDOC ready file
+ndar_pbip_data <- left_join(PBIP_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
          gender="F",
-         tsmfemale=9,
+         site="University of Oregon, USA",
+         tsmfemale=stage,
          tsmmale=9999,
          tsmboth=9,
-         tsftsg=PBIP_1,
-         tsftphg=PBIP_3)
+         tsftsg=PBIP_1A,
+         tsftphg=PBIP_2A
+  )
+ndar_pbip_data <- left_join(ndar_key,ndar_pbip_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("PBIP",ignore.case = FALSE),-stage,-dob,-survey_date,-survey_type,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid)
+pbip_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/tanner_sms01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+pbip_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/tanner_sms01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+pbip_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/tanner_sms01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+pbip_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/tanner_sms01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+pbip_temp_df<-data.frame(pbip_temp)
+ndar_pbip_data<-bind_rows(pbip_temp_df,ndar_pbip_data)
+
+part2<-colnames(ndar_pbip_data)
+part3<-as.matrix(ndar_pbip_data)
+colnames(part3)<-NULL
+together<-rbind(pbip_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/tanner_sms01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 
 ```
 
-
-
-
 Prepare CARE-R Soc
 ```{r}
-qualtricsData_raw_carersoc<-filter(qualtricsData_raw_long, grepl("CARE_R",item)) %>% 
+CARE_R_SOC<-left_join(filter(cleaned_survey_data, grepl("CARE_R",item)) %>% 
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  filter(!tagid=="TAG078") %>%
-  spread(item,value)
+  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+  spread(item,value),redcap_cleaned %>%
+  filter(!is.na(dob),!is.na(sa_date)) %>%
+  select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_carersoc<-left_join(qualtricsData_raw_carersoc,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
-  mutate(carersoc_1=CARE_R_I,
+CARE_R_SOC_Wave1<-left_join(CARE_R_SOC,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>% 
+  select(-item, -value) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(carersoc_gen=rowMeans(cbind(CARE_R_I,CARE_R_II),na.rm=T),
+         carersoc_dosubstance=round(rowMeans(cbind(CARE_R_2A,CARE_R_3A,CARE_R_4A,CARE_R_5A),na.rm=T),2),
+         carersoc_avoidsubstance=round(rowMeans(cbind(CARE_R_2B,CARE_R_3B,CARE_R_4B,CARE_R_5B),na.rm=T),2),
+         carersoc_doviolence=round(rowMeans(cbind(CARE_R_7A,CARE_R_9A,CARE_R_10A,CARE_R_11A),na.rm=T),2),
+         carersoc_avoidviolence=round(rowMeans(cbind(CARE_R_7B,CARE_R_9B,CARE_R_10B,CARE_R_11B),na.rm=T),2),
+         carersoc_dorecklessdriving=round(rowMeans(cbind(CARE_R_6A,CARE_R_12A,CARE_R_13A,CARE_R_14A),na.rm=T),2),
+         carersoc_avoidrecklessdriving=round(rowMeans(cbind(CARE_R_6B,CARE_R_12B,CARE_R_13B,CARE_R_14B),na.rm=T),2),
+         carersoc_dograffiti=CARE_R_8A,
+         carersoc_avoidgraffiti=CARE_R_8B)  
+
+## Save it
+write.csv(CARE_R_SOC_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CARE_R_SOC_Wave1.csv"))
+
+## Graph it
+CARE_R_SOC_Wave1_DO<-CARE_R_SOC_Wave1 %>%
+  select(tagid,carersoc_gen,carersoc_dograffiti,carersoc_dosubstance,carersoc_doviolence,carersoc_dorecklessdriving) %>%
+  mutate(General_Social_Care=carersoc_gen,
+         Graffiti=carersoc_dograffiti,
+         Substances=carersoc_dosubstance,
+         Violence=carersoc_doviolence,
+         Reckless_Driving=carersoc_dorecklessdriving) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("carersoc_",item))
+CARE_R_SOC_Wave1_DO_graph<-ggplot(CARE_R_SOC_Wave1_DO, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("CARE-R Social Wave1: Doing these things would make people 1: like me a lot less to 5: like me a lot more. N= ",length(CARE_R_SOC_Wave1_DO$tagid[!is.na(CARE_R_SOC_Wave1_DO$tagid)])," participants"))
+
+CARE_R_SOC_Wave1_DONT<-CARE_R_SOC_Wave1 %>%
+  select(tagid,carersoc_gen,carersoc_avoidgraffiti,carersoc_avoidsubstance,carersoc_avoidviolence,carersoc_avoidrecklessdriving) %>%
+  mutate(General_Social_Care=carersoc_gen,
+         Graffiti=carersoc_avoidgraffiti,
+         Substances=carersoc_avoidsubstance,
+         Violence=carersoc_avoidviolence,
+         Reckless_Driving=carersoc_avoidrecklessdriving) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("carersoc_",item))
+CARE_R_SOC_Wave1_DONT_graph<-ggplot(CARE_R_SOC_Wave1_DONT, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("CARE-R Social Wave1: NOT doing these things would make people 1: like me a lot less to 5: like me a lot more. N= ",length(CARE_R_SOC_Wave1_DONT$tagid[!is.na(CARE_R_SOC_Wave1_DONT$tagid)])," participants"))
+
+
+## Make RDOC ready file
+ndar_carersoc_data <- left_join(CARE_R_SOC_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         version_form="CARE-R Social Outcome Appraisal Questions",
+         comments_misc=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
+                              ifelse(grepl("Session 1",survey_name),"Wave1 Session1",
+                                     ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
+                                            ifelse(grepl("Session 2",survey_name),"Wave1 Session2",
+                                                   ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",NA))))),
+         gender="F",
+         carersoc_1=CARE_R_I,
          carersoc_2=CARE_R_II,
          carersoc_3=CARE_R_1A,
          carersoc_4=CARE_R_1B,
@@ -906,7 +1019,30 @@ qualtricsData_raw_carersoc<-left_join(qualtricsData_raw_carersoc,survey_date, by
          carersoc_27=CARE_R_13A,
          carersoc_28=CARE_R_13B,
          carersoc_29=CARE_R_14A,
-         carersoc_30=CARE_R_14B)
+         carersoc_30=CARE_R_14B
+  )
+ndar_carersoc_data <- left_join(ndar_key,ndar_carersoc_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("CARE_R",ignore.case = FALSE),-dob,-survey_date,-survey_type,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,
+         -contains("substance"),-carersoc_gen,-contains("violence"),-contains("graffiti"),-contains("reckless"))
+carersoc_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/caore01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+carersoc_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/caore01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+carersoc_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/caore01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+carersoc_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/caore01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+carersoc_temp_df<-data.frame(carersoc_temp)
+ndar_carersoc_data<-bind_rows(carersoc_temp_df,ndar_carersoc_data)
+
+part2<-colnames(ndar_carersoc_data)
+part3<-as.matrix(ndar_carersoc_data)
+colnames(part3)<-NULL
+together<-rbind(carersoc_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/caore01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,carersoc_df_header,carersoc_temp,carersoc_temp_df,CARE_R_SOC,CARE_R_SOC_Wave1,CARE_R_SOC_Wave1_DO,CARE_R_SOC_Wave1_DO_graph,
+   CARE_R_SOC_Wave1_DONT_graph,CARE_R_SOC_Wave1_DONT,output.df)
 ```
 
 Prepare CES-DC 
