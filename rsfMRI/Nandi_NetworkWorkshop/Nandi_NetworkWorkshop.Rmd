@@ -60,7 +60,7 @@ gordon_rhparcels<-as.data.frame(read.table(paste0(parcellation_list_dir,"rhlabel
 gordon<-bind_rows(gordon_rhparcels,gordon_lhparcels)
 
 aparc_parcels<-as.data.frame(read.table(paste0(parcellation_list_dir,"aparcrois.txt"))[[1]]) %>%
-  mutate(parcel_name=.[[1]]) %>%
+  mutate(parcel_name=paste0("aparc_",.[[1]])) %>%
   select(parcel_name)
   
 collectAndCorTimecourses <- function(sub, parcels, scrubbingThreshold, sub_base_dir) {
