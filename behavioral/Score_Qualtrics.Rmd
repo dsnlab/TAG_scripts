@@ -60,7 +60,10 @@ get_survey_data<-function(surveysDF,pid_col){
   long_survey_data
 }
 
-long_survey_data<-get_survey_data(survey_info,pid_col="SID") %>% mutate(value = ifelse(value == -99, NA, value))
+long_survey_data<-get_survey_data(survey_info,pid_col="SID") %>% mutate(value = ifelse(value == -99, NA, value)) %>%
+  mutate(SID=ifelse(SID=="",SID_embed,
+                    ifelse(is.na(SID),SID_embed,SID))) %>%
+  select(-SID_embed)
 embedded_qs<-survey_info %>% filter(SurveyName=="TAG - Home Qs - V3 - with SID embedded")
 sortbyqid_data<-get_survey_data(embedded_qs,pid_col="qid") %>% mutate(value = ifelse(value == -99, NA, value))
 rm(creds,credsFile,get_survey_data)
@@ -267,16 +270,35 @@ write.csv(guid_batch_ids,file=paste0(workdir,"RDoCDb/confidential/GUID_batch_sub
 
 Get Survey Date info
 ```{r}
-survey_date<-filter(cleaned_survey_data, grepl("StartDate",item)) %>%
+survey_startdate<-filter(cleaned_survey_data, grepl("StartDate",item)) %>%
   filter(!survey_name=="Sharing Task Experience Survey") %>%
-  mutate(value=as.Date(value),
+  mutate(startdate=as.Date(value),
+         survey_type=ifelse(grepl("Sess 1",survey_name),"Sess 1",
+                            ifelse(grepl("Sess 2",survey_name),"Sess 2",
+                                   ifelse(grepl("Parent",survey_name),"Parent",
+                                          ifelse(grepl("Home",survey_name),"Home",
+                                                 NA)))))  %>%
+  select(-value,-item) %>%
+  filter(!survey_type=="Parent") %>%
+  dplyr::arrange(startdate)
+
+survey_originaldate<-filter(cleaned_survey_data, grepl("original.date.timestamp",item)) %>%
+  filter(!survey_name=="Sharing Task Experience Survey") %>%
+  filter(!value=="") %>%
+  mutate(originaldate=as.Date(value),
          survey_type=ifelse(grepl("Sess 1",survey_name),"Sess 1",
                             ifelse(grepl("Sess 2",survey_name),"Sess 2",
                                    ifelse(grepl("Parent",survey_name),"Parent",
                                           ifelse(grepl("Home",survey_name),"Home",
                                                  NA))))) %>%
+  select(-value,-item) %>%
   filter(!survey_type=="Parent") %>%
-  dplyr::arrange(value)
+  dplyr::arrange(originaldate)
+
+survey_date<-left_join(survey_startdate,survey_originaldate) %>%
+  mutate(value=as.Date(ifelse(is.na(originaldate),startdate,originaldate),origin="1970-01-01 UTC")) %>%
+  select(-originaldate,-startdate)
+
 graph_dates<-ggplot(survey_date, aes(x=value, y=tagid, group=tagid)) +
   geom_line(aes(colour="black"), alpha=.5) +
   geom_point(aes(colour = survey_type)) +
@@ -2361,7 +2383,7 @@ if (length(RMET$tagid) == length(unique(RMET$tagid))){
 RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
-  select(-item, -value)%>%
+  select(-value)%>%
   mutate(survey_date=ifelse(grepl("Sess 1",survey_name),sa_date,
                             ifelse(grepl("Sess 2",survey_name),sb_date,
                                    ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
@@ -2379,48 +2401,48 @@ RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name")) %>%
                                ifelse(RMET_3==2,0,
                                       ifelse(RMET_3==3,0,
                                              ifelse(RMET_3==4,0,NA)))),
-         RMET_4_correct=ifelse(RMET_4==1,1,
-                               ifelse(RMET_4==2,0,
+         RMET_4_correct=ifelse(RMET_4==1,0,
+                               ifelse(RMET_4==2,1,
                                       ifelse(RMET_4==3,0,
                                              ifelse(RMET_4==4,0,NA)))),
-         RMET_5_correct=ifelse(RMET_5==1,1,
-                               ifelse(RMET_5==2,0,
+         RMET_5_correct=ifelse(RMET_5==1,0,
+                               ifelse(RMET_5==2,1,
                                       ifelse(RMET_5==3,0,
                                              ifelse(RMET_5==4,0,NA)))),
-         RMET_6_correct=ifelse(RMET_6==1,1,
+         RMET_6_correct=ifelse(RMET_6==1,0,
                                ifelse(RMET_6==2,0,
-                                      ifelse(RMET_6==3,0,
+                                      ifelse(RMET_6==3,1,
                                              ifelse(RMET_6==4,0,NA)))),
-         RMET_7_correct=ifelse(RMET_7==1,1,
+         RMET_7_correct=ifelse(RMET_7==1,0,
                                ifelse(RMET_7==2,0,
-                                      ifelse(RMET_7==3,0,
+                                      ifelse(RMET_7==3,1,
                                              ifelse(RMET_7==4,0,NA)))),
          RMET_8_correct=ifelse(RMET_8==1,1,
                                ifelse(RMET_8==2,0,
                                       ifelse(RMET_8==3,0,
                                              ifelse(RMET_8==4,0,NA)))),
-         RMET_9_correct=ifelse(RMET_9==1,1,
+         RMET_9_correct=ifelse(RMET_9==1,0,
                                ifelse(RMET_9==2,0,
                                       ifelse(RMET_9==3,0,
-                                             ifelse(RMET_9==4,0,NA)))),
-         RMET_10_correct=ifelse(RMET_10==1,1,
+                                             ifelse(RMET_9==4,1,NA)))),
+         RMET_10_correct=ifelse(RMET_10==1,0,
                                ifelse(RMET_10==2,0,
-                                      ifelse(RMET_10==3,0,
+                                      ifelse(RMET_10==3,1,
                                              ifelse(RMET_10==4,0,NA)))),
-         RMET_11_correct=ifelse(RMET_11==1,1,
-                               ifelse(RMET_11==2,0,
+         RMET_11_correct=ifelse(RMET_11==1,0,
+                               ifelse(RMET_11==2,1,
                                       ifelse(RMET_11==3,0,
                                              ifelse(RMET_11==4,0,NA)))),
-         RMET_12_correct=ifelse(RMET_12==1,1,
+         RMET_12_correct=ifelse(RMET_12==1,0,
                                ifelse(RMET_12==2,0,
                                       ifelse(RMET_12==3,0,
-                                             ifelse(RMET_12==4,0,NA)))),
+                                             ifelse(RMET_12==4,1,NA)))),
          RMET_13_correct=ifelse(RMET_13==1,1,
                                ifelse(RMET_13==2,0,
                                       ifelse(RMET_13==3,0,
                                              ifelse(RMET_13==4,0,NA)))),
-         RMET_14_correct=ifelse(RMET_14==1,1,
-                               ifelse(RMET_14==2,0,
+         RMET_14_correct=ifelse(RMET_14==1,0,
+                               ifelse(RMET_14==2,1,
                                       ifelse(RMET_14==3,0,
                                              ifelse(RMET_14==4,0,NA)))),
          RMET_15_correct=ifelse(RMET_15==1,1,
@@ -2431,80 +2453,99 @@ RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name")) %>%
                                ifelse(RMET_16==2,0,
                                       ifelse(RMET_16==3,0,
                                              ifelse(RMET_16==4,0,NA)))),
-         RMET_17_correct=ifelse(RMET_17==1,1,
+         RMET_17_correct=ifelse(RMET_17==1,0,
                                ifelse(RMET_17==2,0,
                                       ifelse(RMET_17==3,0,
-                                             ifelse(RMET_17==4,0,NA)))),
+                                             ifelse(RMET_17==4,1,NA)))),
          RMET_18_correct=ifelse(RMET_18==1,1,
                                ifelse(RMET_18==2,0,
                                       ifelse(RMET_18==3,0,
                                              ifelse(RMET_18==4,0,NA)))),
-         RMET_19_correct=ifelse(RMET_19==1,1,
+         RMET_19_correct=ifelse(RMET_19==1,0,
                                ifelse(RMET_19==2,0,
                                       ifelse(RMET_19==3,0,
-                                             ifelse(RMET_19==4,0,NA)))),
-         RMET_20_correct=ifelse(RMET_20==1,1,
+                                             ifelse(RMET_19==4,1,NA)))),
+         RMET_20_correct=ifelse(RMET_20==1,0,
                                ifelse(RMET_20==2,0,
-                                      ifelse(RMET_20==3,0,
+                                      ifelse(RMET_20==3,1,
                                              ifelse(RMET_20==4,0,NA)))),
          RMET_21_correct=ifelse(RMET_21==1,1,
                                ifelse(RMET_21==2,0,
                                       ifelse(RMET_21==3,0,
                                              ifelse(RMET_21==4,0,NA)))),
-         RMET_22_correct=ifelse(RMET_3==1,1,
-                               ifelse(RMET_3==2,0,
-                                      ifelse(RMET_3==3,0,
-                                             ifelse(RMET_3==4,0,NA)))),
-         RMET_23_correct=ifelse(RMET_3==1,1,
-                               ifelse(RMET_3==2,0,
-                                      ifelse(RMET_3==3,0,
-                                             ifelse(RMET_3==4,0,NA)))),
-         RMET_24_correct=ifelse(RMET_3==1,1,
-                               ifelse(RMET_3==2,0,
-                                      ifelse(RMET_3==3,0,
-                                             ifelse(RMET_3==4,0,NA)))),
-         RMET_25_correct=ifelse(RMET_3==1,1,
-                               ifelse(RMET_3==2,0,
-                                      ifelse(RMET_3==3,0,
-                                             ifelse(RMET_3==4,0,NA)))),
-         RMET_26_correct=ifelse(RMET_3==1,1,
-                               ifelse(RMET_3==2,0,
-                                      ifelse(RMET_3==3,0,
-                                             ifelse(RMET_3==4,0,NA)))),
-         RMET_27_correct=ifelse(RMET_3==1,1,
-                               ifelse(RMET_3==2,0,
-                                      ifelse(RMET_3==3,0,
-                                             ifelse(RMET_3==4,0,NA)))),
-         RMET_28_correct=ifelse(RMET_3==1,1,
-                               ifelse(RMET_3==2,0,
-                                      ifelse(RMET_3==3,0,
-                                             ifelse(RMET_3==4,0,NA)))),
-         RMET_1_numcompleted=,
-         RMET_Total_Score=,
-         RMET_Adj_Score=)
-  
-  
+         RMET_22_correct=ifelse(RMET_22==1,0,
+                               ifelse(RMET_22==2,0,
+                                      ifelse(RMET_22==3,0,
+                                             ifelse(RMET_22==4,1,NA)))),
+         RMET_23_correct=ifelse(RMET_23==1,0,
+                               ifelse(RMET_23==2,1,
+                                      ifelse(RMET_23==3,0,
+                                             ifelse(RMET_23==4,0,NA)))),
+         RMET_24_correct=ifelse(RMET_24==1,1,
+                               ifelse(RMET_24==2,0,
+                                      ifelse(RMET_24==3,0,
+                                             ifelse(RMET_24==4,0,NA)))),
+         RMET_25_correct=ifelse(RMET_25==1,0,
+                               ifelse(RMET_25==2,0,
+                                      ifelse(RMET_25==3,0,
+                                             ifelse(RMET_25==4,1,NA)))),
+         RMET_26_correct=ifelse(RMET_26==1,0,
+                               ifelse(RMET_26==2,0,
+                                      ifelse(RMET_26==3,1,
+                                             ifelse(RMET_26==4,0,NA)))),
+         RMET_27_correct=ifelse(RMET_27==1,0,
+                               ifelse(RMET_27==2,0,
+                                      ifelse(RMET_27==3,1,
+                                             ifelse(RMET_27==4,0,NA)))),
+         RMET_28_correct=ifelse(RMET_28==1,0,
+                               ifelse(RMET_28==2,0,
+                                      ifelse(RMET_28==3,1,
+                                             ifelse(RMET_28==4,0,NA)))),
+         RMET_missing=rowSums(is.na(cbind(RMET_1,RMET_2,RMET_3,RMET_4,RMET_5,RMET_6,
+                                          RMET_7,RMET_8,RMET_9,RMET_10,RMET_11,RMET_12,
+                                          RMET_13,RMET_14,RMET_15,RMET_16,RMET_17,
+                                          RMET_18,RMET_19,RMET_20,RMET_21,RMET_22,
+                                          RMET_23,RMET_24,RMET_25,RMET_26,
+                                          RMET_27,RMET_28))))%>%
+  mutate(RMET_1_numcompleted=(28-RMET_missing),
+         RMET_Total_Score=rowSums(cbind(RMET_1_correct,RMET_2_correct,
+                                        RMET_3_correct,RMET_4_correct,
+                                        RMET_5_correct,RMET_6_correct,
+                                        RMET_7_correct,RMET_8_correct,
+                                        RMET_9_correct,RMET_10_correct,
+                                        RMET_11_correct,RMET_12_correct,
+                                        RMET_13_correct,RMET_14_correct,
+                                        RMET_15_correct,RMET_16_correct,
+                                        RMET_17_correct,RMET_18_correct,
+                                        RMET_19_correct,RMET_20_correct,
+                                        RMET_21_correct,RMET_22_correct,
+                                        RMET_23_correct,RMET_24_correct,
+                                        RMET_25_correct,RMET_26_correct,
+                                        RMET_27_correct,RMET_28_correct),na.rm = F)) %>%
+  mutate(RMET_Percent_Correct=(rowSums(cbind(RMET_1_correct,RMET_2_correct,
+                                        RMET_3_correct,RMET_4_correct,
+                                        RMET_5_correct,RMET_6_correct,
+                                        RMET_7_correct,RMET_8_correct,
+                                        RMET_9_correct,RMET_10_correct,
+                                        RMET_11_correct,RMET_12_correct,
+                                        RMET_13_correct,RMET_14_correct,
+                                        RMET_15_correct,RMET_16_correct,
+                                        RMET_17_correct,RMET_18_correct,
+                                        RMET_19_correct,RMET_20_correct,
+                                        RMET_21_correct,RMET_22_correct,
+                                        RMET_23_correct,RMET_24_correct,
+                                        RMET_25_correct,RMET_26_correct,
+                                        RMET_27_correct,RMET_28_correct),na.rm = T)/RMET_1_numcompleted)*100)
 ## Save it
 write.csv(RMET_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/RMET_Wave1.csv"))
 
 ## Graph it
-RMET_Wave1_totals<-RMET_Wave1 %>%
-  select(tagid,RMET_total) %>%
-  mutate(Perceived_Stress=RMET_total) %>%
-  gather('item','value',2:length(.)) %>%
-  filter(!grepl("RMET_",item))
-RMET_Wave1_totals_graph<-ggplot(RMET_Wave1_totals, aes(x=value, colour=item)) +
+RMET_Wave1_percentcorrect<-RMET_Wave1 %>%
+  select(tagid,RMET_Percent_Correct) %>%
+  gather('item','value',2:length(.)) 
+RMET_Wave1_percentcorrect_graph<-ggplot(RMET_Wave1_percentcorrect, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("RMET total score for ",length(unique(RMET_Wave1$tagid[!is.na(RMET_Wave1$RMET_total)]))," participants"))
-
-RMET_Wave1_means<-RMET_Wave1 %>%
-  select(tagid,RMET_mean) %>%
-  mutate(Perceived_Stress=RMET_mean) %>%
-  gather('item','value',2:length(.)) %>%
-  filter(!grepl("RMET_",item))
-RMET_Wave1_means_graph<-ggplot(RMET_Wave1_means, aes(x=value, colour=item)) +
-  geom_density(alpha=.3)+
-  ggtitle(paste0("RMET mean score for ",length(unique(RMET_Wave1$tagid[!is.na(RMET_Wave1$tagid)]))," participants"))
+  ggtitle(paste0("RMET Percent Correct for ",length(unique(RMET_Wave1$tagid[!is.na(RMET_Wave1$RMET_Percent_Correct)]))," participants"))
 
 
 ## Make RDOC ready file
