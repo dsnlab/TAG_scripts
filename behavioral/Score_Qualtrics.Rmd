@@ -2344,7 +2344,220 @@ rm(together,part2,part3,pss_df_header,pss_temp,pss_temp_df,PSS,PSS_Wave1,PSS_Wav
 
 Prepare RMET
 ```{r}
+RMET<-left_join(filter(cleaned_survey_data, grepl("RMET",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
 
+if (length(RMET$tagid) == length(unique(RMET$tagid))){
+  print("No duplicate TAGIDs in data")
+}
+
+RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-item, -value)%>%
+  mutate(survey_date=ifelse(grepl("Sess 1",survey_name),sa_date,
+                            ifelse(grepl("Sess 2",survey_name),sb_date,
+                                   ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                   )))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>% # remove this line when making RDoC db document
+  mutate(RMET_1_correct=ifelse(RMET_1==1,0,
+                               ifelse(RMET_1==2,0,
+                                      ifelse(RMET_1==3,1,
+                                             ifelse(RMET_1==4,0,NA)))),
+         RMET_2_correct=ifelse(RMET_2==1,0,
+                               ifelse(RMET_2==2,0,
+                                      ifelse(RMET_2==3,0,
+                                             ifelse(RMET_2==4,1,NA)))),
+         RMET_3_correct=ifelse(RMET_3==1,1,
+                               ifelse(RMET_3==2,0,
+                                      ifelse(RMET_3==3,0,
+                                             ifelse(RMET_3==4,0,NA)))),
+         RMET_4_correct=ifelse(RMET_4==1,1,
+                               ifelse(RMET_4==2,0,
+                                      ifelse(RMET_4==3,0,
+                                             ifelse(RMET_4==4,0,NA)))),
+         RMET_5_correct=ifelse(RMET_5==1,1,
+                               ifelse(RMET_5==2,0,
+                                      ifelse(RMET_5==3,0,
+                                             ifelse(RMET_5==4,0,NA)))),
+         RMET_6_correct=ifelse(RMET_6==1,1,
+                               ifelse(RMET_6==2,0,
+                                      ifelse(RMET_6==3,0,
+                                             ifelse(RMET_6==4,0,NA)))),
+         RMET_7_correct=ifelse(RMET_7==1,1,
+                               ifelse(RMET_7==2,0,
+                                      ifelse(RMET_7==3,0,
+                                             ifelse(RMET_7==4,0,NA)))),
+         RMET_8_correct=ifelse(RMET_8==1,1,
+                               ifelse(RMET_8==2,0,
+                                      ifelse(RMET_8==3,0,
+                                             ifelse(RMET_8==4,0,NA)))),
+         RMET_9_correct=ifelse(RMET_9==1,1,
+                               ifelse(RMET_9==2,0,
+                                      ifelse(RMET_9==3,0,
+                                             ifelse(RMET_9==4,0,NA)))),
+         RMET_10_correct=ifelse(RMET_10==1,1,
+                               ifelse(RMET_10==2,0,
+                                      ifelse(RMET_10==3,0,
+                                             ifelse(RMET_10==4,0,NA)))),
+         RMET_11_correct=ifelse(RMET_11==1,1,
+                               ifelse(RMET_11==2,0,
+                                      ifelse(RMET_11==3,0,
+                                             ifelse(RMET_11==4,0,NA)))),
+         RMET_12_correct=ifelse(RMET_12==1,1,
+                               ifelse(RMET_12==2,0,
+                                      ifelse(RMET_12==3,0,
+                                             ifelse(RMET_12==4,0,NA)))),
+         RMET_13_correct=ifelse(RMET_13==1,1,
+                               ifelse(RMET_13==2,0,
+                                      ifelse(RMET_13==3,0,
+                                             ifelse(RMET_13==4,0,NA)))),
+         RMET_14_correct=ifelse(RMET_14==1,1,
+                               ifelse(RMET_14==2,0,
+                                      ifelse(RMET_14==3,0,
+                                             ifelse(RMET_14==4,0,NA)))),
+         RMET_15_correct=ifelse(RMET_15==1,1,
+                               ifelse(RMET_15==2,0,
+                                      ifelse(RMET_15==3,0,
+                                             ifelse(RMET_15==4,0,NA)))),
+         RMET_16_correct=ifelse(RMET_16==1,1,
+                               ifelse(RMET_16==2,0,
+                                      ifelse(RMET_16==3,0,
+                                             ifelse(RMET_16==4,0,NA)))),
+         RMET_17_correct=ifelse(RMET_17==1,1,
+                               ifelse(RMET_17==2,0,
+                                      ifelse(RMET_17==3,0,
+                                             ifelse(RMET_17==4,0,NA)))),
+         RMET_18_correct=ifelse(RMET_18==1,1,
+                               ifelse(RMET_18==2,0,
+                                      ifelse(RMET_18==3,0,
+                                             ifelse(RMET_18==4,0,NA)))),
+         RMET_19_correct=ifelse(RMET_19==1,1,
+                               ifelse(RMET_19==2,0,
+                                      ifelse(RMET_19==3,0,
+                                             ifelse(RMET_19==4,0,NA)))),
+         RMET_20_correct=ifelse(RMET_20==1,1,
+                               ifelse(RMET_20==2,0,
+                                      ifelse(RMET_20==3,0,
+                                             ifelse(RMET_20==4,0,NA)))),
+         RMET_21_correct=ifelse(RMET_21==1,1,
+                               ifelse(RMET_21==2,0,
+                                      ifelse(RMET_21==3,0,
+                                             ifelse(RMET_21==4,0,NA)))),
+         RMET_22_correct=ifelse(RMET_3==1,1,
+                               ifelse(RMET_3==2,0,
+                                      ifelse(RMET_3==3,0,
+                                             ifelse(RMET_3==4,0,NA)))),
+         RMET_23_correct=ifelse(RMET_3==1,1,
+                               ifelse(RMET_3==2,0,
+                                      ifelse(RMET_3==3,0,
+                                             ifelse(RMET_3==4,0,NA)))),
+         RMET_24_correct=ifelse(RMET_3==1,1,
+                               ifelse(RMET_3==2,0,
+                                      ifelse(RMET_3==3,0,
+                                             ifelse(RMET_3==4,0,NA)))),
+         RMET_25_correct=ifelse(RMET_3==1,1,
+                               ifelse(RMET_3==2,0,
+                                      ifelse(RMET_3==3,0,
+                                             ifelse(RMET_3==4,0,NA)))),
+         RMET_26_correct=ifelse(RMET_3==1,1,
+                               ifelse(RMET_3==2,0,
+                                      ifelse(RMET_3==3,0,
+                                             ifelse(RMET_3==4,0,NA)))),
+         RMET_27_correct=ifelse(RMET_3==1,1,
+                               ifelse(RMET_3==2,0,
+                                      ifelse(RMET_3==3,0,
+                                             ifelse(RMET_3==4,0,NA)))),
+         RMET_28_correct=ifelse(RMET_3==1,1,
+                               ifelse(RMET_3==2,0,
+                                      ifelse(RMET_3==3,0,
+                                             ifelse(RMET_3==4,0,NA)))),
+         RMET_1_numcompleted=,
+         RMET_Total_Score=,
+         RMET_Adj_Score=)
+  
+  
+## Save it
+write.csv(RMET_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/RMET_Wave1.csv"))
+
+## Graph it
+RMET_Wave1_totals<-RMET_Wave1 %>%
+  select(tagid,RMET_total) %>%
+  mutate(Perceived_Stress=RMET_total) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("RMET_",item))
+RMET_Wave1_totals_graph<-ggplot(RMET_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("RMET total score for ",length(unique(RMET_Wave1$tagid[!is.na(RMET_Wave1$RMET_total)]))," participants"))
+
+RMET_Wave1_means<-RMET_Wave1 %>%
+  select(tagid,RMET_mean) %>%
+  mutate(Perceived_Stress=RMET_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("RMET_",item))
+RMET_Wave1_means_graph<-ggplot(RMET_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("RMET mean score for ",length(unique(RMET_Wave1$tagid[!is.na(RMET_Wave1$tagid)]))," participants"))
+
+
+## Make RDOC ready file
+ndar_rmet_data <- RMET_Wave1 %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         visit=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
+                      ifelse(grepl("Session 1",survey_name),"Wave1 Session1",
+                             ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
+                                    ifelse(grepl("Session 2",survey_name),"Wave1 Session2",
+                                           ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",
+                                                  NA))))),
+         version_form="Child Version",
+         gender="F",
+         rmet_cv001=RMET_1,
+         rmet_cv002=RMET_2,
+         rmet_cv003=RMET_3,
+         rmet_cv004=RMET_4,
+         rmet_cv005=RMET_5,
+         rmet_cv006=RMET_6,
+         rmet_cv007=RMET_7,
+         rmet_cv008=RMET_8,
+         rmet_cv009=RMET_9,
+         rmet_cv010=RMET_10,
+         rmet_cv011=RMET_11,
+         rmet_cv012=RMET_12,
+         rmet_cv013=RMET_13,
+         rmet_cv014=RMET_14
+  )
+
+ndar_rmet_data <- left_join(ndar_key,ndar_rmet_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("RMET",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type,-qualtrics_date)
+rmet_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/rmet01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+rmet_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/rmet01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+rmet_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/rmet01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+rmet_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/rmet01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+rmet_temp_df<-data.frame(rmet_temp)
+ndar_rmet_data<-bind_rows(rmet_temp_df,ndar_rmet_data)
+
+part2<-colnames(ndar_rmet_data)
+part3<-as.matrix(ndar_rmet_data)
+colnames(part3)<-NULL
+together<-rbind(rmet_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/rmet01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,rmet_df_header,rmet_temp,rmet_temp_df,RMET,RMET_Wave1,RMET_Wave1_means,RMET_Wave1_means_graph,
+   RMET_Wave1_totals,RMET_Wave1_totals_graph)
 ```
 
 Prepare R-SCS-C
