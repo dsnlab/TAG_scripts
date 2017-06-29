@@ -412,8 +412,8 @@ part2<-colnames(ndar_subject_df)
 part3<-as.matrix(ndar_subject_df)
 colnames(part3)<-NULL
 together<-rbind(ndar_subject_df_header,part2,part3)
-#write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(ndar_key,ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,output.df,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,output.df,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
 ```
 
 Prepare BFI-10
@@ -554,7 +554,7 @@ part2<-colnames(ndar_bfi10_data)
 part3<-as.matrix(ndar_bfi10_data)
 colnames(part3)<-NULL
 together<-rbind(bfi10_df_header,part2,part3)
-#write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 
 ```
 
@@ -2111,7 +2111,7 @@ MSPSS<-left_join(filter(cleaned_survey_data, grepl("MSPSS",item)) %>%
                   mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value)) %>%
                   filter(!value=="") %>%
-                  distinct(tagid,item,value,survey_name.keep_all = FALSE) %>%
+                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
                   spread(item,value),
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
@@ -2130,107 +2130,119 @@ MSPSS_Wave1<-left_join(MSPSS,survey_date, by = c("tagid","survey_name")) %>%
                                    ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
                                    )))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
-  mutate(mspss_fam=rowSums(cbind(MSPSS_3,MSPSS_4,MSPSS_8,MSPSS_11), na.rm=T),
-         mspss_fri=rowSums(cbind(MSPSS_6,MSPSS_7,MSPSS_9,MSPSS_12), na.rm=T),
-         mspss_so=rowSums(cbind(MSPSS_1,MSPSS_2,MSPSS_5,MSPSS_10), na.rm=T)) %>%
-  mutate(mspss_total=rowSums(cbind(mspss_fam+mspss_fri+mspss_so), na.rm=T))
-
-
+  mutate(MSPSS_fam_total=rowSums(cbind(MSPSS_3,MSPSS_4,MSPSS_8,MSPSS_11), na.rm=F),
+         MSPSS_fri_total=rowSums(cbind(MSPSS_6,MSPSS_7,MSPSS_9,MSPSS_12), na.rm=F),
+         MSPSS_so_total=rowSums(cbind(MSPSS_1,MSPSS_2,MSPSS_5,MSPSS_10), na.rm=F),
+         MSPSS_fam_mean=rowMeans(cbind(MSPSS_3,MSPSS_4,MSPSS_8,MSPSS_11), na.rm=T),
+         MSPSS_fri_mean=rowMeans(cbind(MSPSS_6,MSPSS_7,MSPSS_9,MSPSS_12), na.rm=T),
+         MSPSS_so_mean=rowMeans(cbind(MSPSS_1,MSPSS_2,MSPSS_5,MSPSS_10), na.rm=T),
+         MSPSS_mean=rowMeans(cbind(MSPSS_1,MSPSS_2,MSPSS_3,MSPSS_4,MSPSS_5,MSPSS_6,MSPSS_7,
+                                   MSPSS_8,MSPSS_9,MSPSS_10,MSPSS_11,MSPSS_12), na.rm=T)) %>%
+  mutate(MSPSS_total=rowSums(cbind(MSPSS_fam_total,MSPSS_fri_total,MSPSS_so_total), na.rm=F))
 
 ## Save it
-write.csv(MSPSS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/KSRQ_Wave1.csv"))
+write.csv(MSPSS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/MSPSS_Wave1.csv"))
 
 ## Graph it
-KSRQ_Wave1_means<-KSRQ_Wave1 %>%
-  select(tagid,KSRQ_adm_mean,KSRQ_negsoc_mean,KSRQ_pass_mean,KSRQ_prosoc_mean,
-         KSRQ_sex_mean,KSRQ_social_mean) %>%
-  mutate(Admiration=KSRQ_adm_mean,
-         Negative_Social_Potency=KSRQ_negsoc_mean,
-         Passivity=KSRQ_pass_mean,
-         Prosocial_Interactions=KSRQ_prosoc_mean,
-         Sexual_Relationships=KSRQ_sex_mean,
-         Sociability=KSRQ_social_mean) %>%
+MSPSS_Wave1_totals<-MSPSS_Wave1 %>%
+  select(tagid,MSPSS_fam_total,MSPSS_fri_total,MSPSS_so_total) %>%
+  mutate(Family_Support=MSPSS_fam_total,
+         Friend_Support=MSPSS_fri_total,
+         SigOther_Support=MSPSS_so_total) %>%
   gather('item','value',2:length(.)) %>%
-  filter(!grepl("KSRQ_",item))
-KSRQ_Wave1_means_graph<-ggplot(KSRQ_Wave1_means, aes(x=value, colour=item)) +
+  filter(!grepl("MSPSS_",item))
+MSPSS_Wave1_totals_graph<-ggplot(MSPSS_Wave1_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("KSRQ mean subscores for ",length(unique(KSRQ_Wave1$tagid[!is.na(KSRQ_Wave1$tagid)]))," participants"))
+  ggtitle(paste0("MSPSS total subscores for ",length(unique(MSPSS_Wave1$tagid[!is.na(MSPSS_Wave1$tagid)]))," participants"))
+
+MSPSS_Wave1_means<-MSPSS_Wave1 %>%
+  select(tagid,MSPSS_fam_mean,MSPSS_fri_mean,MSPSS_so_mean) %>%
+  mutate(Family_Support=MSPSS_fam_mean,
+         Friend_Support=MSPSS_fri_mean,
+         SigOther_Support=MSPSS_so_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("MSPSS_",item))
+MSPSS_Wave1_means_graph<-ggplot(MSPSS_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("MSPSS mean subscores for ",length(unique(MSPSS_Wave1$tagid[!is.na(MSPSS_Wave1$tagid)]))," participants"))
+
 
 ## Make RDOC ready file
-ndar_ksrq_data <- left_join(KSRQ_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_mspss_data <- left_join(MSPSS_Wave1,redcap_cleaned,by="tagid") %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
          gender="F",
-         comments_misc=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
-                             ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
-                                           ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",NA))),
-         version_form="Child version",
-         site="University of Oregon",
-         study="Transitions in Adolescent Girls (TAG) Study",
-         ksrq_1=K_SRQ_1,
-         ksrq_2=K_SRQ_2,
-         ksrq_3=K_SRQ_3,
-         ksrq_4=K_SRQ_4,
-         ksrq_5=K_SRQ_5,
-         ksrq_6=K_SRQ_6,
-         ksrq_7=K_SRQ_7,
-         ksrq_8=K_SRQ_8,
-         ksrq_9=K_SRQ_9,
-         ksrq_10=K_SRQ_10,
-         ksrq_11=K_SRQ_11,
-         ksrq_12=K_SRQ_12,
-         ksrq_13=-99,
-         ksrq_14=K_SRQ_13,
-         ksrq_15=K_SRQ_14,
-         ksrq_16=K_SRQ_15,
-         ksrq_17=K_SRQ_16,
-         ksrq_18=K_SRQ_17,
-         ksrq_19=K_SRQ_18,
-         ksrq_20=K_SRQ_19,
-         ksrq_21=K_SRQ_20,
-         ksrq_22=K_SRQ_21,
-         ksrq_23=K_SRQ_22,
-         ksrq_adm=KSRQ_adm_mean,
-         krsq_negsoc=KSRQ_negsoc_mean,
-         krsq_pass=KSRQ_pass_mean,
-         krsq_prosoc=KSRQ_prosoc_mean,
-         krsq_sex=KSRQ_sex_mean,
-         krsq_social=KSRQ_social_mean)
-ndar_ksrq_data <- left_join(ndar_key,ndar_ksrq_data, by="tagid") %>%
+         timept=1,
+         mspss_1=MSPSS_1,
+         mspss_2=MSPSS_2,
+         mspss_3=MSPSS_3,
+         mspss_4=MSPSS_4,
+         mspss_5=MSPSS_5,
+         mspss_6=MSPSS_6,
+         mspss_7=MSPSS_7,
+         mspss_8=MSPSS_8,
+         mspss_9=MSPSS_9,
+         mspss_10=MSPSS_10,
+         mspss_11=MSPSS_11,
+         mspss_12=MSPSS_12,
+         mspss_fam=ifelse(is.na(MSPSS_fam_total),999,MSPSS_fam_total),
+         mspss_fri=ifelse(is.na(MSPSS_fri_total),999,MSPSS_fri_total),
+         mspss_so=ifelse(is.na(MSPSS_so_total),999,MSPSS_so_total),
+         mspss_total=ifelse(is.na(MSPSS_total),999,MSPSS_total))
+ndar_mspss_data <- left_join(ndar_key,ndar_mspss_data, by="tagid") %>%
   mutate(src_subject_id=anontagid,
          subjectkey=guid) %>%
   filter(!is.na(subjectkey),
          !interview_age=="") %>%
-  select(-contains("SRQ",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
-ksrq_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
-ksrq_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
-ksrq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+  select(-contains("MSPSS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+mspss_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+mspss_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+mspss_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
 
-ksrq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
-ksrq_temp_df<-data.frame(ksrq_temp)
-ndar_ksrq_data<-bind_rows(ksrq_temp_df,ndar_ksrq_data)
+mspss_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+mspss_temp_df<-data.frame(mspss_temp)
+ndar_mspss_data<-bind_rows(mspss_temp_df,ndar_mspss_data)
 
-part2<-colnames(ndar_ksrq_data)
-part3<-as.matrix(ndar_ksrq_data)
+part2<-colnames(ndar_mspss_data)
+part3<-as.matrix(ndar_mspss_data)
 colnames(part3)<-NULL
-together<-rbind(ksrq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(together,part2,part3,ksrq_df_header,ksrq_temp,ksrq_temp_df,KSRQ,KSRQ_Wave1,KSRQ_Wave1_means,KSRQ_Wave1_means_graph)
+together<-rbind(mspss_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/mspss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,mspss_df_header,mspss_temp,mspss_temp_df,MSPSS,MSPSS_Wave1,MSPSS_Wave1_means,MSPSS_Wave1_means_graph,
+   MSPSS_Wave1_totals,MSPSS_Wave1_totals_graph)
 ```
 
 Prepare PSS
 ```{r}
-qualtricsData_raw_pss<-filter(qualtricsData_raw_long, grepl("^PSS",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  filter(!tagid=="TAG132") %>%
-  spread(item,value)
+PSS<-left_join(filter(cleaned_survey_data, grepl("^PSS",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 mutate(value=ifelse(tagid=="TAG132" && item=="PSS_5",4,
+                                     ifelse(tagid=="TAG132" && item=="PSS_6",2,
+                                            ifelse(tagid=="TAG132" && item=="PSS_7",3,
+                                                   ifelse(tagid=="TAG132" && item=="PSS_9",2,value))))
+                 ) %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_pss<-left_join(qualtricsData_raw_pss,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
+if (length(PSS$tagid) == length(unique(PSS$tagid))){
+  print("No duplicate tagids in data")
+}
+
+PSS_Wave1<-left_join(PSS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-item, -value)%>%
+  mutate(survey_date=ifelse(grepl("Sess 1",survey_name),sa_date,
+                            ifelse(grepl("Sess 2",survey_name),sb_date,
+                                   ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                   )))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>% # remove this line when making RDoC db document
   mutate(PSS_4=ifelse(PSS_4==0,4,
                       ifelse(PSS_4==1,3,
                              ifelse(PSS_4==2,2,
@@ -2254,22 +2266,85 @@ qualtricsData_raw_pss<-left_join(qualtricsData_raw_pss,survey_date, by = c("tagi
                              ifelse(PSS_8==2,2,
                                     ifelse(PSS_8==3,1,
                                            ifelse(PSS_8==4,0,
-                                                  88))))),
-         pss_totalscore=rowSums(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=T))
+                                                  88)))))) %>%
+  mutate(PSS_total=rowSums(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=F),
+         PSS_mean=rowMeans(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=T))
+  
+## Save it
+write.csv(PSS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PSS_Wave1.csv"))
 
+## Graph it
+PSS_Wave1_totals<-PSS_Wave1 %>%
+  select(tagid,PSS_total) %>%
+  mutate(Perceived_Stress=PSS_total) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("PSS_",item))
+PSS_Wave1_totals_graph<-ggplot(PSS_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("PSS total score for ",length(unique(PSS_Wave1$tagid[!is.na(PSS_Wave1$PSS_total)]))," participants"))
+
+PSS_Wave1_means<-PSS_Wave1 %>%
+  select(tagid,PSS_mean) %>%
+  mutate(Perceived_Stress=PSS_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("PSS_",item))
+PSS_Wave1_means_graph<-ggplot(PSS_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("PSS mean score for ",length(unique(PSS_Wave1$tagid[!is.na(PSS_Wave1$tagid)]))," participants"))
+
+
+## Make RDOC ready file
+ndar_pss_data <- PSS_Wave1 %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         visit=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
+                      ifelse(grepl("Session 1",survey_name),"Wave1 Session1",
+                             ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
+                                    ifelse(grepl("Session 2",survey_name),"Wave1 Session2",
+                                           ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",
+                                           NA))))),
+         version_form="PSS-10",
+         respondent="Child",
+         pssp1_1=PSS_1,
+         pssp1_2=PSS_2,
+         pssp1_3=PSS_3,
+         pssp2_1=PSS_4,
+         pssp2_2=PSS_5,
+         pssp2_3=PSS_6,
+         pssp2_4=PSS_7,
+         pssp2_5=PSS_8,
+         pssp3_1=PSS_9,
+         pssp3_4=PSS_10,
+         pss_totalscore=ifelse(is.na(PSS_total),999,PSS_total))
+
+ndar_pss_data <- left_join(ndar_key,ndar_pss_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("PSS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type,-qualtrics_date)
+pss_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+pss_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+pss_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+pss_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+pss_temp_df<-data.frame(pss_temp)
+ndar_pss_data<-bind_rows(pss_temp_df,ndar_pss_data)
+
+part2<-colnames(ndar_pss_data)
+part3<-as.matrix(ndar_pss_data)
+colnames(part3)<-NULL
+together<-rbind(pss_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/pss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,pss_df_header,pss_temp,pss_temp_df,PSS,PSS_Wave1,PSS_Wave1_means,PSS_Wave1_means_graph,
+   PSS_Wave1_totals,PSS_Wave1_totals_graph)
 ```
 
 Prepare RMET
 ```{r}
-qualtricsData_raw_rmet<-filter(qualtricsData_raw_long, grepl("RMET",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  spread(item,value)
 
-qualtricsData_raw_rmet<-left_join(qualtricsData_raw_rmet,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) 
 ```
 
 Prepare R-SCS-C
