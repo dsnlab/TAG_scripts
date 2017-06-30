@@ -1762,7 +1762,7 @@ write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/edinburgh_hand0
 rm(together,part2,part3,ehi_df_header,ehi_temp,ehi_temp_df,EHI,EHI_Wave1)
 ```
 
-Prepare ERQ (do not submit to RDoC)
+Prepare ERQ
 ```{r}
 ERQ<-left_join(filter(cleaned_survey_data, grepl("ERQ",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
@@ -1776,13 +1776,10 @@ ERQ<-left_join(filter(cleaned_survey_data, grepl("ERQ",item)) %>%
 ERQ_Wave1<-left_join(ERQ,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
-  select(-item, -value)%>%
-  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
-                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
-                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
-                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
-                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                                 )))))) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                            ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 ))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(ERQ_reappraisal_N=6,
          ERQ_reappraisal_missing=rowSums(is.na(cbind(ERQ_1, ERQ_3, ERQ_5, ERQ_7, ERQ_8, ERQ_10))),
@@ -1817,9 +1814,53 @@ ERQ_Wave1_means_graph<-ggplot(ERQ_Wave1_means, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
   ggtitle(paste0("ERQ mean subscores for ",length(unique(ERQ_Wave1$tagid[!is.na(ERQ_Wave1$tagid)]))," participants"))
 
+## Make RDOC ready file
+ndar_erq_data <- left_join(ERQ_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+
+         version_form="ERQ; Gross & John, 9/03",
+         erq_1=ERQ_1,
+         erq_2=ERQ_2,
+         erq_3=ERQ_3,
+         erq_4=ERQ_4,
+         erq_5=ERQ_5,
+         erq_6=ERQ_6,
+         erq_7=ERQ_7,
+         erq_8=ERQ_8,
+         erq_9=ERQ_9,
+         erq_10=ERQ_10,
+         erq_reappraisal=ifelse(!is.na(ERQ_reappraisal_total),ERQ_reappraisal_total,999),
+         erq_suppression=ifelse(!is.na(ERQ_suppression_total),ERQ_suppression_total,999))
+
+ndar_erq_data <- left_join(ndar_key,ndar_erq_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("ERQ",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+
+erq_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/emrq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+erq_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/emrq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+erq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/emrq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+erq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/emrq01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+erq_temp_df<-data.frame(erq_temp)
+ndar_erq_data<-bind_rows(erq_temp_df,ndar_erq_data)
+
+part2<-colnames(ndar_erq_data)
+part3<-as.matrix(ndar_erq_data)
+colnames(part3)<-NULL
+together<-rbind(erq_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/emrq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,erq_df_header,erq_temp,erq_temp_df,ERQ,ERQ_Wave1,ERQ_Wave1_means,ERQ_Wave1_means_graph,
+   ERQ_Wave1_totals,ERQ_Wave1_totals_graph)
+
 ```
 
-Prepare IFS (do not submit to RDoC)
+Prepare IFS
 ```{r}
 ```
 
@@ -3539,8 +3580,20 @@ if (length(SSDS$tagid) == length(unique(SSDS$tagid))){
       print("DUPLICATE TAGIDs in data")
   }
 
-SSDS <- SSDS %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
+TAG149_special<-left_join(filter(cleaned_survey_data, grepl("SSDS",item)) %>%
+                            mutate(value=as.numeric(value)) %>% 
+                            filter(!is.na(value)) %>%
+                            filter(!value=="") %>%
+                            filter(tagid=="TAG149") %>%
+                            distinct(tagid,item,value,.keep_all = FALSE) %>%
+                            spread(item,value),
+                          redcap_cleaned %>%
+                            filter(!is.na(dob),!is.na(sa_date),tagid=="TAG149") %>%
+                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
+  mutate(survey_name="TAG - Sess 2 - V3 for Home - (SSDS_2 and on)")
 
+SSDS <- bind_rows(SSDS %>% filter(!tagid=="TAG149"),TAG149_special)
+  
 if (length(SSDS$tagid) == length(unique(SSDS$tagid))){
   print("No duplicate TAGIDs in data")
   } else {
@@ -3552,138 +3605,133 @@ SSDS_Wave1<-left_join(SSDS,survey_date, by = c("tagid","survey_name")) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
-                            ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                            ))) %>%
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,    
+                                          ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                          ))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(SSDS_family_disclosure_total=rowSums(cbind(SSDS_2,SSDS_3,SSDS_4,SSDS_5,SSDS_6,SSDS_7,SSDS_8), na.rm=F),
+         SSDS_friend_disclosure_total=rowSums(cbind(SSDS_9,SSDS_10,SSDS_11,SSDS_12,SSDS_13,SSDS_14,SSDS_15), na.rm=F),
+         SSDS_physdev_disclosure_total=rowSums(cbind(SSDS_16,SSDS_17,SSDS_18,SSDS_19,SSDS_20,SSDS_21,SSDS_22,SSDS_23), na.rm=F),
+         SSDS_family_disclosure_mean=round(rowMeans(cbind(SSDS_2,SSDS_3,SSDS_4,SSDS_5,SSDS_6,SSDS_7,SSDS_8), na.rm=T),3),
+         SSDS_friend_disclosure_mean=round(rowMeans(cbind(SSDS_9,SSDS_10,SSDS_11,SSDS_12,SSDS_13,SSDS_14,SSDS_15), na.rm=T),3),
+         SSDS_physdev_disclosure_mean=round(rowMeans(cbind(SSDS_16,SSDS_17,SSDS_18,SSDS_19,SSDS_20,SSDS_21,SSDS_22,SSDS_23), na.rm=T),3))
   
 ## Save it
 write.csv(SSDS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SSDS_Wave1.csv"))
 
 ## Graph it
 SSDS_Wave1_totals<-SSDS_Wave1 %>%
-  select(tagid,) %>%
-  mutate() %>%
+  select(tagid,SSDS_family_disclosure_total,SSDS_friend_disclosure_total,
+         SSDS_physdev_disclosure_total) %>%
+  mutate(Family_Disclosure=SSDS_family_disclosure_total,
+         Friend_Disclosure=SSDS_friend_disclosure_total,
+         Physical_Development_Disclosure=SSDS_physdev_disclosure_total) %>%
   select(-contains("SSDS")) %>%
   gather('item','value',2:length(.)) 
 SSDS_Wave1_totals_graph<-ggplot(SSDS_Wave1_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("Self-Perception Profile for Adolescents total subscores for ",length(unique(SSDS_Wave1$tagid[!is.na(SSDS_Wave1$SSDS_scholasticcomp_total)]))," participants"))
+  ggtitle(paste0("Friendship disclosure subscale totals for ",length(unique(SSDS_Wave1$tagid[!is.na(SSDS_Wave1$SSDS_family_disclosure_total)]))," participants"))
+
+SSDS_Wave1_means<-SSDS_Wave1 %>%
+  select(tagid,SSDS_1,SSDS_family_disclosure_mean,SSDS_friend_disclosure_mean,
+         SSDS_physdev_disclosure_mean) %>%
+  mutate(Self=SSDS_1,
+         Family_Disclosure=SSDS_family_disclosure_mean,
+         Friend_Disclosure=SSDS_friend_disclosure_mean,
+         Physical_Development_Disclosure=SSDS_physdev_disclosure_mean) %>%
+  select(-contains("SSDS")) %>%
+  gather('item','value',2:length(.)) 
+SSDS_Wave1_means_graph<-ggplot(SSDS_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Friendship disclosure subscale means for ",length(unique(SSDS_Wave1$tagid[!is.na(SSDS_Wave1$SSDS_family_disclosure_mean)]))," participants"))
+
 
 ## Make RDOC ready file
-ndar_sppa_data <- left_join(SSDS_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_ssds_data <- left_join(SSDS_Wave1,redcap_cleaned,by="tagid") %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
          gender="F",
          site="University of Oregon",
-         
+         comments_misc=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1; ssds_1 not administered",
+                      ifelse(grepl("Session 1",survey_name),"Wave1 Session1; ssds_1 not administered",
+                             ifelse(grepl("Sess 2",survey_name),"Wave1 Session2; ssds_1 not administered",
+                                    ifelse(grepl("Session 2",survey_name),"Wave1 Session2; ssds_1 not administered",
+                                           ifelse(grepl("Sensitive Qs",survey_name),"Wave1 Session2; ssds_1 not administered",
+                                           ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires; ssds_1 not administered",NA)))))),
+         ssds_1=88,
+         ssds_2=SSDS_2,
+         ssds_3=SSDS_3,
+         ssds_4=SSDS_4,
+         ssds_5=SSDS_5,
+         ssds_6=SSDS_6,
+         ssds_7=SSDS_7,
+         ssds_8=SSDS_8,
+         ssds_9=SSDS_9,
+         ssds_10=SSDS_10,
+         ssds_11=SSDS_11,
+         ssds_12=SSDS_12,
+         ssds_13=SSDS_13,
+         ssds_14=SSDS_14,
+         ssds_15=SSDS_15,
+         ssds_16=SSDS_16,
+         ssds_17=SSDS_17,
+         ssds_18=SSDS_18,
+         ssds_19=SSDS_19,
+         ssds_20=SSDS_20,
+         ssds_21=SSDS_21,
+         ssds_22=SSDS_22,
+         ssds_23=SSDS_23,
+         ssds_fam=ifelse(!is.na(SSDS_family_disclosure_total),SSDS_family_disclosure_total,999),
+         ssds_friend=ifelse(!is.na(SSDS_friend_disclosure_total),SSDS_friend_disclosure_total,999),
+         ssds_phys=ifelse(!is.na(SSDS_physdev_disclosure_total),SSDS_physdev_disclosure_total,999))
 
-ndar_sppa_data <- left_join(ndar_key,ndar_sppa_data, by="tagid") %>%
+ndar_ssds_data <- left_join(ndar_key,ndar_ssds_data, by="tagid") %>%
   mutate(src_subject_id=anontagid,
          subjectkey=guid) %>%
   filter(!is.na(subjectkey),
          !interview_age=="") %>%
   select(-contains("SSDS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
 
-sppa_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
-sppa_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
-sppa_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+ssds_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/ssds01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+ssds_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/ssds01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+ssds_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/ssds01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
 
-sppa_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
-sppa_temp_df<-data.frame(sppa_temp)
-ndar_sppa_data<-bind_rows(sppa_temp_df,ndar_sppa_data)
+ssds_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/ssds01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+ssds_temp_df<-data.frame(ssds_temp)
+ndar_ssds_data<-bind_rows(ssds_temp_df,ndar_ssds_data)
 
-part2<-colnames(ndar_sppa_data)
-part3<-as.matrix(ndar_sppa_data)
+part2<-colnames(ndar_ssds_data)
+part3<-as.matrix(ndar_ssds_data)
 colnames(part3)<-NULL
-together<-rbind(sppa_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/harterac01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(together,part2,part3,sppa_df_header,sppa_temp,sppa_temp_df,SSDS,SSDS_Wave1,SSDS_Wave1_means,SSDS_Wave1_means_graph,
+together<-rbind(ssds_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ssds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,ssds_df_header,ssds_temp,ssds_temp_df,SSDS,SSDS_Wave1,SSDS_Wave1_means,SSDS_Wave1_means_graph,
    SSDS_Wave1_totals,SSDS_Wave1_totals_graph)
-
-
-qualtricsData_raw_ssds<-filter(qualtricsData_raw_long, grepl("SSDS",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = FALSE) %>% 
-  spread(item,value)
-
-qualtricsData_raw_ssds<-left_join(qualtricsData_raw_ssds,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
-  mutate(SSDS_family=rowSums(cbind(SSDS_1,SSDS_2,SSDS_3,SSDS_4,SSDS_5,SSDS_6,SSDS_7,SSDS_8), na.rm=T),
-         SSDS_friendship=rowSums(cbind(SSDS_9,SSDS_10,SSDS_11,SSDS_12,SSDS_13,SSDS_14,SSDS_15), na.rm=T),
-         SSDS_physical=rowSums(cbind(SSDS_16,SSDS_17,SSDS_18,SSDS_19,SSDS_20,SSDS_21,SSDS_22,SSDS_23), na.rm=T))
 ```
 
 Prepare PANAS-C
 ```{r}
-qualtricsData_raw_panasc<-filter(qualtricsData_raw_long, grepl("PANAS",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  filter(!tagid=="TAG015") %>%
-  spread(item,value)
 
-qualtricsData_raw_panasc<-left_join(qualtricsData_raw_panasc,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) 
 ```
 
 Prepare SCS-C
 ```{r}
-qualtricsData_raw_scs_c<-filter(qualtricsData_raw_long, grepl("^SCS",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!survey_name=="TAG - Parent Questionnaires") %>%
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = FALSE) %>% 
-  spread(item,value)
-
-qualtricsData_raw_scs_c<-left_join(qualtricsData_raw_scs_c,survey_date, by = c("tagid", "survey_name")) %>%
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(survey_date=value) %>% select(-item, -value)                                 
+                           
 ```
 
 Prepare PSQI_MEQ
 ```{r}
-qualtricsData_raw_psqi_meq<-filter(qualtricsData_raw_long, grepl("^PSQI",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!survey_name=="TAG - Parent Questionnaires") %>%
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = FALSE) %>% 
-  spread(item,value)
-
-qualtricsData_raw_psqi_meq<-left_join(qualtricsData_raw_psqi_meq,survey_date, by = c("tagid", "survey_name")) %>%
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(survey_date=value) %>% select(-item, -value)                                 
+                              
 ```
 
 Prepare YRBS
 ```{r}
-qualtricsData_raw_yrbs<-filter(qualtricsData_raw_long, grepl("^YRBS",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!survey_name=="TAG - Parent Questionnaires") %>%
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = FALSE) %>% 
-  spread(item,value)
-
-qualtricsData_raw_yrbs<-left_join(qualtricsData_raw_yrbs,survey_date, by = c("tagid", "survey_name")) %>%
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(survey_date=value) %>% select(-item, -value)                                 
 ```
 
 Prepare HAIR
 ```{r}
-qualtricsData_raw_hair<-filter(qualtricsData_raw_long, grepl("^HAIR",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!survey_name=="TAG - Parent Questionnaires") %>%
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = FALSE) %>% 
-  spread(item,value)
-
-qualtricsData_raw_hair<-left_join(qualtricsData_raw_hair,survey_date, by = c("tagid", "survey_name")) %>%
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(survey_date=value) %>% select(-item, -value)                                 
 ```
 
 Prepare Parent CBCL
@@ -3693,10 +3741,7 @@ qualtricsData_raw_cbcl <-filter(qualtricsData_raw_long, grepl("Parent",survey_na
   filter(!is.na(value)) %>%
   distinct(tagid,item,value,.keep_all = TRUE) 
 filter(grepl(paste(x, collapse = "|"),item)) %>% 
-  spread(item,value)
-
-%>%
-  
+  spread(item,value) %>%
   filter(grepl("sport",item))
 qualtricsData_raw_cbcl<-left_join(qualtricsData_raw_cbcl,survey_date, by = c("tagid", "survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = FALSE) %>%
