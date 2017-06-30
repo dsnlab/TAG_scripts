@@ -2944,7 +2944,7 @@ rm(together,part2,part3,saq_df_header,saq_temp,saq_temp_df,SAQ,SAQ_Wave1,SAQ_Wav
 
 Prepare SCARED-R 
 ```{r}
-SAQ<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
+SCARED<-left_join(filter(cleaned_survey_data, grepl("SCARED",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
@@ -2954,168 +2954,137 @@ SAQ<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
                  select(tagid, sa_date, sb_date, dob),by="tagid")
 
-if (length(SAQ$tagid) == length(unique(SAQ$tagid))){
+if (length(SCARED$tagid) == length(unique(SCARED$tagid))){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-TAG023_special<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
-                            mutate(value=as.numeric(value)) %>% 
-                            filter(!is.na(value)) %>%
-                            filter(!value=="") %>%
-                            filter(tagid=="TAG023") %>%
-                            filter(survey_name=="TAG - Sess 1 - V1 - (EATQ-R_2 & on)") %>%
-                            distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
-                            spread(item,value),
-                          redcap_cleaned %>%
-                            filter(!is.na(dob),!is.na(sa_date),tagid=="TAG023") %>%
-                            select(tagid, sa_date, sb_date, dob),by="tagid") 
-
-TAG002_special<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
-                            mutate(value=as.numeric(value)) %>% 
-                            filter(!is.na(value)) %>%
-                            filter(!value=="") %>%
-                            filter(tagid=="TAG002") %>%
-                            distinct(tagid,item,value,.keep_all = FALSE) %>%
-                            spread(item,value),
-                          redcap_cleaned %>%
-                            filter(!is.na(dob),!is.na(sa_date),tagid=="TAG002") %>%
-                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
-  mutate(survey_name="TAG - Sess 1 - V1 - (SAQ & on)")
-
-
-SAQ <- bind_rows(SAQ %>% filter(!tagid=="TAG023"),TAG023_special)
-SAQ <- bind_rows(SAQ %>% filter(!tagid=="TAG002"),TAG002_special)
-SAQ <- SAQ %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
-  
-
-if (length(SAQ$tagid) == length(unique(SAQ$tagid))){
-  print("No duplicate TAGIDs in data")
-  } else {
-      print("DUPLICATE TAGIDs in data")
-  }
-
-SAQ_Wave1<-left_join(SAQ,survey_date, by = c("tagid","survey_name")) %>% 
+SCARED_Wave1<-left_join(SCARED,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
-  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
-                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
-                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
-                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
                                                  ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                                 )))))) %>%
+                                                 ))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
-  mutate(SAQ_socdevgoals_total=rowSums(cbind(SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8), na.rm=F),
-         SAQ_approachgoals_total=rowSums(cbind(SAQ_9,SAQ_10,SAQ_11,SAQ_12,SAQ_13,SAQ_14), na.rm=F),
-         SAQ_avoidgoals_total=rowSums(cbind(SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=F),
-         SAQ_socdevgoals_mean=rowMeans(cbind(SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8), na.rm=T),
-         SAQ_approachgoals_mean=rowMeans(cbind(SAQ_9,SAQ_10,SAQ_11,SAQ_12,SAQ_13,SAQ_14), na.rm=T),
-         SAQ_avoidgoals_mean=rowMeans(cbind(SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=T))
+  mutate(SCARED_total=rowSums(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5,
+                                    SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_9),na.rm=F),
+         SCARED_ptsd_total=rowSums(cbind(SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_8),na.rm=F),
+         SCARED_anxiety_total=rowSums(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5),na.rm=F),
+         SCARED_mean=round(rowMeans(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5,
+                                    SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_8),na.rm=T),3),
+         SCARED_ptsd_mean=round(rowMeans(cbind(SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_8),na.rm=T),3),
+         SCARED_anxiety_mean=round(rowMeans(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5),na.rm=T),3))
+  
 
 ## Save it
-write.csv(SAQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SAQ_Wave1.csv"))
+write.csv(SCARED_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SCARED_Wave1.csv"))
 
 ## Graph it
-SAQ_Wave1_totals<-SAQ_Wave1 %>%
-  select(tagid,SAQ_socdevgoals_total,SAQ_approachgoals_total,SAQ_avoidgoals_total) %>%
-  mutate(Social_Development_Goals=SAQ_socdevgoals_total,
-         Social_Approach_Goals=SAQ_approachgoals_total,
-         Social_Avoidance_Goals=SAQ_avoidgoals_total) %>%
-  select(-contains("SAQ")) %>%
+SCARED_Wave1_totals<-SCARED_Wave1 %>%
+  select(tagid,SCARED_total,SCARED_ptsd_total,SCARED_anxiety_total)%>%
   gather('item','value',2:length(.)) 
-SAQ_Wave1_totals_graph<-ggplot(SAQ_Wave1_totals, aes(x=value, colour=item)) +
+SCARED_Wave1_totals_graph<-ggplot(SCARED_Wave1_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("SAQ totals for ",length(unique(SAQ_Wave1$tagid[!is.na(SAQ_Wave1$SAQ_approachgoals_total)]))," participants"))
+  ggtitle(paste0("SCARED totals for ",length(unique(SCARED_Wave1$tagid[!is.na(SCARED_Wave1$SCARED_total)]))," participants"))
 
-SAQ_Wave1_socdev_items<-SAQ_Wave1 %>%
-  select(tagid,SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8) %>%
+SCARED_Wave1_means<-SCARED_Wave1 %>%
+  select(tagid,SCARED_mean,SCARED_ptsd_mean,SCARED_anxiety_mean)%>%
   gather('item','value',2:length(.)) 
-SAQ_Wave1_socdev_items_graph<-ggplot(SAQ_Wave1_socdev_items, aes(x=value, colour=item)) +
+SCARED_Wave1_means_graph<-ggplot(SCARED_Wave1_means, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("SAQ Social Development Goals items for ",length(unique(SAQ_Wave1$tagid[!is.na(SAQ_Wave1$tagid)]))," participants"))
-
-SAQ_Wave1_means<-SAQ_Wave1 %>%
-  select(tagid,SAQ_socdevgoals_mean,SAQ_approachgoals_mean,SAQ_avoidgoals_mean) %>%
-  mutate(Social_Development_Goals=SAQ_socdevgoals_mean,
-         Social_Approach_Goals=SAQ_approachgoals_mean,
-         Social_Avoidance_Goals=SAQ_avoidgoals_mean) %>%
-  select(-contains("SAQ")) %>%
-  gather('item','value',2:length(.)) 
-SAQ_Wave1_means_graph<-ggplot(SAQ_Wave1_means, aes(x=value, colour=item)) +
-  geom_density(alpha=.3)+
-  ggtitle(paste0("SAQ means for ",length(unique(SAQ_Wave1$tagid[!is.na(SAQ_Wave1$SAQ_approachgoals_mean)]))," participants"))
-
+  ggtitle(paste0("SCARED means for ",length(unique(SCARED_Wave1$tagid[!is.na(SCARED_Wave1$SCARED_mean)]))," participants"))
 
 ## Make RDOC ready file
-ndar_saq_data <- left_join(SAQ_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_scared_data <- left_join(SCARED_Wave1,redcap_cleaned,by="tagid") %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
          gender="F",
-         sagq_1=SAQ_1,
-         sagq_2=SAQ_2,
-         sagq_3=SAQ_3,
-         sagq_4=SAQ_4,
-         sagq_5=SAQ_5,
-         sagq_6=SAQ_6,
-         sagq_7=SAQ_7,
-         sagq_8=SAQ_8,
-         sagq_9=SAQ_9,
-         sagq_10=SAQ_10,
-         sagq_11=SAQ_11,
-         sagq_12=SAQ_12,
-         sagq_13=SAQ_13,
-         sagq_14=SAQ_14,
-         sagq_15=SAQ_15,
-         sagq_16=SAQ_16,
-         sagq_17=SAQ_17,
-         sagq_18=SAQ_18,
-         sagq_19=SAQ_19,
-         sagq_20=SAQ_20,
-         sagq_21=SAQ_21,
-         sag_sdg=ifelse(!is.na(SAQ_socdevgoals_total),SAQ_socdevgoals_total,NA),
-         sag_dapg=ifelse(!is.na(SAQ_approachgoals_total),SAQ_approachgoals_total,NA),
-         sag_davg=ifelse(!is.na(SAQ_avoidgoals_total),SAQ_avoidgoals_total,NA))
+         scared_version="Brief",
+         visit=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
+                      ifelse(grepl("Session 1",survey_name),"Wave1 Session1",
+                             ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
+                                    ifelse(grepl("Session 2",survey_name),"Wave1 Session2",
+                                           ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",NA))))),
+         comments_misc="SCARED Brief Assessment of Anxiety and PTS Symptoms (ages 7-17)",
+         scared_24=ifelse(!is.na(SCARED_R_1),SCARED_R_1,88),
+         scared_25=ifelse(!is.na(SCARED_R_2),SCARED_R_2,88),
+         scared_28=ifelse(!is.na(SCARED_R_3),SCARED_R_3,88),
+         scared_36=ifelse(!is.na(SCARED_R_4),SCARED_R_4,88),
+         scared_41=ifelse(!is.na(SCARED_R_5),SCARED_R_5,88),
+         briefscared_1=ifelse(!is.na(SCARED_R_6),SCARED_R_6,88),
+         briefscared_2=ifelse(!is.na(SCARED_R_7),SCARED_R_7,88),
+         briefscared_3=ifelse(!is.na(SCARED_R_8),SCARED_R_8,88),
+         briefscared_4=ifelse(!is.na(SCARED_R_9),SCARED_R_9,88),
+         scared_total=999,
+         scared_ptsd_score=ifelse(!is.na(SCARED_ptsd_total),SCARED_ptsd_total,999),
+         scared_pd_score=999,
+         scared_gad_score=999,
+         scared_sad_score=999,
+         scared_socad_score=999,
+         scared_ssa_score=999)
 
-ndar_saq_data <- left_join(ndar_key,ndar_saq_data, by="tagid") %>%
+ndar_scared_data <- left_join(ndar_key,ndar_scared_data, by="tagid") %>%
   mutate(src_subject_id=anontagid,
          subjectkey=guid) %>%
   filter(!is.na(subjectkey),
          !interview_age=="") %>%
-  select(-contains("SAQ",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
-saq_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
-saq_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
-saq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+  select(-contains("SCARED",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+scared_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/scared01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+scared_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/scared01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+scared_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/scared01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
 
-saq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
-saq_temp_df<-data.frame(saq_temp)
-ndar_saq_data<-bind_rows(saq_temp_df,ndar_saq_data)
+scared_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/scared01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+scared_temp_df<-data.frame(scared_temp)
+ndar_scared_data<-bind_rows(scared_temp_df,ndar_scared_data)
 
-part2<-colnames(ndar_saq_data)
-part3<-as.matrix(ndar_saq_data)
+part2<-colnames(ndar_scared_data)
+part3<-as.matrix(ndar_scared_data)
 colnames(part3)<-NULL
-together<-rbind(saq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/sag01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(together,part2,part3,saq_df_header,saq_temp,saq_temp_df,SAQ,SAQ_Wave1,SAQ_Wave1_means,SAQ_Wave1_means_graph,SAQ_Wave1_socdev_items,
-   SAQ_Wave1_socdev_items_graph,SAQ_Wave1_totals,SAQ_Wave1_totals_graph,TAG002_special,TAG023_special)
+together<-rbind(scared_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/scared01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,scared_df_header,scared_temp,scared_temp_df,SCARED,SCARED_Wave1,SCARED_Wave1_means,SCARED_Wave1_means_graph,
+   SCARED_Wave1_totals,SCARED_Wave1_totals_graph)
 ```
 
 Prepare SCC
 ```{r}
-qualtricsData_raw_scc<-filter(qualtricsData_raw_long, grepl("^SCC",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  filter(!tagid=="TAG015") %>%
-  filter(!tagid=="TAG017") %>%
-  filter(!tagid=="TAG070") %>%
-  spread(item,value)
+SCC<-left_join(filter(cleaned_survey_data, grepl("^SCC",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_scc<-left_join(qualtricsData_raw_scc,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
+if (length(SCC$tagid) == length(unique(SCC$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+SCC <- SCC %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
+
+if (length(SCC$tagid) == length(unique(SCC$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+SCC_Wave1<-left_join(SCC,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                            ))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(SCC_1=ifelse(SCC_1==1,5,
                       ifelse(SCC_1==2,4,
                              ifelse(SCC_1==3,3,
@@ -3177,116 +3146,199 @@ qualtricsData_raw_scc<-left_join(qualtricsData_raw_scc,survey_date, by = c("tagi
                               ifelse(SCC_12==3,3,
                                      ifelse(SCC_12==4,2,
                                             ifelse(SCC_12==5,1,
-                                                   NA))))),
-         SCC_total=rowSums(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=T))
+                                                   NA)))))) %>%
+  mutate(SCC_total=rowSums(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=F),
+         SCC_mean=rowMeans(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=T))
+
+## Save it
+write.csv(SCC_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SCC_Wave1.csv"))
+
+## Graph it
+SCC_Wave1_total<-SCC_Wave1 %>%
+  select(tagid,SCC_total) %>%
+  gather('item','value',2:length(.)) 
+SCC_Wave1_total_graph<-ggplot(SCC_Wave1_total, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Self-Concept Clarity total score for ",length(unique(SCC_Wave1$tagid[!is.na(SCC_Wave1$SCC_total)]))," participants"))
+
+SCC_Wave1_mean<-SCC_Wave1 %>%
+  select(tagid,SCC_mean)%>%
+  gather('item','value',2:length(.)) 
+SCC_Wave1_mean_graph<-ggplot(SCC_Wave1_mean, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Self-Concept Clarity mean score for ",length(unique(SCC_Wave1$tagid[!is.na(SCC_Wave1$SCC_mean)]))," participants"))
+
+## Make RDOC ready file
+ndar_scc_data <- left_join(SCC_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         scc_1=SCC_1,
+         scc_2=SCC_2,
+         scc_3=SCC_3,
+         scc_4=SCC_4,
+         scc_5=SCC_5,
+         scc_6=SCC_6,
+         scc_7=SCC_7,
+         scc_8=SCC_8,
+         scc_9=SCC_9,
+         scc_10=SCC_10,
+         scc_11=SCC_11,
+         scc_12=SCC_12,
+         scc_tot=ifelse(!is.na(SCC_total),SCC_total,"999"))
+         
+
+ndar_scc_data <- left_join(ndar_key,ndar_scc_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("SCC",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+
+scc_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/scc01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+scc_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/scc01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+scc_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/scc01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+scc_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/scc01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+scc_temp_df<-data.frame(scc_temp)
+ndar_scc_data<-bind_rows(scc_temp_df,ndar_scc_data)
+
+part2<-colnames(ndar_scc_data)
+part3<-as.matrix(ndar_scc_data)
+colnames(part3)<-NULL
+together<-rbind(scc_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/scc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,scc_df_header,scc_temp,scc_temp_df,SCC,SCC_Wave1,SCC_Wave1_mean,SCC_Wave1_mean_graph,
+   SCC_Wave1_total,SCC_Wave1_total_graph)
 ```
 
 Prepare SPPA
 ```{r}
-qualtricsData_raw_sppa<-filter(qualtricsData_raw_long, grepl("SPPA",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  filter(!tagid=="TAG015") %>%
-  filter(!tagid=="TAG070") %>%
-  filter(!tagid=="TAG017") %>%
-  spread(item,value)
+SPPA<-left_join(filter(cleaned_survey_data, grepl("SPPA",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_sppa<-left_join(qualtricsData_raw_sppa,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
-  mutate(ha1=ifelse(SPPA_1==10 & SPPA_2==2,4,
-                    ifelse(SPPA_1==10 & SPPA_2==1,3,
+if (length(SPPA$tagid) == length(unique(SPPA$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+SPPA <- SPPA %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
+
+if (length(SPPA$tagid) == length(unique(SPPA$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+SPPA_Wave1<-left_join(SPPA,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                            ))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(ha1=ifelse(SPPA_1==1 & SPPA_2==2,4,
+                    ifelse(SPPA_1==1 & SPPA_2==1,3,
                            ifelse(SPPA_1==2 & SPPA_2==1,2,
                                   ifelse(SPPA_1==2 & SPPA_2==2,1,
                                          NA)))),
-         ha2=ifelse(SPPA_3==0 & SPPA_4==2,1,
-                    ifelse(SPPA_3==0 & SPPA_4==1,2,
+         ha2=ifelse(SPPA_3==1 & SPPA_4==2,1,
+                    ifelse(SPPA_3==1 & SPPA_4==1,2,
                            ifelse(SPPA_3==2 & SPPA_4==1,3,
                                   ifelse(SPPA_3==2 & SPPA_4==2,4,
                                          NA)))),
-         ha3=ifelse(SPPA_5==0 & SPPA_6==2,4,
-                    ifelse(SPPA_5==0 & SPPA_6==1,3,
+         ha3=ifelse(SPPA_5==1 & SPPA_6==2,4,
+                    ifelse(SPPA_5==1 & SPPA_6==1,3,
                            ifelse(SPPA_5==2 & SPPA_6==1,2,
                                   ifelse(SPPA_5==2 & SPPA_6==2,1,
                                          NA)))),
-         ha4=ifelse(SPPA_7==0 & SPPA_8==2,1,
-                    ifelse(SPPA_7==0 & SPPA_8==1,2,
+         ha4=ifelse(SPPA_7==1 & SPPA_8==2,1,
+                    ifelse(SPPA_7==1 & SPPA_8==1,2,
                            ifelse(SPPA_7==2 & SPPA_8==1,3,
                                   ifelse(SPPA_7==2 & SPPA_8==2,4,
                                          NA)))),
-         ha7=ifelse(SPPA_9==0 & SPPA_10==2,4,
-                    ifelse(SPPA_9==0 & SPPA_10==1,3,
+         ha7=ifelse(SPPA_9==1 & SPPA_10==2,4,
+                    ifelse(SPPA_9==1 & SPPA_10==1,3,
                            ifelse(SPPA_9==2 & SPPA_10==1,2,
                                   ifelse(SPPA_9==2 & SPPA_10==2,1,
                                          NA)))),
-         ha8=ifelse(SPPA_11==0 & SPPA_12==2,4,
-                    ifelse(SPPA_11==0 & SPPA_12==1,3,
+         ha8=ifelse(SPPA_11==1 & SPPA_12==2,4,
+                    ifelse(SPPA_11==1 & SPPA_12==1,3,
                            ifelse(SPPA_11==2 & SPPA_12==1,2,
                                   ifelse(SPPA_11==2 & SPPA_12==2,1,
                                          NA)))),
-         ha9=ifelse(SPPA_13==0 & SPPA_14==2,1,
-                    ifelse(SPPA_13==0 & SPPA_14==1,2,
+         ha9=ifelse(SPPA_13==1 & SPPA_14==2,1,
+                    ifelse(SPPA_13==1 & SPPA_14==1,2,
                            ifelse(SPPA_13==2 & SPPA_14==1,3,
                                   ifelse(SPPA_13==2 & SPPA_14==2,4,
                                          NA)))),
-         ha10=ifelse(SPPA_15==0 & SPPA_16==2,1,
-                     ifelse(SPPA_15==0 & SPPA_16==1,2,
+         ha10=ifelse(SPPA_15==1 & SPPA_16==2,1,
+                     ifelse(SPPA_15==1 & SPPA_16==1,2,
                             ifelse(SPPA_15==2 & SPPA_16==1,3,
                                    ifelse(SPPA_15==2 & SPPA_16==2,4,
                                           NA)))),
-         ha11=ifelse(SPPA_17==0 & SPPA_18==2,4,
-                     ifelse(SPPA_17==0 & SPPA_18==1,3,
+         ha11=ifelse(SPPA_17==1 & SPPA_18==2,4,
+                     ifelse(SPPA_17==1 & SPPA_18==1,3,
                             ifelse(SPPA_17==2 & SPPA_18==1,2,
                                    ifelse(SPPA_17==2 & SPPA_18==2,1,
                                           NA)))),
-         ha12=ifelse(SPPA_19==0 & SPPA_20==2,4,
-                     ifelse(SPPA_19==0 & SPPA_20==1,3,
+         ha12=ifelse(SPPA_19==1 & SPPA_20==2,4,
+                     ifelse(SPPA_19==1 & SPPA_20==1,3,
                             ifelse(SPPA_19==2 & SPPA_20==1,2,
                                    ifelse(SPPA_19==2 & SPPA_20==2,1,
                                           NA)))),
-         ha13=ifelse(SPPA_21==0 & SPPA_22==2,1,
-                     ifelse(SPPA_21==0 & SPPA_22==1,2,
+         ha13=ifelse(SPPA_21==1 & SPPA_22==2,1,
+                     ifelse(SPPA_21==1 & SPPA_22==1,2,
                             ifelse(SPPA_21==2 & SPPA_22==1,3,
                                    ifelse(SPPA_21==2 & SPPA_22==2,4,
                                           NA)))),
-         ha16=ifelse(SPPA_23==0 & SPPA_24==2,1,
-                     ifelse(SPPA_23==0 & SPPA_24==1,2,
+         ha16=ifelse(SPPA_23==1 & SPPA_24==2,1,
+                     ifelse(SPPA_23==1 & SPPA_24==1,2,
                             ifelse(SPPA_23==2 & SPPA_24==1,3,
                                    ifelse(SPPA_23==2 & SPPA_24==2,4,
                                           NA)))),
-         ha17=ifelse(SPPA_25==0 & SPPA_26==2,1,
-                     ifelse(SPPA_25==0 & SPPA_26==1,2,
+         ha17=ifelse(SPPA_25==1 & SPPA_26==2,1,
+                     ifelse(SPPA_25==1 & SPPA_26==1,2,
                             ifelse(SPPA_25==2 & SPPA_26==1,3,
                                    ifelse(SPPA_25==2 & SPPA_26==2,4,
                                           NA)))),
-         ha18=ifelse(SPPA_27==0 & SPPA_28==2,1,
-                     ifelse(SPPA_27==0 & SPPA_28==1,2,
+         ha18=ifelse(SPPA_27==1 & SPPA_28==2,1,
+                     ifelse(SPPA_27==1 & SPPA_28==1,2,
                             ifelse(SPPA_27==2 & SPPA_28==1,3,
                                    ifelse(SPPA_27==2 & SPPA_28==2,4,
                                           NA)))),
-         ha19=ifelse(SPPA_29==0 & SPPA_30==2,4,
-                     ifelse(SPPA_29==0 & SPPA_30==1,3,
+         ha19=ifelse(SPPA_29==1 & SPPA_30==2,4,
+                     ifelse(SPPA_29==1 & SPPA_30==1,3,
                             ifelse(SPPA_29==2 & SPPA_30==1,2,
                                    ifelse(SPPA_29==2 & SPPA_30==2,1,
                                           NA)))),
-         ha20=ifelse(SPPA_31==0 & SPPA_32==2,1,
-                     ifelse(SPPA_31==0 & SPPA_32==1,2,
+         ha20=ifelse(SPPA_31==1 & SPPA_32==2,1,
+                     ifelse(SPPA_31==1 & SPPA_32==1,2,
                             ifelse(SPPA_31==2 & SPPA_32==1,3,
                                    ifelse(SPPA_31==2 & SPPA_32==2,4,
                                           NA)))),
-         ha21=ifelse(SPPA_33==0 & SPPA_34==2,4,
-                     ifelse(SPPA_33==0 & SPPA_34==1,3,
+         ha21=ifelse(SPPA_33==1 & SPPA_34==2,4,
+                     ifelse(SPPA_33==1 & SPPA_34==1,3,
                             ifelse(SPPA_33==2 & SPPA_34==1,2,
                                    ifelse(SPPA_33==2 & SPPA_34==2,1,
                                           NA)))),
-         ha22=ifelse(SPPA_35==0 & SPPA_36==2,1,
-                     ifelse(SPPA_35==0 & SPPA_36==1,2,
+         ha22=ifelse(SPPA_35==1 & SPPA_36==2,1,
+                     ifelse(SPPA_35==1 & SPPA_36==1,2,
                             ifelse(SPPA_35==2 & SPPA_36==1,3,
                                    ifelse(SPPA_35==2 & SPPA_36==2,4,
                                           NA)))),
-         ha25=ifelse(SPPA_37==0 & SPPA_38==2,4,
-                     ifelse(SPPA_37==0 & SPPA_38==1,3,
+         ha25=ifelse(SPPA_37==1 & SPPA_38==2,4,
+                     ifelse(SPPA_37==1 & SPPA_38==1,3,
                             ifelse(SPPA_37==2 & SPPA_38==1,2,
                                    ifelse(SPPA_37==2 & SPPA_38==2,1,
                                           NA)))),
@@ -3325,55 +3377,231 @@ qualtricsData_raw_sppa<-left_join(qualtricsData_raw_sppa,survey_date, by = c("ta
                             ifelse(SPPA_51==2 & SPPA_52==1,3,
                                    ifelse(SPPA_51==2 & SPPA_52==2,4,
                                           NA)))),
-         ha35=ifelse(SPPA_53==0 & SPPA_54==2,1,
-                     ifelse(SPPA_53==0 & SPPA_54==1,2,
+         ha35=ifelse(SPPA_53==1 & SPPA_54==2,1,
+                     ifelse(SPPA_53==1 & SPPA_54==1,2,
                             ifelse(SPPA_53==2 & SPPA_54==1,3,
                                    ifelse(SPPA_53==2 & SPPA_54==2,4,
                                           NA)))),
-         ha36=ifelse(SPPA_55==0 & SPPA_56==2,4,
-                     ifelse(SPPA_55==0 & SPPA_56==1,3,
+         ha36=ifelse(SPPA_55==1 & SPPA_56==2,4,
+                     ifelse(SPPA_55==1 & SPPA_56==1,3,
                             ifelse(SPPA_55==2 & SPPA_56==1,2,
                                    ifelse(SPPA_55==2 & SPPA_56==2,1,
                                           NA)))),
-         ha37=ifelse(SPPA_57==0 & SPPA_58==2,4,
-                     ifelse(SPPA_57==0 & SPPA_58==1,3,
+         ha37=ifelse(SPPA_57==1 & SPPA_58==2,4,
+                     ifelse(SPPA_57==1 & SPPA_58==1,3,
                             ifelse(SPPA_57==2 & SPPA_58==1,2,
                                    ifelse(SPPA_57==2 & SPPA_58==2,1,
                                           NA)))),
-         ha38=ifelse(SPPA_59==0 & SPPA_60==2,4,
-                     ifelse(SPPA_59==0 & SPPA_60==1,3,
+         ha38=ifelse(SPPA_59==1 & SPPA_60==2,4,
+                     ifelse(SPPA_59==1 & SPPA_60==1,3,
                             ifelse(SPPA_59==2 & SPPA_60==1,2,
                                    ifelse(SPPA_59==2 & SPPA_60==2,1,
                                           NA)))),
-         ha39=ifelse(SPPA_61==0 & SPPA_62==2,1,
-                     ifelse(SPPA_61==0 & SPPA_62==1,2,
+         ha39=ifelse(SPPA_61==1 & SPPA_62==2,1,
+                     ifelse(SPPA_61==1 & SPPA_62==1,2,
                             ifelse(SPPA_61==2 & SPPA_62==1,3,
                                    ifelse(SPPA_61==2 & SPPA_62==2,4,
                                           NA)))),
-         ha40=ifelse(SPPA_63==0 & SPPA_64==2,4,
-                     ifelse(SPPA_63==0 & SPPA_64==1,3,
+         ha40=ifelse(SPPA_63==1 & SPPA_64==2,4,
+                     ifelse(SPPA_63==1 & SPPA_64==1,3,
                             ifelse(SPPA_63==2 & SPPA_64==1,2,
                                    ifelse(SPPA_63==2 & SPPA_64==2,1,
                                           NA)))),
-         ha43=ifelse(SPPA_65==0 & SPPA_66==2,4,
-                     ifelse(SPPA_65==0 & SPPA_66==1,3,
+         ha43=ifelse(SPPA_65==1 & SPPA_66==2,4,
+                     ifelse(SPPA_65==1 & SPPA_66==1,3,
                             ifelse(SPPA_65==2 & SPPA_66==1,2,
                                    ifelse(SPPA_65==2 & SPPA_66==2,1,
                                           NA)))),
-         ha44=ifelse(SPPA_67==0 & SPPA_68==2,1,
-                     ifelse(SPPA_67==0 & SPPA_68==1,2,
+         ha44=ifelse(SPPA_67==1 & SPPA_68==2,1,
+                     ifelse(SPPA_67==1 & SPPA_68==1,2,
                             ifelse(SPPA_67==2 & SPPA_68==1,3,
                                    ifelse(SPPA_67==2 & SPPA_68==2,4,
                                           NA)))),
-         ha45=ifelse(SPPA_69==0 & SPPA_70==2,4,
-                     ifelse(SPPA_69==0 & SPPA_70==1,3,
+         ha45=ifelse(SPPA_69==1 & SPPA_70==2,4,
+                     ifelse(SPPA_69==1 & SPPA_70==1,3,
                             ifelse(SPPA_69==2 & SPPA_70==1,2,
                                    ifelse(SPPA_69==2 & SPPA_70==2,1,
-                                          NA)))))
+                                          NA))))) %>%
+  mutate(SPPA_scholasticcomp_total=rowSums(cbind(ha1,ha10,ha19,ha28,ha37),na.rm=F),
+         SPPA_socialcomp_total=rowSums(cbind(ha2,ha11,ha20,ha29,ha38),na.rm=F),
+         SPPA_athleticcomp_total=rowSums(cbind(ha3,ha12,ha21,ha30,ha39),na.rm=F),
+         SPPA_physicalappear_total=rowSums(cbind(ha4,ha13,ha22,ha31,ha40),na.rm=F),
+         SPPA_behavconduct_total=rowSums(cbind(ha7,ha16,ha25,ha34,ha43),na.rm=F),
+         SPPA_closefriend_total=rowSums(cbind(ha8,ha17,ha26,ha35,ha44),na.rm=F),
+         SPPA_globalselfworth_total=rowSums(cbind(ha9,ha18,ha27,ha36,ha45),na.rm=F),
+         SPPA_scholasticcomp_mean=round(rowMeans(cbind(ha1,ha10,ha19,ha28,ha37),na.rm=T),3),
+         SPPA_socialcomp_mean=round(rowMeans(cbind(ha2,ha11,ha20,ha29,ha38),na.rm=T),3),
+         SPPA_athleticcomp_mean=round(rowMeans(cbind(ha3,ha12,ha21,ha30,ha39),na.rm=T),3),
+         SPPA_physicalappear_mean=round(rowMeans(cbind(ha4,ha13,ha22,ha31,ha40),na.rm=T),3),
+         SPPA_behavconduct_mean=round(rowMeans(cbind(ha7,ha16,ha25,ha34,ha43),na.rm=T),3),
+         SPPA_closefriend_mean=round(rowMeans(cbind(ha8,ha17,ha26,ha35,ha44),na.rm=T),3),
+         SPPA_globalselfworth_mean=round(rowMeans(cbind(ha9,ha18,ha27,ha36,ha45),na.rm=T),3))
+
+## Save it
+write.csv(SPPA_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SPPA_Wave1.csv"))
+
+## Graph it
+SPPA_Wave1_totals<-SPPA_Wave1 %>%
+  select(tagid,SPPA_scholasticcomp_total,SPPA_socialcomp_total,SPPA_athleticcomp_total,
+         SPPA_physicalappear_total,SPPA_behavconduct_total,SPPA_closefriend_total,
+         SPPA_globalselfworth_total) %>%
+  mutate(Scholastic_Competence=SPPA_scholasticcomp_total,
+         Social_Competence=SPPA_socialcomp_total,
+         Athletic_Competence=SPPA_athleticcomp_total,
+         Physical_Appearance=SPPA_physicalappear_total,
+         Behavioral_Conduct=SPPA_behavconduct_total,
+         Close_Friendship=SPPA_closefriend_total,
+         Global_Self_Worht=SPPA_globalselfworth_total) %>%
+  select(-contains("SPPA")) %>%
+  gather('item','value',2:length(.)) 
+SPPA_Wave1_totals_graph<-ggplot(SPPA_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Self-Perception Profile for Adolescents total subscores for ",length(unique(SPPA_Wave1$tagid[!is.na(SPPA_Wave1$SPPA_scholasticcomp_total)]))," participants"))
+
+SPPA_Wave1_means<-SPPA_Wave1 %>%
+  select(tagid,SPPA_scholasticcomp_mean,SPPA_socialcomp_mean,SPPA_athleticcomp_mean,
+         SPPA_physicalappear_mean,SPPA_behavconduct_mean,SPPA_closefriend_mean,
+         SPPA_globalselfworth_mean) %>%
+  mutate(Scholastic_Competence=SPPA_scholasticcomp_mean,
+         Social_Competence=SPPA_socialcomp_mean,
+         Athletic_Competence=SPPA_athleticcomp_mean,
+         Physical_Appearance=SPPA_physicalappear_mean,
+         Behavioral_Conduct=SPPA_behavconduct_mean,
+         Close_Friendship=SPPA_closefriend_mean,
+         Global_Self_Worht=SPPA_globalselfworth_mean) %>%
+  select(-contains("SPPA")) %>%
+  gather('item','value',2:length(.)) 
+SPPA_Wave1_means_graph<-ggplot(SPPA_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Self-Perception Profile for Adolescents mean subscores for ",length(unique(SPPA_Wave1$tagid[!is.na(SPPA_Wave1$SPPA_scholasticcomp_mean)]))," participants"))
+
+## Make RDOC ready file
+ndar_sppa_data <- left_join(SPPA_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         site="University of Oregon",
+         hascx=SPPA_scholasticcomp_mean,
+         hasct=ifelse(!is.na(SPPA_scholasticcomp_total),SPPA_scholasticcomp_total,NA),
+         hasax=SPPA_socialcomp_mean,
+         hasat=ifelse(!is.na(SPPA_socialcomp_total),SPPA_socialcomp_total,NA),
+         haacx=SPPA_athleticcomp_mean,
+         haact=ifelse(!is.na(SPPA_athleticcomp_total),SPPA_athleticcomp_total,NA),
+         hapax=SPPA_physicalappear_mean,
+         hapat=ifelse(!is.na(SPPA_physicalappear_total),SPPA_physicalappear_total,NA),
+         habcx=SPPA_behavconduct_mean,
+         habct=ifelse(!is.na(SPPA_behavconduct_total),SPPA_behavconduct_total,NA),
+         hacfx=SPPA_closefriend_mean,
+         hacft=ifelse(!is.na(SPPA_closefriend_total),SPPA_closefriend_total,NA),
+         hagswx=SPPA_globalselfworth_mean,
+         hagswt=ifelse(!is.na(SPPA_globalselfworth_total),SPPA_globalselfworth_total,NA))
+
+ndar_sppa_data <- left_join(ndar_key,ndar_sppa_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("SPPA",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+
+sppa_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+sppa_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+sppa_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+sppa_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+sppa_temp_df<-data.frame(sppa_temp)
+ndar_sppa_data<-bind_rows(sppa_temp_df,ndar_sppa_data)
+
+part2<-colnames(ndar_sppa_data)
+part3<-as.matrix(ndar_sppa_data)
+colnames(part3)<-NULL
+together<-rbind(sppa_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/harterac01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,sppa_df_header,sppa_temp,sppa_temp_df,SPPA,SPPA_Wave1,SPPA_Wave1_means,SPPA_Wave1_means_graph,
+   SPPA_Wave1_totals,SPPA_Wave1_totals_graph)
 ```
 
 Prepare SSDS
 ```{r}
+SSDS<-left_join(filter(cleaned_survey_data, grepl("SSDS",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+
+if (length(SSDS$tagid) == length(unique(SSDS$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+SSDS <- SSDS %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
+
+if (length(SSDS$tagid) == length(unique(SSDS$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+SSDS_Wave1<-left_join(SSDS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                            ))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  
+## Save it
+write.csv(SSDS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SSDS_Wave1.csv"))
+
+## Graph it
+SSDS_Wave1_totals<-SSDS_Wave1 %>%
+  select(tagid,) %>%
+  mutate() %>%
+  select(-contains("SSDS")) %>%
+  gather('item','value',2:length(.)) 
+SSDS_Wave1_totals_graph<-ggplot(SSDS_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Self-Perception Profile for Adolescents total subscores for ",length(unique(SSDS_Wave1$tagid[!is.na(SSDS_Wave1$SSDS_scholasticcomp_total)]))," participants"))
+
+## Make RDOC ready file
+ndar_sppa_data <- left_join(SSDS_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         site="University of Oregon",
+         
+
+ndar_sppa_data <- left_join(ndar_key,ndar_sppa_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("SSDS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+
+sppa_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+sppa_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+sppa_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+sppa_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+sppa_temp_df<-data.frame(sppa_temp)
+ndar_sppa_data<-bind_rows(sppa_temp_df,ndar_sppa_data)
+
+part2<-colnames(ndar_sppa_data)
+part3<-as.matrix(ndar_sppa_data)
+colnames(part3)<-NULL
+together<-rbind(sppa_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/harterac01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,sppa_df_header,sppa_temp,sppa_temp_df,SSDS,SSDS_Wave1,SSDS_Wave1_means,SSDS_Wave1_means_graph,
+   SSDS_Wave1_totals,SSDS_Wave1_totals_graph)
+
+
 qualtricsData_raw_ssds<-filter(qualtricsData_raw_long, grepl("SSDS",item)) %>% 
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
