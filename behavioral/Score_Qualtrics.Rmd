@@ -2388,7 +2388,7 @@ RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name")) %>%
                             ifelse(grepl("Sess 2",survey_name),sb_date,
                                    ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
                                    )))) %>%
-  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>% # remove this line when making RDoC db document
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>% 
   mutate(RMET_1_correct=ifelse(RMET_1==1,0,
                                ifelse(RMET_1==2,0,
                                       ifelse(RMET_1==3,1,
@@ -2549,7 +2549,7 @@ RMET_Wave1_percentcorrect_graph<-ggplot(RMET_Wave1_percentcorrect, aes(x=value, 
 
 
 ## Make RDOC ready file
-ndar_rmet_data <- RMET_Wave1 %>%
+ndar_rmet_data <- left_join(RMET_Wave1,redcap_cleaned,by="tagid") %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -2561,6 +2561,7 @@ ndar_rmet_data <- RMET_Wave1 %>%
                                            ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",
                                                   NA))))),
          version_form="Child Version",
+         site="University of Oregon",
          gender="F",
          rmet_cv001=RMET_1,
          rmet_cv002=RMET_2,
@@ -2575,7 +2576,25 @@ ndar_rmet_data <- RMET_Wave1 %>%
          rmet_cv011=RMET_11,
          rmet_cv012=RMET_12,
          rmet_cv013=RMET_13,
-         rmet_cv014=RMET_14
+         rmet_cv014=RMET_14,
+         rmet_cv015=RMET_15,
+         rmet_cv016=RMET_16,
+         rmet_cv017=RMET_17,
+         rmet_cv018=RMET_18,
+         rmet_cv019=RMET_19,
+         rmet_cv020=RMET_20,
+         rmet_cv021=RMET_21,
+         rmet_cv022=RMET_22,
+         rmet_cv023=RMET_23,
+         rmet_cv024=RMET_24,
+         rmet_cv025=RMET_25,
+         rmet_cv026=RMET_26,
+         rmet_cv027=RMET_27,
+         rmet_cv028=RMET_28,
+         form_completed=ifelse(RMET_1_numcompleted==28,1,2),
+         form_explain=ifelse(!RMET_1_numcompleted==28,87,86),
+         assessment_complete=ifelse(RMET_1_numcompleted==28,2,0),
+         child_eyestotal=ifelse(!is.na(RMET_Total_Score),RMET_Total_Score,"")
   )
 
 ndar_rmet_data <- left_join(ndar_key,ndar_rmet_data, by="tagid") %>%
@@ -2583,12 +2602,12 @@ ndar_rmet_data <- left_join(ndar_key,ndar_rmet_data, by="tagid") %>%
          subjectkey=guid) %>%
   filter(!is.na(subjectkey),
          !interview_age=="") %>%
-  select(-contains("RMET",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type,-qualtrics_date)
-rmet_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/rmet01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
-rmet_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/rmet01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
-rmet_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/rmet01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+  select(-contains("RMET",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+rmet_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/rmet_cv01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+rmet_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/rmet_cv01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+rmet_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/rmet_cv01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
 
-rmet_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/rmet01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+rmet_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/rmet_cv01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 rmet_temp_df<-data.frame(rmet_temp)
 ndar_rmet_data<-bind_rows(rmet_temp_df,ndar_rmet_data)
 
@@ -2596,62 +2615,491 @@ part2<-colnames(ndar_rmet_data)
 part3<-as.matrix(ndar_rmet_data)
 colnames(part3)<-NULL
 together<-rbind(rmet_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/rmet01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(together,part2,part3,rmet_df_header,rmet_temp,rmet_temp_df,RMET,RMET_Wave1,RMET_Wave1_means,RMET_Wave1_means_graph,
-   RMET_Wave1_totals,RMET_Wave1_totals_graph)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/rmet_cv01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,rmet_df_header,rmet_temp,rmet_temp_df,RMET,RMET_Wave1,RMET_Wave1_percentcorrect,RMET_Wave1_percentcorrect_graph)
 ```
 
 Prepare R-SCS-C
 ```{r}
-qualtricsData_raw_rscsc<-filter(qualtricsData_raw_long, grepl("R_SCS",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  spread(item,value)
+RSCS<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_rscsc<-left_join(qualtricsData_raw_rscsc,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>% 
-  mutate(rscsc_publicsc=rowSums(cbind(R_SCS_C_1,R_SCS_C_2,R_SCS_C_3,R_SCS_C_7,R_SCS_C_10,R_SCS_C_12,R_SCS_C_14,
+if (length(RSCS$tagid) == length(unique(RSCS$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+TAG023_special<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
+                            mutate(value=as.numeric(value)) %>% 
+                            filter(!is.na(value)) %>%
+                            filter(!value=="") %>%
+                            filter(tagid=="TAG023") %>%
+                            distinct(tagid,item,value,.keep_all = FALSE) %>%
+                            spread(item,value),
+                          redcap_cleaned %>%
+                            filter(!is.na(dob),!is.na(sa_date),tagid=="TAG023") %>%
+                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
+  mutate(survey_name="TAG - Sess 1 - V1 - (EATQ-R_2 & on)")
+
+RSCS <- bind_rows(RSCS %>% filter(!tagid=="TAG023"),TAG023_special)
+  
+
+if (length(RSCS$tagid) == length(unique(RSCS$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+RSCS_Wave1<-left_join(RSCS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(RSCS_publicsc_total=rowSums(cbind(R_SCS_C_1,R_SCS_C_2,R_SCS_C_3,R_SCS_C_7,R_SCS_C_10,R_SCS_C_12,R_SCS_C_14,
+                                      R_SCS_C_15,R_SCS_C_16,R_SCS_C_21,R_SCS_C_28), na.rm=F),
+         RSCS_privatesc_total=rowSums(cbind(R_SCS_C_4,R_SCS_C_5,R_SCS_C_6,R_SCS_C_8,R_SCS_C_9,R_SCS_C_11,R_SCS_C_20,
+                                       R_SCS_C_22,R_SCS_C_23,R_SCS_C_24,R_SCS_C_27), na.rm=F),
+         RSCS_socanx_total=rowSums(cbind(R_SCS_C_13,R_SCS_C_17,R_SCS_C_18,R_SCS_C_19,R_SCS_C_25,R_SCS_C_26,R_SCS_C_29), na.rm=F),
+         RSCS_publicsc_mean=rowMeans(cbind(R_SCS_C_1,R_SCS_C_2,R_SCS_C_3,R_SCS_C_7,R_SCS_C_10,R_SCS_C_12,R_SCS_C_14,
                                       R_SCS_C_15,R_SCS_C_16,R_SCS_C_21,R_SCS_C_28), na.rm=T),
-         rscsc_privatesc=rowSums(cbind(R_SCS_C_4,R_SCS_C_5,R_SCS_C_6,R_SCS_C_8,R_SCS_C_9,R_SCS_C_11,R_SCS_C_20,
+         RSCS_privatesc_mean=rowMeans(cbind(R_SCS_C_4,R_SCS_C_5,R_SCS_C_6,R_SCS_C_8,R_SCS_C_9,R_SCS_C_11,R_SCS_C_20,
                                        R_SCS_C_22,R_SCS_C_23,R_SCS_C_24,R_SCS_C_27), na.rm=T),
-         rscsc_socanx=rowSums(cbind(R_SCS_C_13,R_SCS_C_17,R_SCS_C_18,R_SCS_C_19,R_SCS_C_25,R_SCS_C_26,R_SCS_C_29), na.rm=T))
+         RSCS_socanx_mean=rowMeans(cbind(R_SCS_C_13,R_SCS_C_17,R_SCS_C_18,R_SCS_C_19,R_SCS_C_25,R_SCS_C_26,R_SCS_C_29), na.rm=T))
+
+## Save it
+write.csv(RSCS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/RSCS_Wave1.csv"))
+
+## Graph it
+RSCS_Wave1_totals<-RSCS_Wave1 %>%
+  select(tagid,RSCS_publicsc_total,RSCS_privatesc_total,RSCS_socanx_total) %>%
+  mutate(Public_Self_Consicousness=RSCS_publicsc_total,
+         Private_Self_Consicousness=RSCS_privatesc_total,
+         Social_Anxiousness=RSCS_socanx_total) %>%
+  select(-contains("RSCS")) %>%
+  gather('item','value',2:length(.)) 
+RSCS_Wave1_totals_graph<-ggplot(RSCS_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("RSCS totals for ",length(unique(RSCS_Wave1$tagid[!is.na(RSCS_Wave1$RSCS_publicsc_total)]))," participants"))
+
+RSCS_Wave1_means<-RSCS_Wave1 %>%
+  select(tagid,RSCS_publicsc_mean,RSCS_privatesc_mean,RSCS_socanx_mean) %>%
+  mutate(Public_Self_Consicousness=RSCS_publicsc_mean,
+         Private_Self_Consicousness=RSCS_privatesc_mean,
+         Social_Anxiousness=RSCS_socanx_mean) %>%
+  select(-contains("RSCS")) %>%
+  gather('item','value',2:length(.)) 
+RSCS_Wave1_means_graph<-ggplot(RSCS_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("RSCS means for ",length(unique(RSCS_Wave1$tagid))," participants"))
+
+
+## Make RDOC ready file
+ndar_rscs_data <- left_join(RSCS_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         comments_misc=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
+                      ifelse(grepl("Session 1",survey_name),"Wave1 Session1",
+                             ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
+                                    ifelse(grepl("Session 2",survey_name),"Wave1 Session2",
+                                           ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",
+                                                  NA))))),
+         site="University of Oregon",
+         study="Transitions in Adolescent Girls (TAG) Study",
+         gender="F",
+         rscsc_1=R_SCS_C_1,
+         rscsc_2=R_SCS_C_2,
+         rscsc_3=R_SCS_C_3,
+         rscsc_4=R_SCS_C_4,
+         rscsc_5=R_SCS_C_5,
+         rscsc_6=R_SCS_C_6,
+         rscsc_7=R_SCS_C_7,
+         rscsc_8=R_SCS_C_8,
+         rscsc_9=R_SCS_C_9,
+         rscsc_10=R_SCS_C_10,
+         rscsc_11=R_SCS_C_11,
+         rscsc_12=R_SCS_C_12,
+         rscsc_13=R_SCS_C_13,
+         rscsc_14=R_SCS_C_14,
+         rscsc_15=R_SCS_C_15,
+         rscsc_16=R_SCS_C_16,
+         rscsc_17=R_SCS_C_17,
+         rscsc_18=R_SCS_C_18,
+         rscsc_19=R_SCS_C_19,
+         rscsc_20=R_SCS_C_20,
+         rscsc_21=R_SCS_C_21,
+         rscsc_22=R_SCS_C_22,
+         rscsc_23=R_SCS_C_23,
+         rscsc_24=R_SCS_C_24,
+         rscsc_25=R_SCS_C_25,
+         rscsc_26=R_SCS_C_26,
+         rscsc_27=R_SCS_C_27,
+         rscsc_28=R_SCS_C_28,
+         rscsc_29=R_SCS_C_29,
+         rscsc_publicsc=ifelse(!is.na(RSCS_publicsc_total),RSCS_publicsc_total,999),
+         rscsc_privatesc=ifelse(!is.na(RSCS_privatesc_total),RSCS_privatesc_total,999),
+         rscsc_socanx=ifelse(!is.na(RSCS_socanx_total),RSCS_socanx_total,999))
+
+ndar_rscs_data <- left_join(ndar_key,ndar_rscs_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("SCS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+rscs_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+rscs_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+rscs_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+rscs_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+rscs_temp_df<-data.frame(rscs_temp)
+ndar_rscs_data<-bind_rows(rscs_temp_df,ndar_rscs_data)
+
+part2<-colnames(ndar_rscs_data)
+part3<-as.matrix(ndar_rscs_data)
+colnames(part3)<-NULL
+together<-rbind(rscs_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/rscsc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,rscs_df_header,rscs_temp,rscs_temp_df,RSCS,RSCS_Wave1_means,RSCS_Wave1,RSCS_Wave1_totals,RSCS_Wave1_totals_graph,
+   TAG023_special)
+
 
 #NOTE: No total score calculated for this questionnaire
 ```
 
 Prepare SAQ
 ```{r}
-qualtricsData_raw_saq<-filter(qualtricsData_raw_long, grepl("SAQ",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  filter(!tagid=="TAG070") %>%
-  filter(!tagid=="TAG015") %>%
-  spread(item,value)
+SAQ<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_saq<-left_join(qualtricsData_raw_saq,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
-  mutate(SAQ_total=rowSums(cbind(SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8,SAQ_9,SAQ_10,SAQ_11,SAQ_12,SAQ_13,SAQ_14,SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=T))
+if (length(SAQ$tagid) == length(unique(SAQ$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+TAG023_special<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
+                            mutate(value=as.numeric(value)) %>% 
+                            filter(!is.na(value)) %>%
+                            filter(!value=="") %>%
+                            filter(tagid=="TAG023") %>%
+                            filter(survey_name=="TAG - Sess 1 - V1 - (EATQ-R_2 & on)") %>%
+                            distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                            spread(item,value),
+                          redcap_cleaned %>%
+                            filter(!is.na(dob),!is.na(sa_date),tagid=="TAG023") %>%
+                            select(tagid, sa_date, sb_date, dob),by="tagid") 
+
+TAG002_special<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
+                            mutate(value=as.numeric(value)) %>% 
+                            filter(!is.na(value)) %>%
+                            filter(!value=="") %>%
+                            filter(tagid=="TAG002") %>%
+                            distinct(tagid,item,value,.keep_all = FALSE) %>%
+                            spread(item,value),
+                          redcap_cleaned %>%
+                            filter(!is.na(dob),!is.na(sa_date),tagid=="TAG002") %>%
+                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
+  mutate(survey_name="TAG - Sess 1 - V1 - (SAQ & on)")
+
+
+SAQ <- bind_rows(SAQ %>% filter(!tagid=="TAG023"),TAG023_special)
+SAQ <- bind_rows(SAQ %>% filter(!tagid=="TAG002"),TAG002_special)
+SAQ <- SAQ %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
+  
+
+if (length(SAQ$tagid) == length(unique(SAQ$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+SAQ_Wave1<-left_join(SAQ,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(SAQ_socdevgoals_total=rowSums(cbind(SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8), na.rm=F),
+         SAQ_approachgoals_total=rowSums(cbind(SAQ_9,SAQ_10,SAQ_11,SAQ_12,SAQ_13,SAQ_14), na.rm=F),
+         SAQ_avoidgoals_total=rowSums(cbind(SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=F),
+         SAQ_socdevgoals_mean=rowMeans(cbind(SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8), na.rm=T),
+         SAQ_approachgoals_mean=rowMeans(cbind(SAQ_9,SAQ_10,SAQ_11,SAQ_12,SAQ_13,SAQ_14), na.rm=T),
+         SAQ_avoidgoals_mean=rowMeans(cbind(SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=T))
+
+## Save it
+write.csv(SAQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SAQ_Wave1.csv"))
+
+## Graph it
+SAQ_Wave1_totals<-SAQ_Wave1 %>%
+  select(tagid,SAQ_socdevgoals_total,SAQ_approachgoals_total,SAQ_avoidgoals_total) %>%
+  mutate(Social_Development_Goals=SAQ_socdevgoals_total,
+         Social_Approach_Goals=SAQ_approachgoals_total,
+         Social_Avoidance_Goals=SAQ_avoidgoals_total) %>%
+  select(-contains("SAQ")) %>%
+  gather('item','value',2:length(.)) 
+SAQ_Wave1_totals_graph<-ggplot(SAQ_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("SAQ totals for ",length(unique(SAQ_Wave1$tagid[!is.na(SAQ_Wave1$SAQ_approachgoals_total)]))," participants"))
+
+SAQ_Wave1_socdev_items<-SAQ_Wave1 %>%
+  select(tagid,SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8) %>%
+  gather('item','value',2:length(.)) 
+SAQ_Wave1_socdev_items_graph<-ggplot(SAQ_Wave1_socdev_items, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("SAQ Social Development Goals items for ",length(unique(SAQ_Wave1$tagid[!is.na(SAQ_Wave1$tagid)]))," participants"))
+
+SAQ_Wave1_means<-SAQ_Wave1 %>%
+  select(tagid,SAQ_socdevgoals_mean,SAQ_approachgoals_mean,SAQ_avoidgoals_mean) %>%
+  mutate(Social_Development_Goals=SAQ_socdevgoals_mean,
+         Social_Approach_Goals=SAQ_approachgoals_mean,
+         Social_Avoidance_Goals=SAQ_avoidgoals_mean) %>%
+  select(-contains("SAQ")) %>%
+  gather('item','value',2:length(.)) 
+SAQ_Wave1_means_graph<-ggplot(SAQ_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("SAQ means for ",length(unique(SAQ_Wave1$tagid[!is.na(SAQ_Wave1$SAQ_approachgoals_mean)]))," participants"))
+
+
+## Make RDOC ready file
+ndar_saq_data <- left_join(SAQ_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         sagq_1=SAQ_1,
+         sagq_2=SAQ_2,
+         sagq_3=SAQ_3,
+         sagq_4=SAQ_4,
+         sagq_5=SAQ_5,
+         sagq_6=SAQ_6,
+         sagq_7=SAQ_7,
+         sagq_8=SAQ_8,
+         sagq_9=SAQ_9,
+         sagq_10=SAQ_10,
+         sagq_11=SAQ_11,
+         sagq_12=SAQ_12,
+         sagq_13=SAQ_13,
+         sagq_14=SAQ_14,
+         sagq_15=SAQ_15,
+         sagq_16=SAQ_16,
+         sagq_17=SAQ_17,
+         sagq_18=SAQ_18,
+         sagq_19=SAQ_19,
+         sagq_20=SAQ_20,
+         sagq_21=SAQ_21,
+         sag_sdg=ifelse(!is.na(SAQ_socdevgoals_total),SAQ_socdevgoals_total,NA),
+         sag_dapg=ifelse(!is.na(SAQ_approachgoals_total),SAQ_approachgoals_total,NA),
+         sag_davg=ifelse(!is.na(SAQ_avoidgoals_total),SAQ_avoidgoals_total,NA))
+
+ndar_saq_data <- left_join(ndar_key,ndar_saq_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("SAQ",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+saq_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+saq_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+saq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+saq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+saq_temp_df<-data.frame(saq_temp)
+ndar_saq_data<-bind_rows(saq_temp_df,ndar_saq_data)
+
+part2<-colnames(ndar_saq_data)
+part3<-as.matrix(ndar_saq_data)
+colnames(part3)<-NULL
+together<-rbind(saq_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/sag01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,saq_df_header,saq_temp,saq_temp_df,SAQ,SAQ_Wave1,SAQ_Wave1_means,SAQ_Wave1_means_graph,SAQ_Wave1_socdev_items,
+   SAQ_Wave1_socdev_items_graph,SAQ_Wave1_totals,SAQ_Wave1_totals_graph,TAG002_special,TAG023_special)
+
 ```
 
 Prepare SCARED-R 
 ```{r}
-qualtricsData_raw_scared<-filter(qualtricsData_raw_long, grepl("SCARED",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  filter(!tagid=="TAG078") %>%
-  spread(item,value)
+SAQ<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_scared<-left_join(qualtricsData_raw_scared,survey_date, by = c("tagid", "survey_name")) %>%   
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
-  mutate(SCARED_total=rowSums(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5),na.rm=T),
-         SCARED_ptsd=rowSums(cbind(SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_9),na.rm=T))
+if (length(SAQ$tagid) == length(unique(SAQ$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
 
+TAG023_special<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
+                            mutate(value=as.numeric(value)) %>% 
+                            filter(!is.na(value)) %>%
+                            filter(!value=="") %>%
+                            filter(tagid=="TAG023") %>%
+                            filter(survey_name=="TAG - Sess 1 - V1 - (EATQ-R_2 & on)") %>%
+                            distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                            spread(item,value),
+                          redcap_cleaned %>%
+                            filter(!is.na(dob),!is.na(sa_date),tagid=="TAG023") %>%
+                            select(tagid, sa_date, sb_date, dob),by="tagid") 
+
+TAG002_special<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
+                            mutate(value=as.numeric(value)) %>% 
+                            filter(!is.na(value)) %>%
+                            filter(!value=="") %>%
+                            filter(tagid=="TAG002") %>%
+                            distinct(tagid,item,value,.keep_all = FALSE) %>%
+                            spread(item,value),
+                          redcap_cleaned %>%
+                            filter(!is.na(dob),!is.na(sa_date),tagid=="TAG002") %>%
+                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
+  mutate(survey_name="TAG - Sess 1 - V1 - (SAQ & on)")
+
+
+SAQ <- bind_rows(SAQ %>% filter(!tagid=="TAG023"),TAG023_special)
+SAQ <- bind_rows(SAQ %>% filter(!tagid=="TAG002"),TAG002_special)
+SAQ <- SAQ %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
+  
+
+if (length(SAQ$tagid) == length(unique(SAQ$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+SAQ_Wave1<-left_join(SAQ,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(SAQ_socdevgoals_total=rowSums(cbind(SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8), na.rm=F),
+         SAQ_approachgoals_total=rowSums(cbind(SAQ_9,SAQ_10,SAQ_11,SAQ_12,SAQ_13,SAQ_14), na.rm=F),
+         SAQ_avoidgoals_total=rowSums(cbind(SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=F),
+         SAQ_socdevgoals_mean=rowMeans(cbind(SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8), na.rm=T),
+         SAQ_approachgoals_mean=rowMeans(cbind(SAQ_9,SAQ_10,SAQ_11,SAQ_12,SAQ_13,SAQ_14), na.rm=T),
+         SAQ_avoidgoals_mean=rowMeans(cbind(SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=T))
+
+## Save it
+write.csv(SAQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SAQ_Wave1.csv"))
+
+## Graph it
+SAQ_Wave1_totals<-SAQ_Wave1 %>%
+  select(tagid,SAQ_socdevgoals_total,SAQ_approachgoals_total,SAQ_avoidgoals_total) %>%
+  mutate(Social_Development_Goals=SAQ_socdevgoals_total,
+         Social_Approach_Goals=SAQ_approachgoals_total,
+         Social_Avoidance_Goals=SAQ_avoidgoals_total) %>%
+  select(-contains("SAQ")) %>%
+  gather('item','value',2:length(.)) 
+SAQ_Wave1_totals_graph<-ggplot(SAQ_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("SAQ totals for ",length(unique(SAQ_Wave1$tagid[!is.na(SAQ_Wave1$SAQ_approachgoals_total)]))," participants"))
+
+SAQ_Wave1_socdev_items<-SAQ_Wave1 %>%
+  select(tagid,SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8) %>%
+  gather('item','value',2:length(.)) 
+SAQ_Wave1_socdev_items_graph<-ggplot(SAQ_Wave1_socdev_items, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("SAQ Social Development Goals items for ",length(unique(SAQ_Wave1$tagid[!is.na(SAQ_Wave1$tagid)]))," participants"))
+
+SAQ_Wave1_means<-SAQ_Wave1 %>%
+  select(tagid,SAQ_socdevgoals_mean,SAQ_approachgoals_mean,SAQ_avoidgoals_mean) %>%
+  mutate(Social_Development_Goals=SAQ_socdevgoals_mean,
+         Social_Approach_Goals=SAQ_approachgoals_mean,
+         Social_Avoidance_Goals=SAQ_avoidgoals_mean) %>%
+  select(-contains("SAQ")) %>%
+  gather('item','value',2:length(.)) 
+SAQ_Wave1_means_graph<-ggplot(SAQ_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("SAQ means for ",length(unique(SAQ_Wave1$tagid[!is.na(SAQ_Wave1$SAQ_approachgoals_mean)]))," participants"))
+
+
+## Make RDOC ready file
+ndar_saq_data <- left_join(SAQ_Wave1,redcap_cleaned,by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         sagq_1=SAQ_1,
+         sagq_2=SAQ_2,
+         sagq_3=SAQ_3,
+         sagq_4=SAQ_4,
+         sagq_5=SAQ_5,
+         sagq_6=SAQ_6,
+         sagq_7=SAQ_7,
+         sagq_8=SAQ_8,
+         sagq_9=SAQ_9,
+         sagq_10=SAQ_10,
+         sagq_11=SAQ_11,
+         sagq_12=SAQ_12,
+         sagq_13=SAQ_13,
+         sagq_14=SAQ_14,
+         sagq_15=SAQ_15,
+         sagq_16=SAQ_16,
+         sagq_17=SAQ_17,
+         sagq_18=SAQ_18,
+         sagq_19=SAQ_19,
+         sagq_20=SAQ_20,
+         sagq_21=SAQ_21,
+         sag_sdg=ifelse(!is.na(SAQ_socdevgoals_total),SAQ_socdevgoals_total,NA),
+         sag_dapg=ifelse(!is.na(SAQ_approachgoals_total),SAQ_approachgoals_total,NA),
+         sag_davg=ifelse(!is.na(SAQ_avoidgoals_total),SAQ_avoidgoals_total,NA))
+
+ndar_saq_data <- left_join(ndar_key,ndar_saq_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("SAQ",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
+saq_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+saq_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+saq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+saq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+saq_temp_df<-data.frame(saq_temp)
+ndar_saq_data<-bind_rows(saq_temp_df,ndar_saq_data)
+
+part2<-colnames(ndar_saq_data)
+part3<-as.matrix(ndar_saq_data)
+colnames(part3)<-NULL
+together<-rbind(saq_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/sag01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,saq_df_header,saq_temp,saq_temp_df,SAQ,SAQ_Wave1,SAQ_Wave1_means,SAQ_Wave1_means_graph,SAQ_Wave1_socdev_items,
+   SAQ_Wave1_socdev_items_graph,SAQ_Wave1_totals,SAQ_Wave1_totals_graph,TAG002_special,TAG023_special)
 ```
 
 Prepare SCC
@@ -2952,21 +3400,6 @@ qualtricsData_raw_panasc<-filter(qualtricsData_raw_long, grepl("PANAS",item)) %>
 qualtricsData_raw_panasc<-left_join(qualtricsData_raw_panasc,survey_date, by = c("tagid", "survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = FALSE) %>%
   mutate(survey_date=value) %>% select(-item, -value) 
-```
-
-Prepare PSS
-```{r}
-qualtricsData_raw_pss<-filter(qualtricsData_raw_long, grepl("^PSS",item)) %>% 
-  mutate(value=as.numeric(value)) %>% 
-  filter(!survey_name=="TAG - Parent Questionnaires") %>%
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = FALSE) %>% 
-  filter(!tagid=="TAG132") %>%
-  spread(item,value)
-
-qualtricsData_raw_pss<-left_join(qualtricsData_raw_pss,survey_date, by = c("tagid", "survey_name")) %>%
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(survey_date=value) %>% select(-item, -value)                                 
 ```
 
 Prepare SCS-C
@@ -3329,22 +3762,7 @@ MomEthnic=ifelse(DadEthnic_1==1,1,
 
 ```
 
-PROBLEMS:
-Prepare DSHI 
-```{r}
-qualtricsData_raw_dshi<-filter(qualtricsData_raw_long, grepl("DSHI",item)) %>% distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  mutate(value=replace(value, value==1, "Y")) %>%
-  mutate(value=replace(value, value==2, "N")) %>%
-  spread(item,value)
-
-qualtricsData_raw_dshi<-left_join(qualtricsData_raw_dshi,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value) %>%
-  mutate(dshi_totalscore=-999)
-
-```
-
-VISUALIZATION
+DEPRECATED: VISUALIZATION
 ```{r}
 library(ggplot2)
 theme_set(theme_gray(base_size = 18))
@@ -3407,34 +3825,4 @@ qualtricsData_raw_parent_demo <-filter(qualtricsData_raw_long, grepl("Parent",su
   mutate(value=as.numeric(value)) %>% 
   distinct(tagid,item,.keep_all = TRUE) %>% 
   spread(item,value)
-```
-
-IN PROG: Figure out duplicates
-```{r}
-#Step 1: Define your questionnaire measure. Possibilities: K_SRQ, IRI, PDS
-questionnaire<-"^Ethnicity"
-
-# Now highlight the next segment until you read # STOP # and run
-checkoutduplicates<-filter(cleaned_survey_data, grepl(questionnaire,item)) %>% 
-  mutate(value=as.numeric(value)) %>%
-  filter(!is.na(value)) %>%
-  distinct(tagid,item,value,.keep_all = FALSE)
-
-duplicates<-checkoutduplicates %>%
-  spread(item,value)
-
-# STOP #
-######################
-
-# Now check each of the rows #
-checkoutduplicates[647:658,]
-
-# To figure out the timestamp just enter in one of the rows from above here:
-rownum<-450
-qualtricsData_raw_long %>%
-  filter(tagid %in% checkoutduplicates$tagid[rownum]) %>%
-  filter(survey_name %in% checkoutduplicates$survey_name[rownum]) %>%
-  filter(item=="EndDate")
-# Now compare the timestamps to those in Google Calendar for TAG
-
 ```
