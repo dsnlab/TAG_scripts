@@ -198,7 +198,7 @@ waist_graph<-ggplot(anthro, aes(x=waist)) +
   geom_density(alpha=.3)+
   ggtitle(paste0("Waist measurement (cm) for ",length(anthro$waist[!is.na(anthro$waist)])," Wave1 participants"))
 
-
+rm(waist_graph,heights_graph,weights_graph,redcap_anthro)
 ```
 
 DO NOT RUN: Prepare GUIDs
@@ -435,7 +435,7 @@ part3<-as.matrix(ndar_subject_df)
 colnames(part3)<-NULL
 together<-rbind(ndar_subject_df_header,part2,part3)
 write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,output.df,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
+rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
 ```
 
 Prepare BFI-10
@@ -451,7 +451,7 @@ BFI10<-left_join(filter(cleaned_survey_data, grepl("BFI",item)) %>%
 BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
-  select(-item, -value) %>%
+  select(-value) %>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
                             ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
                                    ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
@@ -577,7 +577,8 @@ part3<-as.matrix(ndar_bfi10_data)
 colnames(part3)<-NULL
 together<-rbind(bfi10_df_header,part2,part3)
 write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-
+rm(BFI10,BFI10_Wave1,BFI10_Wave1_means,BFI10_Wave1_means_graph,BFI10_Wave1_totals,BFI10_Wave1_totals_graph,
+   bfi10_df_header,bfi10_temp,bfi10_temp_df,part3,part2,together)
 ```
 
 Prepare CAMM
@@ -593,7 +594,7 @@ CAMM<-left_join(filter(cleaned_survey_data, grepl("CAMM",item)) %>%
 CAMM_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
-  select(-item, -value) %>%
+  select(-value) %>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
                             ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
                                    ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
@@ -715,6 +716,8 @@ part3<-as.matrix(ndar_camm_data)
 colnames(part3)<-NULL
 together<-rbind(camm_df_header,part2,part3)
 write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/camm01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(CAMM,CAMM_Wave1,CAMM_Wave1_means,CAMM_Wave1_means_graph,CAMM_Wave1_totals,CAMM_Wave1_totals_graph,
+   camm_df_header,camm_temp,camm_temp_df,part3,part2,together)
 ```
 
 Prepare PDS
@@ -732,7 +735,7 @@ PDS<-left_join(filter(cleaned_survey_data, grepl("PDS",item)) %>%
 PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
-  select(-item, -value) %>%
+  select(-value) %>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
                             ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
                                    ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
@@ -863,7 +866,8 @@ part3<-as.matrix(ndar_pds_data)
 colnames(part3)<-NULL
 together<-rbind(pds_df_header,part2,part3)
 write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/pds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-
+rm(pds_temp_df,pds_temp,pds_df_header,PDS_Wave1_pdss_by_age_graph,PDS_withage,PDS_Wave1_pdss_graph,
+   PDS_Wave1,PDS)
 ```
 
 Prepare PBIP
@@ -880,7 +884,7 @@ PBIP<-left_join(filter(cleaned_survey_data, grepl("PBIP",item)) %>%
 PBIP_Wave1<-left_join(PBIP,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
-  select(-item, -value) %>%
+  select(-value) %>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
                             ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
                                    ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
@@ -913,7 +917,7 @@ ndar_pbip_data <- left_join(PBIP_Wave1,redcap_cleaned,by="tagid") %>%
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
          gender="F",
          site="University of Oregon, USA",
-         tsmfemale=stage,
+         tsmfemale=as.integer(stage),
          tsmmale=9999,
          tsmboth=9,
          tsftsg=PBIP_1A,
@@ -938,7 +942,8 @@ part3<-as.matrix(ndar_pbip_data)
 colnames(part3)<-NULL
 together<-rbind(pbip_df_header,part2,part3)
 write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/tanner_sms01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-
+rm(pbip_temp_df,pbip_temp,pbip_df_header,PBIP_Wave1_pbip_by_pds_graph,PBIP_PDS_Wave1,
+   PBIP_Wave1_pbip_graph,PBIP_Wave1,PBIP,part3,part2,together)
 ```
 
 Prepare CARE-R Soc
@@ -954,7 +959,7 @@ CARE_R_SOC<-left_join(filter(cleaned_survey_data, grepl("CARE_R",item)) %>%
 CARE_R_SOC_Wave1<-left_join(CARE_R_SOC,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
-  select(-item, -value) %>%
+  select(-value) %>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
                             ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
                                    ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
@@ -1065,8 +1070,8 @@ part3<-as.matrix(ndar_carersoc_data)
 colnames(part3)<-NULL
 together<-rbind(carersoc_df_header,part2,part3)
 write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/caore01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(together,part2,part3,carersoc_df_header,carersoc_temp,carersoc_temp_df,CARE_R_SOC,CARE_R_SOC_Wave1,CARE_R_SOC_Wave1_DO,CARE_R_SOC_Wave1_DO_graph,
-   CARE_R_SOC_Wave1_DONT_graph,CARE_R_SOC_Wave1_DONT,output.df)
+rm(together,part2,part3,carersoc_df_header,carersoc_temp,carersoc_temp_df,CARE_R_SOC,CARE_R_SOC_Wave1,CARE_R_SOC_Wave1_DO,
+   CARE_R_SOC_Wave1_DO_graph,CARE_R_SOC_Wave1_DONT_graph,CARE_R_SOC_Wave1_DONT)
 ```
 
 Prepare CES-DC 
@@ -1082,7 +1087,7 @@ CESDC<-left_join(filter(cleaned_survey_data, grepl("CES_DC",item)) %>%
 CESDC_Wave1<-left_join(CESDC,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
-  select(-item, -value) %>%
+  select(-value) %>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
                             ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
                                    ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
@@ -1199,10 +1204,10 @@ CRQ<-left_join(filter(cleaned_survey_data, grepl("CRQ",item)) %>%
 CRQ_Wave1<-left_join(CRQ,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
-  select(-item, -value) %>%
+  select(-value) %>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
-                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
-                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
                                           ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
                                           ))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
@@ -1282,7 +1287,8 @@ ndar_crq_data <- left_join(ndar_key,ndar_crq_data, by="tagid") %>%
          subjectkey=guid) %>%
   filter(!is.na(subjectkey),
          !interview_age=="") %>%
-  select(-contains("CRQ",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid)
+  select(-contains("CRQ",ignore.case = FALSE),-dob,-survey_date,
+         -survey_type,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid)
 crq_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
 crq_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
 crq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
@@ -1316,7 +1322,7 @@ CTQ_Wave1<-left_join(CTQ,survey_date, by = c("tagid","survey_name")) %>%
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-contains("TEXT")) %>%
-  select(-item, -value)%>%
+  select(-value)%>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
                             ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
                                    ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
@@ -1516,7 +1522,7 @@ DIT<-left_join(filter(cleaned_survey_data, grepl("DIT",item)) %>%
 DIT_Wave1<-left_join(DIT,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
-  select(-item, -value)%>%
+  select(-value)%>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
                             ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
                                    ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
@@ -1664,9 +1670,9 @@ DSHI_Wave1<-left_join(DSHI,survey_date, by = c("tagid","survey_name")) %>%
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
-  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
-                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
-                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
                                           ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
                                           ))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob)
@@ -1844,13 +1850,10 @@ EHI<-left_join(filter(cleaned_survey_data, grepl("EHI",item)) %>%
 EHI_Wave1<-left_join(EHI,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
-  select(-item, -value)%>%
-  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
-                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
-                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
-                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
-                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                                 )))))) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                            ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                            ))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob)
 
 ## Save it
@@ -2243,9 +2246,9 @@ IRI<-left_join(filter(cleaned_survey_data, grepl("IRI",item)) %>%
 IRI_Wave1<-left_join(IRI,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
-  select(-item, -value)%>%
-  mutate(survey_date=ifelse(grepl("Sess 1",survey_name),sa_date,
-                            ifelse(grepl("Sess 2",survey_name),sb_date,
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
                                    ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
                                    )))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
@@ -2364,8 +2367,8 @@ ndar_iri_data <- left_join(IRI_Wave1,redcap_cleaned,by="tagid") %>%
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
          gender="F",
          comments_misc=ifelse(grepl("Sess 1",survey_name),"Wave1 Session1",
-                             ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
-                                           ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",NA))),
+                              ifelse(grepl("Sess 2",survey_name),"Wave1 Session2",
+                                     ifelse(grepl("Home",survey_name),"Wave1 Home Questionnaires",NA))),
          gender="F",
          daydream=IRI_1,
          tender_feelings=IRI_2,
@@ -2438,11 +2441,8 @@ KSRQ<-left_join(filter(cleaned_survey_data, grepl("K_SRQ",item)) %>%
 KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
-  select(-item, -value)%>%
-  mutate(survey_date=ifelse(grepl("Sess 1",survey_name),sa_date,
-                            ifelse(grepl("Sess 2",survey_name),sb_date,
-                                   ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                   )))) %>%
+  select(-value)%>%
+  mutate(survey_date=sa_date) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(KSRQ_adm_mean=round(rowMeans(cbind(K_SRQ_1,K_SRQ_7,K_SRQ_11,K_SRQ_17), na.rm=T),3),
          KSRQ_negsoc_mean=round(rowMeans(cbind(K_SRQ_3,K_SRQ_5,K_SRQ_13,K_SRQ_16), na.rm=T),3),
@@ -2552,11 +2552,13 @@ if (length(MSPSS$tagid) == length(unique(MSPSS$tagid))){
 MSPSS_Wave1<-left_join(MSPSS,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
-  select(-item, -value)%>%
-  mutate(survey_date=ifelse(grepl("Sess 1",survey_name),sa_date,
-                            ifelse(grepl("Sess 2",survey_name),sb_date,
-                                   ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                   )))) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(MSPSS_fam_total=rowSums(cbind(MSPSS_3,MSPSS_4,MSPSS_8,MSPSS_11), na.rm=F),
          MSPSS_fri_total=rowSums(cbind(MSPSS_6,MSPSS_7,MSPSS_9,MSPSS_12), na.rm=F),
@@ -2665,11 +2667,13 @@ if (length(PSS$tagid) == length(unique(PSS$tagid))){
 PSS_Wave1<-left_join(PSS,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
-  select(-item, -value)%>%
-  mutate(survey_date=ifelse(grepl("Sess 1",survey_name),sa_date,
-                            ifelse(grepl("Sess 2",survey_name),sb_date,
-                                   ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                   )))) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>% # remove this line when making RDoC db document
   mutate(PSS_4=ifelse(PSS_4==0,4,
                       ifelse(PSS_4==1,3,
@@ -2722,7 +2726,7 @@ PSS_Wave1_means_graph<-ggplot(PSS_Wave1_means, aes(x=value, colour=item)) +
 
 
 ## Make RDOC ready file
-ndar_pss_data <- PSS_Wave1 %>%
+ndar_pss_data <- left_join(PSS_Wave1,redcap_cleaned,by="tagid") %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -2752,7 +2756,7 @@ ndar_pss_data <- left_join(ndar_key,ndar_pss_data, by="tagid") %>%
          subjectkey=guid) %>%
   filter(!is.na(subjectkey),
          !interview_age=="") %>%
-  select(-contains("PSS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type,-qualtrics_date)
+  select(-contains("PSS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-sa_date,-sb_date,-guid,-survey_type)
 pss_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
 pss_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
 pss_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
@@ -2790,10 +2794,12 @@ RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name")) %>%
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
-  mutate(survey_date=ifelse(grepl("Sess 1",survey_name),sa_date,
-                            ifelse(grepl("Sess 2",survey_name),sb_date,
-                                   ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                   )))) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>% 
   mutate(RMET_1_correct=ifelse(RMET_1==1,0,
                                ifelse(RMET_1==2,0,
@@ -3245,12 +3251,10 @@ SAQ_Wave1<-left_join(SAQ,survey_date, by = c("tagid","survey_name")) %>%
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
-  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
-                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
-                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
-                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
-                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                                 )))))) %>%
+  mutate(survey_date=
+           ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                  ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                  )))%>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(SAQ_socdevgoals_total=rowSums(cbind(SAQ_1,SAQ_2,SAQ_3,SAQ_4,SAQ_5,SAQ_6,SAQ_7,SAQ_8), na.rm=F),
          SAQ_approachgoals_total=rowSums(cbind(SAQ_9,SAQ_10,SAQ_11,SAQ_12,SAQ_13,SAQ_14), na.rm=F),
