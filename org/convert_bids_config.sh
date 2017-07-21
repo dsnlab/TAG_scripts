@@ -8,7 +8,7 @@
 # Set directory names
 archivedir="/projects/dsnlab/tag/archive"
 dicomdir=$(echo "/projects/dsnlab/tag/archive/DICOMS/${subid}"*)
-niidir="/projects/dsnlab/tag/archive/cleani_nii"
+niidir="/projects/dsnlab/tag/archive/clean_nii"
 bidsdir="/projects/dsnlab/tag/bids_data"
 
 # Set study info
@@ -22,10 +22,10 @@ declare -a resting=("Resting_1" "Resting_2")
 declare -a tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
 
 # Set which sequences to convert
-convertanat="TRUE"
+convertanat="FALSE"
 convertfmap="TRUE"
 convertdti="TRUE"
-convertrest="TRUE"
+convertrest="FALSE"
 converttask="TRUE"
 
 # Set error log file
