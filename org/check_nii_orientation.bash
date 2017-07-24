@@ -3,7 +3,15 @@
 #Please run this from the directory where the subject folders are located!
 
 #Path to afni 3dinfo binary (just 3dinfo if it's in your path already)
-afniinfo=/usr/lib/afni/bin/3dinfo
+#afniinfo=/usr/lib/afni/bin/3dinfo
+module load afni
+afniinfo=3dinfo
+
+#Set directory
+bidsdir="/projects/dsnlab/tag/bids_data"
+
+#move into directory
+cd $bidsdir
 
 #manual sublist like:
 #sub-TAG000

@@ -22,10 +22,10 @@ declare -a resting=("Resting_1" "Resting_2")
 declare -a tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
 
 # Set which sequences to convert
-convertanat="TRUE"
+convertanat="FALSE"
 convertfmap="TRUE"
-convertdti="TRUE"
-convertrest="TRUE"
+convertdti="FALSE"
+convertrest="FALSE"
 converttask="TRUE"
 
 # Set error log file
