@@ -121,8 +121,8 @@ if [ "${convertanat}" == "TRUE" ]; then
 		ls "$anatomicaloutput"/*"${anat}".nii.gz >> $errorlog
 		t1w1=$(ls "$anatomicaloutput"/*"${anat}".nii.gz | head -1)
 		t1w2=$(ls "$anatomicaloutput"/*"${anat}".nii.gz | tail -1)
-		cp ${cpflags} "${tw1}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/anat/sub-"${subid}"_ses-"${sessid}"_run-01_T1w.nii.gz
-		cp ${cpflags} "${tw2}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/anat/sub-"${subid}"_ses-"${sessid}"_run-02_T1w.nii.gz
+		cp ${cpflags} "${t1w1}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/anat/sub-"${subid}"_ses-"${sessid}"_run-01_T1w.nii.gz
+		cp ${cpflags} "${t1w2}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/anat/sub-"${subid}"_ses-"${sessid}"_run-02_T1w.nii.gz
 	fi
 fi
 
@@ -188,12 +188,13 @@ fi
 if [ "${converttask}" == "TRUE" ]; then
 	echo -e "\nCopying task fMRI"
 	for task in ${tasks[@]}; do 
-		runnum="$(echo "${task}" | tail -c 2)"
+		runnum="$(echo "${task}" | sed 's/[^0-9]//g')"
+		taskalpha="$(echo "${task}" | sed 's/[^a-zA-Z]//g')"
 		if [ $(ls "$taskoutput"/*"${task}"*.nii.gz | wc -l) -eq 1 ]; then
 			if [[ $runnum =~ ^[0-9]+$ ]]; then 
-				cp ${cpflags} "$taskoutput"/*"${task}"*.nii.gz "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-"${task}"_run-0"${runnum}"_bold.nii.gz
+				cp ${cpflags} "$taskoutput"/*"${task}"*.nii.gz "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-"${taskalpha}"_run-0"${runnum}"_bold.nii.gz
 			else
-				cp ${cpflags} "$taskoutput"/*"${task}"*.nii.gz "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-"${task}"_run-01_bold.nii.gz
+				cp ${cpflags} "$taskoutput"/*"${task}"*.nii.gz "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-"${taskalpha}"_run-01_bold.nii.gz
 			fi
 		else
 			# print file paths in errorlog.txt if =~ 1 files; copy the largest file
@@ -201,9 +202,9 @@ if [ "${converttask}" == "TRUE" ]; then
 			ls "$taskoutput"/*"${task}"*.nii.gz >> $errorlog
 			largestfile=$(du -sh "$taskoutput"/*"${task}"*.nii.gz | sort -n | tail -1 | cut -f2)
 			if [[ $runnum =~ ^[0-9]+$ ]]; then 
-				cp ${cpflags} "${largestfile}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-"${task}"_run-0"${runnum}"_bold.nii.gz
+				cp ${cpflags} "${largestfile}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-"${taskalpha}"_run-0"${runnum}"_bold.nii.gz
 			else
-				cp ${cpflags} "${largestfile}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-"${task}"_run-01_bold.nii.gz
+				cp ${cpflags} "${largestfile}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-"${taskalpha}"_run-01_bold.nii.gz
 			fi
 		fi
 	done
