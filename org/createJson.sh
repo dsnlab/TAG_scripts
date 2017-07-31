@@ -10,7 +10,7 @@
 # * $subid from batch_convert_bids.sh
 
 # Load variables
-source createJson.sh
+source createJson_config.sh
 echo "${subid}"
 
 # Create error log file
