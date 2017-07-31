@@ -10,7 +10,7 @@
 # * $subid from batch_convert_bids.sh
 
 # Load variables
-source convert_bids_config.sh
+source createJson.sh
 echo "${subid}"
 
 # Create error log file
@@ -34,8 +34,6 @@ if [ "${converttask}" == "TRUE" ]; then
 		PhaseEncodingDirection=$(ls | grep 'PhaseEncodingDirection' $groupfile | sed 's/^.*: //')
 		EffectiveEchoSpacing=$(ls | grep 'EffectiveEchoSpacing' $groupfile | sed 's/^.*: //')
 
-
-
 		#Check subject Json info and create seperate file if different
 		cd $niidir/$subid/task
 		file=*"${task}"*_info.txt
@@ -48,7 +46,6 @@ if [ "${converttask}" == "TRUE" ]; then
     	file=test_out.csv
     	fileSTRING="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.nii.gz"
     	PED=$(ls | grep "$fileSTRING" $file | sed -n 's/^.*nii.gz,[[:space:]]*//p')
-
 
     			if [[ "$PhaseEncoding_task" == 1a ]]; then 
 					x="A" 
@@ -122,5 +119,3 @@ if [ "${convertfmap}" == "TRUE" ]; then
 	    ls "$filename" >> $errorlog
 	fi
 fi
-
-# fieldmap
