@@ -21,7 +21,7 @@ cd $bidsdir
 #sublist=`cat ~/sublist.txt`
 sublist=`ls -1d sub*`
 
-outputfile=test_out.csv
+outputfile=test22_out.csv
 
 echo "sid,file,orient" > $outputfile
 

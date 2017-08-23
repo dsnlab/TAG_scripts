@@ -17,9 +17,9 @@ SUBJLIST=`cat subject_list2.txt`
 OUTPUTDIR=TAG_scripts/org/output
 
 # Set job script
-JOB=TAG_scripts/org/createJson.sh
+JOB=TAG_scripts/org/createJson2.sh
 
 for SUBJ in ${SUBJLIST[@]}
 do
- sbatch --export subid=${SUBJ} --job-name createJson_"${SUBJ}" --mem-per-cpu=2G --cpus-per-task=1 -o "${STUDY}"/"${OUTPUTDIR}"/"${SUBJ}"_createJson_output.txt -e "${STUDY}"/"${OUTPUTDIR}"/"${SUBJ}"__createJson_error.txt "${STUDY}"/"${JOB}"
+ sbatch --export subid=${SUBJ} --job-name createJson_"${SUBJ}" --mem-per-cpu=2G --cpus-per-task=1 -o "${STUDY}"/"${OUTPUTDIR}"/"${SUBJ}"_createJson_output.txt -e "${STUDY}"/"${OUTPUTDIR}"/"${SUBJ}"_createJson_error.txt "${STUDY}"/"${JOB}"
 done
