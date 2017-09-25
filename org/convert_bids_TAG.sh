@@ -8,9 +8,9 @@
 
 # Set folder names
 dicomsubid=$1
-dicomdir=$(echo "/Volumes/psych-cog/dsnlab/TAG/DICOMS/${dicomsubid}"*)
-inputdir="/Volumes/psych-cog/dsnlab/TAG/clean_nii"
-outputdir="/Volumes/psych-cog/dsnlab/TAG/clean_nii/BIDS"
+dicomdir=$(echo "/Volumes/psych-cog/dsnlab/TAG/archive/DICOMS/${dicomsubid}"*)
+inputdir="/Volumes/psych-cog/dsnlab/TAG/archive/clean_nii"
+outputdir="/Volumes/psych-cog/dsnlab/TAG/archive/clean_nii/BIDS"
 
 # Set study info
 studyid="TAG"

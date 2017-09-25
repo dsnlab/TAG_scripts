@@ -22,10 +22,27 @@ Extract Resting state preprocessing stats
 ```{r Extract and plot run times, echo=TRUE}
 scrubbingThreshold<-.2
 # Set directory
-rsfcMRI_subjects="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/rsfMRI_preproc_noFDscrub/"
+rsfcMRI_subjects="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/"
 # create sub list based on folders within the resting state subjects folder
 subs<-list.files(path = rsfcMRI_subjects, pattern = "sub")
 # extract info
+
+
+alignmentissues=function(sub){
+  if (file.exists(paste0(rsfcMRI_subjects,sub,"/",sub,".results/out.ss_review.",sub,".txt"))){
+      alignment<-(read.csv(paste0(rsfcMRI_subjects,sub,"/",sub,".results/out.ss_review.",sub,".txt")) %>%
+                    filter(grepl("anat/EPI",.[[1]])))
+      alignment<-(as.numeric(substring(as.character(alignment[[1]][1]),29,36)))
+      } else {
+        alignment<-NA
+      }
+  cbind(sub,alignment)
+}
+alignmentout<-lapply(subs,alignmentissues                     )
+alignmentout.df<-as.data.frame(do.call(rbind,alignmentout))
+
+
+
 extract_rsfcMRI_runinfo= function(sub){
 if (file.exists(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))){
       log<-read.csv(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))
