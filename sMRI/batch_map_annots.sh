@@ -11,12 +11,12 @@
 STUDY=/projects/dsnlab/tag
 
 # Set subject list
-#SUBJLIST=`cat subject_list.txt`
-SUBJLIST=`cat test.txt`
+SUBJLIST=`cat subject_list.txt`
+#SUBJLIST=`cat test.txt`
 
 # 
 for SUBJ in $SUBJLIST
 do
-sbatch --export SUBID=${SUBJ} --job-name mapANNOTs --partition=defq --mem-per-cpu=1G --cpus-per-task=1 -o "${STUDY}"/TAG_scripts/sMRI/output/"${SUBJ}"_mapANNOTs_output.txt -e "${STUDY}"/TAG_scripts/sMRI/output/"${SUBJ}"_mapANNOTs_error.txt job_map_annots.sh
+sbatch --export SUBID=${SUBJ} --job-name mapANNOTs --partition=short --mem-per-cpu=1G --cpus-per-task=1 -o "${STUDY}"/TAG_scripts/sMRI/output/"${SUBJ}"_mapANNOTs_output.txt -e "${STUDY}"/TAG_scripts/sMRI/output/"${SUBJ}"_mapANNOTs_error.txt job_map_annots.sh
 done
 

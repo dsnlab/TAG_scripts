@@ -64,6 +64,7 @@ afni_proc.py -subj_id $subj                                \
 -tcat_remove_first_trs 5                                  \
 -volreg_align_to MIN_OUTLIER                               \
 -volreg_align_e2a                                          \
+-align_opts_aea -big_move                                 \
 -volreg_interp -Fourier \
 -mask_apply epi \
 -mask_test_overlap yes \
