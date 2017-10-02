@@ -1,0 +1,155 @@
+---
+title: "Strategic brain connectivity"
+author: "Kate Mills, John Flournoy, & TAG team"
+date: "October 2, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = TRUE,
+	warning = TRUE
+)
+```
+
+```{r Load Required Packages, message=FALSE, warning=FALSE, include=FALSE}
+## Load required packages ##
+packages <-  c("lme4", "nlme", "ggplot2", "dplyr", "tidyr", "knitr",
+              "parallel", "data.table", "lubridate","psych","corrplot")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+```
+
+Set working directory
+```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
+getwd()
+workdir=as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
+```
+
+Extract rsfcMRI preprocessing stats
+```{r Extract and plot run times, echo=TRUE}
+# Set directory
+rsfcMRI_subjects=paste0(workdir,"../TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/")
+# create sub list based on folders within the resting state subjects folder
+subs<-list.files(path = rsfcMRI_subjects, pattern = "sub")
+# motion threshold
+scrubbingThreshold<-.2
+# extract info
+alignmentissues=function(sub){
+  if (file.exists(paste0(rsfcMRI_subjects,sub,"/",sub,".results/out.ss_review.",sub,".txt"))){
+      alignment<-(read.csv(paste0(rsfcMRI_subjects,sub,"/",sub,".results/out.ss_review.",sub,".txt")) %>%
+                    filter(grepl("anat/EPI",.[[1]])))
+      alignment<-(as.numeric(substring(as.character(alignment[[1]][1]),29,36)))
+      } else {
+        alignment<-NA
+      }
+  cbind(sub,alignment)
+}
+alignmentout<-lapply(subs,alignmentissues)
+alignmentout.df<-as.data.frame(do.call(rbind,alignmentout))
+
+extract_rsfcMRI_runinfo= function(sub){
+if (file.exists(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))){
+      log<-read.csv(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))
+      preproc_complete="yes"
+      blurps<-nrow(log %>% filter(.[[1]]>scrubbingThreshold))
+      potential<-(nrow(log)-(blurps*2))
+      viable<-ifelse(potential>=385,"yes","no")
+      cbind(sub,blurps,potential,viable,preproc_complete)
+    } else{
+      preproc_complete="no"
+      blurps<-NA
+      potential<-NA
+      viable<-"no"
+      cbind(sub,blurps,potential,viable,preproc_complete)
+      }
+}
+outputlist<-lapply(subs,extract_rsfcMRI_runinfo)
+output.df<-as.data.frame(do.call(rbind,outputlist)) %>% 
+  mutate(blurps=as.numeric(levels(blurps))[blurps],
+         potential=as.numeric(levels(potential))[potential]) %>%
+  mutate(potential=ifelse(potential<0,0,potential))
+
+useable <- ggplot((output.df %>% select(-blurps)),
+                aes(x=sub, y=(potential*.78)/60, fill=viable))
+useable + geom_bar(colour="black", stat="identity") 
+
+
+sublist<-output.df %>% 
+  filter(viable=="yes") %>%
+  select(sub)
+
+print(paste0(nrow(output.df%>%filter(viable=="yes"))," are viable"))
+```
+
+Obtain demographic data
+```{r}
+# Females are 1 and Males are 0
+redcapData <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
+  filter(!grepl("wave_2",redcap_event_name))
+redcapData_dob<-redcapData %>%
+  select(dob,subject_spit_id) %>%
+  filter(!dob=="")
+redcapData_sessiondates<-redcapData %>%
+  select(sa_date,sb_date,subject_spit_id) %>%
+  filter(!sa_date=="")
+redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
+  mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
+  filter(!subject_spit_id=="TAG_001P") %>%
+  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid)) %>%
+  mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
+  select(-subject_spit_id)
+rm(redcapData_dob,redcapData,redcapData_sessiondates)
+
+print(paste0(length(unique(redcap_cleaned$tagid))," participants w/ demographic data"))
+```
+
+Obtain behavior data
+```{r}
+# Set directory
+behavior_subjects=paste0(workdir,"task/output/")
+# create sub list based on folders within the resting state subjects folder
+subs<-list.files(path = behavior_subjects, pattern = "tag")
+subs<-substring(subs,0,6)
+subs<-unique(subs)
+# names(behavioraldata)
+# [1] "X"                    "sid"                  "run"                  "trial"               
+# [5] "condition"            "left.target"          "right.target"         "left.coin"           
+# [9] "right.coin"           "disc.onset"           "target.choice"        "target.rt.seconds"   
+# [13] "statement.onset"      "statement.choice"     "statement.rt.seconds" "payout"              
+# [17] "statement"            "disclosed"            "share.value"          "affective"           
+# [21] "tagid"
+
+behavioraldata<-lapply(X=subs,FUN=function(subid){
+  if (file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")) &
+      file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))){
+    subdf<-bind_rows(read.csv(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")),
+  read.csv(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt")))
+      } else if (file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")) &
+      !file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))) {
+        subdf<-read.csv(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt"))
+      } else if (!file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")) &
+      file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))) {
+   subdf<-read.csv(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))
+      } else {
+        subdf<-as.data.frame(array(NA,dim=c(0,21)))
+        colnames(subdf)<-c("X","sid","run","trial","condition","left.target","right.target","left.coin","right.coin",
+                          "disc.onset","target.choice","target.rt.seconds","statement.onset","statement.choice",
+                          "statement.rt.seconds","payout","statement","disclosed","share.value","affective","tagid")
+      }
+  subdf
+})
+
+behavioraldata<-do.call(bind_rows, behavioraldata)
+behavioraldata<-read.csv(paste0(workdir,"/processed/DSD/dsd_trials_long.csv")) %>%
+  ## Add TAG header to behavioural data ##
+  mutate(tagid=sprintf("TAG%03d",sid)) %>%
+  select(tagid, disclosed, share.value, affective)
+print(paste0(length(unique(ylg_timing$sub))," participants w/ behavioral data"))
+print(paste0(length(unique((ylg_timing %>% filter(group=="community"))$sub))," community participants w/ behavioral data"))
+print(paste0(length(unique((ylg_timing %>% filter(group=="foster"))$sub))," CWS participants w/ behavioral data"))
+
+```
