@@ -126,8 +126,11 @@ subs<-unique(subs)
 behavioraldata<-lapply(X=subs,FUN=function(subid){
   if (file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")) &
       file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))){
-    subdf<-bind_rows(read.csv(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")),
-  read.csv(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt")))
+    subdf<-bind_rows(read.table(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt"),sep=',', quote=NULL, comment='', header=FALSE),
+  read.table(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"),sep=',', quote=NULL, comment='', header=FALSE))
+    colnames(subdf)<-c("X","unknown","wave","unknown2",
+                       "","","","","","","","",
+                       "","","","","","","","")
       } else if (file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")) &
       !file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))) {
         subdf<-read.csv(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt"))
