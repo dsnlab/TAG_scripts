@@ -15,12 +15,17 @@ knitr::opts_chunk$set(
 
 ```{r Load Required Packages, message=FALSE, warning=FALSE, include=FALSE}
 ## Load required packages ##
-packages <-  c("lme4", "nlme", "ggplot2", "dplyr", "tidyr", "knitr",
-              "parallel", "data.table", "lubridate","psych","corrplot")
+packages <-  c("tidyverse", "lme4", "nlme", "parallel", "svglite",
+               "data.table", "lubridate", "psych", "corrplot","zoo")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 lapply(packages, library, character.only = TRUE)
+
+
+invlogit <- function(x){
+  exp(x)/(exp(x)+1)
+}
 ```
 
 Set working directory
@@ -107,52 +112,258 @@ rm(redcapData_dob,redcapData,redcapData_sessiondates)
 print(paste0(length(unique(redcap_cleaned$tagid))," participants w/ demographic data"))
 ```
 
-Obtain behavior data
+Clean DSD data
 ```{r}
-# Set directory
-behavior_subjects=paste0(workdir,"task/output/")
-# create sub list based on folders within the resting state subjects folder
-subs<-list.files(path = behavior_subjects, pattern = "tag")
-subs<-substring(subs,0,6)
-subs<-unique(subs)
-# names(behavioraldata)
-# [1] "X"                    "sid"                  "run"                  "trial"               
-# [5] "condition"            "left.target"          "right.target"         "left.coin"           
-# [9] "right.coin"           "disc.onset"           "target.choice"        "target.rt.seconds"   
-# [13] "statement.onset"      "statement.choice"     "statement.rt.seconds" "payout"              
-# [17] "statement"            "disclosed"            "share.value"          "affective"           
-# [21] "tagid"
+# clean up the DSD behavior data (thanks John!)
+dataHeader <- c('trial', 'condition', 'left.target', 'right.target', 'left.coin', 'right.coin',
+                'disc.onset', 'target.choice','target.rt.seconds',
+                'statement.onset', 'statement.choice', 'statement.rt.seconds',
+                'payout', 'statement')
+# %   task.output.raw:
+# %       1. Trial Number
+# %       2. condition
+# %           [1-3] = Neutral; [4-6] = Affective;
+# %           [1,4] = loss to share; [2, 5] = loss to private; [3,6] equal
+# %       3. leftTarget (self == 1, friend == 2) 
+# %       4. rightTarget
+# %       5. leftCoin
+# %       6. rightCoin
+# %       7. Time since trigger for disclosure (choiceOnset - loopStartTime);
+# %       8. choiceResponse - Share or not? (leftkeys = 1, rightkeys = 2)
+# %       9. choiceRT - reaction time
+# %       10. Time since trigger for statement decisions (discoOnset - loopStartTime);
+# %       11. discoResponse - endorse or not?  (leftkeys = 1, rightkeys = 2)
+# %       12. discoRT - reaction time
+# %       13. task.payout
+# %       14. task.input.statement
 
-behavioraldata<-lapply(X=subs,FUN=function(subid){
-  if (file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")) &
-      file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))){
-    subdf<-bind_rows(read.table(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt"),sep=',', quote=NULL, comment='', header=FALSE),
-  read.table(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"),sep=',', quote=NULL, comment='', header=FALSE))
-    colnames(subdf)<-c("X","unknown","wave","unknown2",
-                       "","","","","","","","",
-                       "","","","","","","","")
-      } else if (file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")) &
-      !file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))) {
-        subdf<-read.csv(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt"))
-      } else if (!file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run1_output.txt")) &
-      file.exists(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))) {
-   subdf<-read.csv(paste0(workdir,"task/output/",subid,"_wave_1_dsd_run2_output.txt"))
-      } else {
-        subdf<-as.data.frame(array(NA,dim=c(0,21)))
-        colnames(subdf)<-c("X","sid","run","trial","condition","left.target","right.target","left.coin","right.coin",
-                          "disc.onset","target.choice","target.rt.seconds","statement.onset","statement.choice",
-                          "statement.rt.seconds","payout","statement","disclosed","share.value","affective","tagid")
-      }
-  subdf
-})
+rawDataDir <- paste0(workdir,"task/output/")
+outDataDir <- paste0(workdir,"task/processed/")
 
-behavioraldata<-do.call(bind_rows, behavioraldata)
-behavioraldata<-read.csv(paste0(workdir,"/processed/DSD/dsd_trials_long.csv")) %>%
+filesDF <- data.frame(file=list.files(rawDataDir, pattern="tag.*dsd.*output.txt"),
+                      stringsAsFactors=F)
+
+longDF <- filesDF %>%
+	extract(file, c('sid', 'run'), 'tag([0-9][0-9][0-9]).*run([12])', remove=F) %>%
+	group_by(sid, run) %>%
+	do({
+	  aDF.raw <- read.csv(file=paste0(rawDataDir,.$file[[1]]),
+	                      header=F, col.names=dataHeader,
+	                      stringsAsFactors=F)
+	  aDF <- aDF.raw %>%
+	    mutate(disclosed=as.numeric(target.choice==2),
+	           share.value=right.coin-left.coin,
+	           affective=condition %in% 4:6)
+		aDF
+	})	
+
+write.csv(longDF, paste0(outDataDir,'dsd_trials_long.csv'))
+
+allSubs <- ggplot(longDF, aes(x=share.value, y=disclosed, group=affective))+
+	geom_point(aes(color=affective),position=position_jitter(h=.1, w=.2))+
+	geom_line(aes(color=affective), stat='smooth', method='glm', 
+		  method.args=list(family='binomial'))+
+	geom_hline(yintercept=.5, color='gray')+
+	facet_wrap(~sid)+
+	scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
+	theme(strip.background=element_rect(fill='#eeeeee'),
+	      panel.spacing=unit(0, 'pt'),
+	      panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1))
+ggsave(allSubs, file=paste0(outDataDir, 'PSE-all_pid.png'),
+       width=10, height=15, dpi=72)
+
+allSubs2 <- longDF %>% 
+  mutate(endorsed=statement.choice==1) %>%
+  unite(affect_endorsed, affective, endorsed) %>%
+  ggplot(aes(x=share.value, y=disclosed, group=affect_endorsed))+
+  geom_point(aes(color=affect_endorsed),position=position_jitter(h=.1, w=.2))+
+  geom_line(aes(color=affect_endorsed), stat='smooth', method='glm', 
+            method.args=list(family='binomial'))+
+  geom_hline(yintercept=.5, color='gray')+
+  facet_wrap(~sid)+
+  scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
+  theme(strip.background=element_rect(fill='#eeeeee'),
+        panel.spacing=unit(0, 'pt'),
+        panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1),
+        text=element_text(size=12, face='bold'))
+ggsave(allSubs2, file=paste0(outDataDir, 'PSE-all_pid_endoresed.png'),
+       width=10, height=15, dpi=72)
+```
+
+Open processed DSD data
+```{r}
+behavioraldata<-read.csv(paste0(workdir,"task/processed/dsd_trials_long.csv")) %>%
   ## Add TAG header to behavioural data ##
   mutate(tagid=sprintf("TAG%03d",sid)) %>%
   select(tagid, disclosed, share.value, affective)
-print(paste0(length(unique(ylg_timing$sub))," participants w/ behavioral data"))
-print(paste0(length(unique((ylg_timing %>% filter(group=="community"))$sub))," community participants w/ behavioral data"))
-print(paste0(length(unique((ylg_timing %>% filter(group=="foster"))$sub))," CWS participants w/ behavioral data"))
+print(paste0(length(unique(behavioraldata$tagid))," participants w/ behavioral data"))
 
+# Model time
+nullmodel=(glmer(as.formula(paste0("disclosed ~ 1 + (1|tagid)")), behavioraldata, family=binomial))
+mainbmodel=(glmer(as.formula(paste0("disclosed ~ share.value + affective + (1|tagid)")), behavioraldata, family=binomial))
+mainbmodelrx=(glmer(as.formula(paste0("disclosed ~ share.value + affective + (1+share.value|tagid)")), behavioraldata, family=binomial))
+mainbmodelrx2=(glmer(as.formula(paste0("disclosed ~ share.value + affective + (1+share.value+affective|tagid)")), behavioraldata, family=binomial))
+
+# Compare models
+modcomp <- anova(mainbmodelrx2, mainbmodelrx, mainbmodel, nullmodel)
+print(modcomp)
+summary(mainbmodelrx2)
+invlogit(fixef(mainbmodelrx2))
+
+# Predicting data
+predictedData <- expand.grid(tagid=unique(behavioraldata$tagid),
+                             share.value=-2:2,
+                             affective=c(TRUE, FALSE),
+                             stringsAsFactors=F)
+
+predictedData$disclosure <- predict(mainbmodelrx2,
+                                    newdata=predictedData,
+                                    re.form=~(1+share.value+affective|tagid),
+                                    type='response')
+
+predictedData$disclosure_uncond <- predict(mainbmodelrx2,
+                                           newdata=predictedData,
+                                           re.form=NA,
+                                           type='response')
+
+
+modelPlot<-ggplot(predictedData, aes(x=share.value, y=disclosure))+
+	geom_line(aes(group=tagid), color='#dddddd')+
+	geom_line(aes(y=disclosure_uncond), color='red', size=2)+
+	facet_wrap(~affective)+
+	theme(panel.background=element_rect(fill='white'))
+
+ggsave(filename=paste0(outDataDir, "dsd_model_plot.svg"),
+       plot=modelPlot, width=5, height=4, units='in', dpi=300)
+
+loessPlot<-ggplot(behavioraldata,
+                  aes(x=share.value,y=disclosed,group=affective))+
+		  geom_smooth(aes(color=affective),method='loess')+
+		  geom_count(aes(color=affective))+
+		  theme(panel.background=element_rect(fill='white'))
+
+ggsave(filename=paste0(outDataDir,"dsd_loess_plot.svg"),
+       plot=loessPlot, width=10, height=8, units='in', dpi=150)
+```
+
+
+Exclude subs for various reasons
+```{r}
+sublist<- sublist %>%
+  filter(!sub=="sub-TAG000")
+```
+
+Run functional connectivity analyses
+```{r timecourses}
+# Set fixed variables
+numcores<-detectCores()[1]
+scrubbingThreshold<-.2
+sub_base_dir=paste0(workdir,"../TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/")
+parcellation_list_dir=paste0(workdir,"/sMRI/templates/lists")
+ 
+### John's dplyred timecourse extraction + clean function
+ collectAndCorTimecourses <- function(sub, parcels, scrubbingThreshold, sub_base_dir) {
+    #below makes a df with every parcel file location, that then reads in the data from that parcel.
+    #result is a long data frame with indexes within each parcel (e.g. volume number 1:514)
+    timecourses <- data.frame(file_location=paste0(sub_base_dir,sub,"/",sub,
+                                                   ".results/timecourses/",sub,'_',parcels$parcel_name,'.txt'),
+                              sub=sub,
+                              parcel=parcels$parcel_name,
+                              stringsAsFactors=F) %>%
+      group_by(sub,parcel) %>% do({
+        timecourse<-try(fread(.$file_location, stringsAsFactors=F))
+        if('try-error' %in% class(timecourse)) timecourse <- data.frame(NA)
+        timecourse
+      }) %>%
+      mutate(index=1:n()) %>% filter(!is.na(V1))
+    sub_dir <- paste0(sub_base_dir,sub,"/",sub,".results/")
+    #get the motion information and censor properly
+    fdfile <- data.frame(motion=read.table(paste0(sub_dir,"motion_",sub,"_enorm.1D"))$V1) %>%
+      mutate(index=1:n(),
+             censor_raw=as.integer(motion>scrubbingThreshold), #censor if over the threshold
+             censor_1after= censor_raw | lag(censor_raw,1, default=F), #censor 1 after any censored vols
+             censor=censor_1after | (lead(censor_1after,1, default=F) & lag(censor_1after,1, default=F))) #censor any vols between censored vols
+    #timecourse length == motion data length error checking
+    fdlength <- dim(fdfile)[1]
+    nada <- timecourses %>% group_by(parcel) %>%
+      summarize(n=n()) %>% group_by(parcel) %>%
+      do(thing=if(.$n != fdlength) stop(paste0('fdfile and timecourse ARE NOT SAME LENGTH!!!',
+                                               sub, ' ', .$parcel, '\n')))
+    #get a summary of motion for filtering later, and just for our info
+    motiondata <- summarize(fdfile,
+                            Blurps=sum(censor_raw),
+                            Numcensored=sum(censor))
+    #remove censored volumes
+    timecourses_censored <- left_join(timecourses, select(fdfile,index,censor)) %>% filter(!censor)
+    #more summary info for filtering subjects later
+    motiondata$Framesremaining <- timecourses_censored %>% group_by(parcel) %>% 
+      summarize(frames_remaining=n()) %>% distinct(frames_remaining) %>%
+      unlist  
+    #make the timecourse data nice for correlations
+    timecourses_censored_w <- timecourses_censored %>% 
+      select(sub, index, parcel, V1) %>% 
+      spread(parcel,V1) %>% ungroup %>% select(-index, -sub)
+    #correlate!
+    #CorrelationMatrix<-cor(timecourses_censored_w)
+    CorrelationMatrix<-fisherz(cor(timecourses_censored_w))
+    #just take the bottom triangle
+    CorrelationMatrix[upper.tri(CorrelationMatrix, diag=TRUE)] <- NA
+    #this gets the names for the rows and columns and assigns each cor value
+    #a name that is the combination of the row and column.
+    CorrDF <- as.data.frame(CorrelationMatrix) %>% #matrix colnames become df column names
+      mutate(var2=rownames(CorrelationMatrix)) %>% #add a column for matrix row names
+      gather(var1, cor, -var2) %>% #make wide cor mat long, but keep indexed by matrix row name
+      filter(!is.na(cor)) %>% #remove NA (upper tri) rows
+      unite(coi, var1, var2) #unite the row and col names, now next to each other, into a single name.
+    ## The CorrDF data frame now looks like, for example:
+    # key                         cor
+    # ---                         -----
+    # lh.Parcel_1_lh.Parcel_10    0.338
+    ##
+    # now we want to add in our summary timecourse info re motion etc, so we just 
+    # add columns to the correlation data frame, and turn it into a data table for
+    # efficiency later on.
+    subjDF <- CorrDF %>% mutate(sub=sub, 
+                                Blurps=motiondata$Blurps,
+                                Numcensored=motiondata$Numcensored,
+                                Framesremaining=motiondata$Framesremaining) %>% as.data.table
+    }
+
+
+## Social Brain + NAcc parcels
+if(!file.exists(paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/Social_noWBVR_FishersZ_coisDT.RDS"))){
+  socrois<-c("aseg_26","aseg_58",
+             "lh.posterior-superior-temporal-sulcus","rh.posterior-superior-temporal-sulcus",
+             "lh.temporal-parietal-junction-p","rh.temporal-parietal-junction-p",
+             "lh.anterior-temporal-cortex","rh.anterior-temporal-cortex",
+             "lh.Brodmann-10-medial","rh.Brodmann-10-medial",
+             "lh.Parcel_1","rh.Parcel_162")
+  socroinames<-c("l_nacc","r_nacc",
+                 "l_psts","r_psts",
+                 "l_tpj","r_tpj",
+                 "l_atc","r_atc",
+                 "l_mBA10","r_mBA10",
+                 "l_precuneus","r_precuneus")
+
+  socialbrain_parcels <- data.frame(parcel_name=socrois, stringsAsFactors=F)
+
+  system.time(social_cois<- mclapply(as.list(as.character(sublist$sub)),
+                                     collectAndCorTimecourses, 
+                                     parcels=socialbrain_parcels,
+                                     scrubbingThreshold=scrubbingThreshold, 
+                                     sub_base_dir=sub_base_dir,
+                                     mc.cores=numcores))
+  print(object.size(social_cois), quote = FALSE, units = "Mb")
+  
+  # bind list of data.tables into one long data.table and filter by frames remaining (< 5 mins)
+  system.time(social_coisDT <- do.call(bind_rows, social_cois) %>% 
+                filter(Framesremaining >= 385) %>%
+                select(-Blurps, -Numcensored, -Framesremaining) %>%  
+                as.data.table)
+  print(object.size(social_coisDT), quote = FALSE, units = "Mb")
+  rm(social_cois);gc() #remove list, and garbage collect
+  save(social_coisDT,file = paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/Social_noWBVR_FishersZ_coisDT.RDS"))
+} else {
+  load(file = paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/Social_noWBVR_FishersZ_coisDT.RDS"))
+}
 ```
