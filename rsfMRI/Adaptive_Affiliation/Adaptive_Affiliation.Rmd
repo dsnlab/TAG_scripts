@@ -1,7 +1,7 @@
 ---
 title: "Strategic brain connectivity"
 author: "Kate Mills, John Flournoy, & TAG team"
-date: "October 2, 2017"
+date: "October 4, 2017"
 output: html_document
 ---
 
@@ -117,6 +117,11 @@ redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
 rm(redcapData_dob,redcapData,redcapData_sessiondates)
 
 print(paste0(length(unique(redcap_cleaned$tagid))," participants w/ demographic data"))
+
+demographics<-redcap_cleaned %>%
+  mutate(sub=paste0("sub-",tagid)) %>%
+        filter(sub %in% sublist$sub)
+
 ```
 
 Clean DSD data
@@ -260,9 +265,9 @@ loessPlot<-ggplot(behavioraldata,
         panel.background = element_blank(),
         legend.position="right")
 
-ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
-                                     "graphs/loessPlot.png"),
-       plot=loessPlot, width=6, height=5, units='in', dpi=300)
+#ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+#                                     "graphs/loessPlot.png"),
+#       plot=loessPlot, width=6, height=5, units='in', dpi=300)
 
 ## Predicted Model Plots
 modelPlot<-ggplot(predictedData,
@@ -283,16 +288,29 @@ modelPlot<-ggplot(predictedData,
         panel.background = element_blank(),
         legend.position="right")
 modelPlot
-ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
-                                     "graphs/modelPlot.png"),
-       plot=modelPlot, width=4.5, height=5, units='in', dpi=300)
+#ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+#                                     "graphs/modelPlot.png"),
+#       plot=modelPlot, width=4.5, height=5, units='in', dpi=300)
 
 
 # Check out random effects
 coef(mainbmodelrx2)
+
+# Pull together CRQ data
+
+affiliationdata <- read.csv(paste0(workdir,"Questionnaires/Wave_1/CRQ_Wave1.csv"),header = TRUE,stringsAsFactors = FALSE) %>%
+  mutate(sub=paste0("sub-",tagid)) %>%
+  filter(!CRQ_missing>2) %>%
+ select(tagid,sub,CRQ_mean,CRQ_total) 
+print(paste0(length(unique(affiliationdata$tagid))," participants w/ CRQ data"))
+
+# cut down affiliation data to right size
+
+affiliationdata <- affiliationdata %>%
+  filter(sub %in% sublist$sub)
 ```
 
-Extract connectivity
+Get timecourses
 ```{r timecourses}
 # Set fixed variables
 numcores<-detectCores()[1]
@@ -412,14 +430,14 @@ if(!file.exists(paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/con
 
 Connectivity Analysis
 ```{r}
-run_predict_disclose=TRUE
-run_disclose_affiliation=TRUE
+run_predict_disclose=FALSE
+run_disclose_affiliation=FALSE
 run_predict_affiliation=TRUE
 
 social_cois<-distinct(social_coisDT, coi)
 
 ## Do individual differences in functional connectivity predict disclosure?
-## Does these connections interact with affective value in predicting disclosure?
+## Do these connections interact with affective value in predicting disclosure?
 if(run_predict_disclose){
   system.time(
     disclose_models<-mclapply(X=as.character(as.list(social_cois$coi)), 
@@ -452,8 +470,10 @@ if(run_predict_disclose){
                                   pval <- round(mod_comp$'Pr(>Chisq)'[3],4)
                                   AIC <- round(mod_comp$AIC[3],2)
                                   nullAIC <- round(mod_comp$AIC[1],2)
+                                  intbeta<- round(summary(coi_int_mod)$coefficients[5,1],2)
+                                  mainbeta<- round(summary(coi_int_mod)$coefficients[4,1],2)
                                   mod_type <- "coi int model"
-                                  retDF<-cbind(coiname,chisq,pval,AIC,nullAIC,mod_type)
+                                  retDF<-cbind(coiname,intbeta,mainbeta,chisq,pval,AIC,nullAIC,mod_type)
                                   retDF<-as.data.table(retDF)
                                 } else if (mod_comp$'Pr(>Chisq)'[2]<.05 &
                                            mod_comp$AIC[2]<mod_comp$AIC[1]){
@@ -462,7 +482,73 @@ if(run_predict_disclose){
                                   pval <- round(mod_comp$'Pr(>Chisq)'[2],4)
                                   AIC <- round(mod_comp$AIC[2],2)
                                   nullAIC <- round(mod_comp$AIC[1],2)
+                                  intbeta<- NA
+                                  mainbeta<-round(summary(coi_int_mod)$coefficients[4,1],2)
                                   mod_type <- "coi main model"
+                                  retDF<-cbind(coiname,intbeta,mainbeta,chisq,pval,AIC,nullAIC,mod_type)
+                                  retDF<-as.data.table(retDF)
+                                } else {
+                                  coiname<- as.character(coi_name)
+                                  chisq <- NA
+                                  pval <- NA
+                                  AIC <- NA
+                                  nullAIC <- NA
+                                  intbeta <- NA
+                                  mainbeta <- NA
+                                  mod_type <- NA
+                                  retDF <- cbind(coiname,intbeta,mainbeta,chisq,pval,AIC,nullAIC,mod_type)
+                                  as.data.table(retDF)
+                                }
+                              }
+    ))
+  print(object.size(disclose_models), units='Mb')
+  disclose_modelsDT <- rbindlist(disclose_models) %>%
+    mutate(chisq=as.numeric(chisq),
+           pval=as.numeric(pval),
+           AIC=as.numeric(AIC),
+           intbeta=as.numeric(intbeta),
+           mainbeta=as.numeric(mainbeta),
+           nullAIC=as.numeric(nullAIM)) #make this into a dataframe 
+  print(object.size(disclose_modelsDT), units='Mb')
+  rm(disclose_models);gc()
+  save(disclose_modelsDT, file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "connectivity_models/disclose_models_DT.RDS"))
+  #write.csv(disclose_modelsDT,file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+  #                                   "connectivity_tables/disclose_models_DT.csv"))
+} else {
+  load(file= paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                    "connectivity_models/disclose_models_DT.RDS"))
+}
+
+## Do the connections that predict disclosure also correlate with adaptive affiliation?
+if(run_predict_affiliation){
+  system.time(
+    crq_conn_models<-mclapply(X=as.character(as.list((disclose_modelsDT %>% filter(mod_type=="coi int model"))$coiname)), 
+                              demodata=affiliationdata,
+                              coidat=social_coisDT,
+                              mc.cores=numcores,
+                              FUN=function(coi_name, demodata, coidat){
+                                adf<-merge(as.data.table(filter(coidat,coi==coi_name)),
+                                           demodata,
+                                           by='sub',
+                                           allow.cartesian=T)
+                                null_mod=lme(CRQ_mean ~ 1,
+                                            method="ML",
+                                            random = ~1|sub,
+                                            data=adf)
+                                coi_mod=lme(CRQ_mean ~ cor,
+                                            method="ML",
+                                            random = ~1|sub,
+                                            data=adf)
+                                mod_comp<-anova(null_mod,coi_mod)
+                                if (mod_comp$'p-value'[2]<.05 &
+                                           mod_comp$AIC[2]<mod_comp$AIC[1]){
+                                  coiname<- as.character(coi_name)
+                                  chisq <- round(mod_comp$L.Ratio[2],2)
+                                  pval <- round(mod_comp$'p-value'[2],4)
+                                  AIC <- round(mod_comp$AIC[2],2)
+                                  nullAIC <- round(mod_comp$AIC[1],2)
+                                  mod_type <- "coi predict crq"
                                   retDF<-cbind(coiname,chisq,pval,AIC,nullAIC,mod_type)
                                   retDF<-as.data.table(retDF)
                                 } else {
@@ -477,19 +563,19 @@ if(run_predict_disclose){
                                 }
                               }
     ))
-  print(object.size(disclose_models), units='Mb')
-  disclose_modelsDT <- rbindlist(disclose_models) %>%
+  print(object.size(crq_conn_models), units='Mb')
+  crq_conn_modelsDT <- rbindlist(crq_conn_models) %>%
     mutate(chisq=as.numeric(chisq),
-           pval=as.numeric(pval))#make this into a dataframe 
-  print(object.size(disclose_modelsDT), units='Mb')
-  rm(disclose_models);gc()
-  save(disclose_modelsDT, file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
-                                     "connectivity_models/disclose_models_DT.RDS"))
-  #write.csv(disclose_modelsDT,file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
-  #                                   "connectivity_tables/disclose_models_DT.csv"))
+           pval=as.numeric(pval),
+           AIC=as.numeric(AIC),
+           nullAIC=as.numeric(nullAIC)) #make this into a dataframe 
+  print(object.size(crq_conn_modelsDT), units='Mb')
+  rm(crq_conn_models);gc()
+  save(crq_conn_modelsDT, file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "connectivity_models/crq_conn_modelsDT.RDS"))
 } else {
-  load(file= paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
-                    "connectivity_models/disclose_models_DT.RDS"))
+  load(file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "connectivity_models/crq_conn_modelsDT.RDS"))
 }
 
 ```
@@ -533,10 +619,9 @@ predict_disclose_heatmap
 
 
 # Check out example connection's effects
-mclapply(X=as.character(as.list((disclose_modelsDT %>% filter(mod_type=="coi int model"))$coiname)), 
+lapply(X=as.character(as.list((disclose_modelsDT %>% filter(mod_type=="coi int model"))$coiname)), 
          demodata=behavioraldata,
          coidat=social_coisDT,
-         mc.cores=numcores,
          FUN=function(coi_name, demodata, coidat){
            adf<-merge(as.data.table(filter(coidat,coi==coi_name)),
                       demodata,
@@ -592,4 +677,37 @@ mclapply(X=as.character(as.list((disclose_modelsDT %>% filter(mod_type=="coi int
          }) 
 
 
+```
+
+
+Unpack connectivity predicting affiliation results
+```{r}
+coi_name="aseg_58_rh.Brodmann-10-medial"
+connectivity_predict_CRQ<-ggplot((merge(as.data.table(filter(social_coisDT,coi==coi_name)),
+                                        affiliationdata,
+                                        by='sub',
+                                        allow.cartesian=T)),
+                                 aes(x=cor, y=CRQ_mean)) +
+  geom_point(color='maroon4',alpha=.3)+
+  geom_smooth(method=lm,
+                aes(x=cor,
+                    y=CRQ_mean),
+                size=.7,
+                alpha=0.2,
+                colour="maroon1",
+                fill = "maroon1")+
+  labs(y='Co-Rumination Questionnaire Mean',
+       x='right NAcc - right mBA10') +
+  theme_bw() +
+  theme_minimal(base_size = 18, base_family = "Arial") +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        legend.position="right")
+connectivity_predict_CRQ
+ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                       "graphs/r_nacc-r_mBA10_CRQ.png"),
+       plot=connectivity_predict_CRQ, width=6, height=5, units='in', dpi=300)
 ```
