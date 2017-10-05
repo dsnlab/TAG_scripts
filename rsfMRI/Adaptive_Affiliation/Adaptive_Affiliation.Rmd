@@ -120,8 +120,10 @@ print(paste0(length(unique(redcap_cleaned$tagid))," participants w/ demographic 
 
 demographics<-redcap_cleaned %>%
   mutate(sub=paste0("sub-",tagid)) %>%
-        filter(sub %in% sublist$sub)
-
+        filter(sub %in% sublist$sub) %>%
+  mutate(ageatscan=round(interval(start = demographics$dob, end = demographics$sb_date) / 
+                     duration(num = 1, units = "years"),2))
+mean(demographics$ageatscan)
 ```
 
 Clean DSD data
