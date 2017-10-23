@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 
 ```{r Load Required Packages, message=FALSE, warning=FALSE, include=FALSE}
 ## Load required packages ##
-packages <-  c("tidyverse", "lme4", "nlme", "parallel", "svglite",
+packages <-  c("tidyverse", "lme4", "nlme", "parallel",
                "data.table", "lubridate", "psych", "corrplot","zoo")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
@@ -26,6 +26,33 @@ lapply(packages, library, character.only = TRUE)
 invlogit <- function(x){
   exp(x)/(exp(x)+1)
 }
+```
+
+Set graph/plot options
+```{r}
+theme_kate <- function () { 
+    theme_bw() +
+  theme_minimal(base_size = 14, base_family = "Avenir") +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        legend.position="none")
+}
+
+resave_plots=FALSE
+
+heatmap_color_palette <- colorRampPalette(c("#fde0dd", "#fa9fb5", "#c51b8a"))
+
+group_labels<-c("community"='Community', 
+                "foster"="Child Welfare Services")
+
+colour_labels=c("#fa9fb5", "#ae017e")
+
+purple_colours=c("#bcbddc","#756bb1","#54278f")
+
+group_colors <- c("community" = "#fa9fb5", "foster" = "#ae017e")
 ```
 
 Set working directory
@@ -254,8 +281,8 @@ loessPlot<-ggplot(behavioraldata,
 		  geom_smooth(aes(color=affective),
 		              method='loess')+
 		  geom_count(aes(color=affective))+
-   scale_colour_manual(values=c('maroon1', 'maroon4'),
-                      labels=c('Ordinary', 'Intimate'))+
+   scale_colour_manual(values=c(colour_labels[1], colour_labels[2]),
+                      labels=c('Neutral', 'Affective'))+
   labs(y='Disclosed to Friend', color='Information',
        x='Share Value') +
   theme_bw() +
@@ -266,19 +293,18 @@ loessPlot<-ggplot(behavioraldata,
         panel.border = element_blank(),
         panel.background = element_blank(),
         legend.position="right")
-
-#ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
-#                                     "graphs/loessPlot.png"),
-#       plot=loessPlot, width=6, height=5, units='in', dpi=300)
+ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "graphs/loessPlot.png"),
+       plot=loessPlot, width=6, height=5, units='in', dpi=300)
 
 ## Predicted Model Plots
 modelPlot<-ggplot(predictedData,
                   aes(x=share.value, y=disclosure))+
-	geom_line(aes(group=tagid), color='hotpink', alpha=.2)+
+	geom_line(aes(group=tagid), color=purple_colours[2], alpha=.2)+
 	geom_line(data=(predictedData %>% filter(affective==TRUE)),
-	                aes(y=disclosure_uncond), color='maroon4', size=2)+
+	                aes(y=disclosure_uncond), color=group_colors[2], size=2)+
   	geom_line(data=(predictedData %>% filter(affective==FALSE)),
-	                aes(y=disclosure_uncond), color='maroon1', size=2)+
+	                aes(y=disclosure_uncond), color=group_colors[1], size=2)+
   labs(y='Disclosed to Friend',
        x='Share Value') +
   theme_bw() +
@@ -290,9 +316,9 @@ modelPlot<-ggplot(predictedData,
         panel.background = element_blank(),
         legend.position="right")
 modelPlot
-#ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
-#                                     "graphs/modelPlot.png"),
-#       plot=modelPlot, width=4.5, height=5, units='in', dpi=300)
+ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "graphs/modelPlot.png"),
+       plot=modelPlot, width=4.5, height=5, units='in', dpi=300)
 
 
 # Check out random effects
@@ -656,11 +682,11 @@ lapply(X=as.character(as.list((disclose_modelsDT %>% filter(mod_type=="coi int m
                     assign(paste0("model_",coi_name,"_",round(COR,2)),
                            ggplot(predictedData,
                                   aes(x=share.value, y=disclosure))+
-                             geom_line(aes(group=tagid), color='hotpink', alpha=.2)+
+                             geom_line(aes(group=tagid), color=purple_colours[2], alpha=.2)+
                              geom_line(data=(predictedData %>% filter(affective==TRUE)),
-                                       aes(y=disclosure_uncond), color='maroon4', size=2)+
+                                       aes(y=disclosure_uncond), color=colour_labels[2], size=2)+
                              geom_line(data=(predictedData %>% filter(affective==FALSE)),
-                                       aes(y=disclosure_uncond), color='maroon1', size=2)+
+                                       aes(y=disclosure_uncond), color=colour_labels[1], size=2)+
                              labs(y='Disclosed to Friend',
                                   x='Share Value') +
                              theme_bw() +
