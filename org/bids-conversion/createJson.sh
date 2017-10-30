@@ -219,7 +219,7 @@ if [ "${converttask}" == "TRUE" ]; then
     		PhaseEncodingDirection_x="-k"
     	fi
 
-    	if [[ "$file" == *"${task}"*info.txt ]]; then
+    	if [[ "$file" =~ "${task}" ]]; then
 			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && 
 				[ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
 	    		echo "$subid OK"
