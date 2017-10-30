@@ -100,15 +100,15 @@ fi
 #
 #    	if [[ $PED == ?$x? ]]; then
 #    		PhaseEncodingDirection_x="j"
-#    	else if [[ $PED == ?$y? ]]; then
+#    	elif [[ $PED == ?$y? ]]; then
 #    		PhaseEncodingDirection_x="-j"
-#    	else if [[ $PED == $x?? ]]; then
+#    	elif [[ $PED == $x?? ]]; then
 #    		PhaseEncodingDirection_x="i"
-#		else if [[ $PED == $y?? ]]; then
+#		elif [[ $PED == $y?? ]]; then
 #    		PhaseEncodingDirection_x="-i"
-#    	else if [[ $PED == ??$x ]]; then
+#    	elif [[ $PED == ??$x ]]; then
 #    		PhaseEncodingDirection_x="k"
-#		else if [[ $PED == ??$y ]]; then
+#		elif [[ $PED == ??$y ]]; then
 #    		PhaseEncodingDirection_x="-k"
 #    	fi
 #
@@ -137,73 +137,74 @@ if [ "${converttask}" == "TRUE" ]; then
 
 		echo $runnum
 		echo $taskalpha
-		## Set group Json info
-		#cd $bidsdir
-		#groupfile=*"$taskalpha"_bold.json
-		#RepetitionTime=$(ls -l| grep 'RepetitionTime' $groupfile | sed 's/^.*: //' | sed 's/,$//') 
-		#EchoTime=$(ls | grep 'EchoTime' $groupfile | sed 's/^.*: //' | sed 's/,$//')
-		#FlipAngle=$(ls | grep 'FlipAngle' $groupfile | sed 's/^.*: //' | sed 's/,$//')
-		#MultibandAccelerationFactor=$(ls | grep 'MultibandAccelerationFactor' $groupfile | sed 's/^.*: //' | sed 's/,$//')
-		#PhaseEncodingDirection=$(ls | grep 'PhaseEncodingDirection' $groupfile | sed 's/^.*: //' | sed 's/,$//' | tr -d '"')
-		#EffectiveEchoSpacing=$(ls | grep 'EffectiveEchoSpacing' $groupfile | sed 's/^.*: //' | sed 's/,$//')
+
+		# Set group Json info
+		cd $bidsdir
+		groupfile=*"$taskalpha"_bold.json
+		RepetitionTime=$(ls -l| grep 'RepetitionTime' $groupfile | sed 's/^.*: //' | sed 's/,$//') 
+		EchoTime=$(ls | grep 'EchoTime' $groupfile | sed 's/^.*: //' | sed 's/,$//')
+		FlipAngle=$(ls | grep 'FlipAngle' $groupfile | sed 's/^.*: //' | sed 's/,$//')
+		MultibandAccelerationFactor=$(ls | grep 'MultibandAccelerationFactor' $groupfile | sed 's/^.*: //' | sed 's/,$//')
+		PhaseEncodingDirection=$(ls | grep 'PhaseEncodingDirection' $groupfile | sed 's/^.*: //' | sed 's/,$//' | tr -d '"')
+		EffectiveEchoSpacing=$(ls | grep 'EffectiveEchoSpacing' $groupfile | sed 's/^.*: //' | sed 's/,$//')
 #
-		##Check subject Json info and create seperate file if different
-		#cd $niidir/$subid/task
-		#file=$(echo "$(ls | grep $task | grep 'info')")
-		#RepetitionTime_x=$(echo "($(ls -l| grep 'Repetition time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.0f", $0}')
-    	#EchoTime_x=$(echo "($(ls -l| grep 'Echo time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.3f", $0}')
-    	#FlipAngle_x=$(ls | grep 'Flip angle' $file | sed 's/^.*: //' | awk '{printf "%.0f", $0}')
-    	#MultibandAccelerationFactor_x=$(ls | grep 'Acceleration factor' $file | sed 's/^.*: //')
-    	#EffectiveEchoSpacing_x=$(echo "($(ls -l| grep 'Effective echo spacing' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
-#
-    	#cd $bidsdir 
-    	#file=test_out.csv
-    	#fileSTRING="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.nii.gz"
-    	#PED=$(ls | grep "$fileSTRING" $file | sed -n 's/^.*nii.gz,[[:space:]]*//p')
-#
-    	#if [[ "$PhaseEncoding_task" == 1a ]]; then 
-		#	x="A" 
-		#	y="P"
-		#elif [[ "$PhaseEncoding_task" == 1b ]]; then 
-		#	x="P" 
-		#	y="A"
-		#elif [[ "$PhaseEncoding_task" == 2a ]]; then 
-		#	x="I" 
-		#	y="S"
-		#elif [[ "$PhaseEncoding_task" == 2b ]]; then 
-		#	x="S" 
-		#	y="I"
-		#elif [[ "$PhaseEncoding_task" == 3a ]]; then 
-		#	x="R" 
-		#	y="L"
-		#elif [[ "$PhaseEncoding_task" == 3b ]]; then 
-		#	x="L" 
-		#	y="R"
-		#fi
-#
-    	#if [[ $PED == ?$x? ]]; then
-    	#	PhaseEncodingDirection_x="j"
-    	#else if [[ $PED == ?$y? ]]; then
-    	#	PhaseEncodingDirection_x="-j"
-    	#else if [[ $PED == $x?? ]]; then
-    	#	PhaseEncodingDirection_x="i"
-		#else if [[ $PED == $y?? ]]; then
-    	#	PhaseEncodingDirection_x="-i"
-    	#else if [[ $PED == ??$x ]]; then
-    	#	PhaseEncodingDirection_x="k"
-		#else if [[ $PED == ??$y ]]; then
-    	#	PhaseEncodingDirection_x="-k"
-    	#fi
-#
-		#if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && 
-		#	[ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
-	    #	echo "$subid OK"
-	    #else 
-	    #    cd $bidsdir/sub-$subid/ses-$sessid/func/
-	    #    filename="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.json"
-	    #    echo -e "{\n\t\"TaskName\": \"$taskalpha\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccellerationFactor\": $MultibandAccellerationFactor,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 
-	    #	ls "$filename" >> $errorlog
-	    #fi
+		#Check subject Json info and create seperate file if different
+		cd $niidir/$subid/task
+		file=$(echo "$(ls | grep $task | grep 'info')")
+		RepetitionTime_x=$(echo "($(ls -l| grep 'Repetition time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.0f", $0}')
+    	EchoTime_x=$(echo "($(ls -l| grep 'Echo time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.3f", $0}')
+    	FlipAngle_x=$(ls | grep 'Flip angle' $file | sed 's/^.*: //' | awk '{printf "%.0f", $0}')
+    	MultibandAccelerationFactor_x=$(ls | grep 'Acceleration factor' $file | sed 's/^.*: //')
+    	EffectiveEchoSpacing_x=$(echo "($(ls -l| grep 'Effective echo spacing' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
+
+    	cd $bidsdir 
+    	file=test_out.csv
+    	fileSTRING="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.nii.gz"
+    	PED=$(ls | grep "$fileSTRING" $file | sed -n 's/^.*nii.gz,[[:space:]]*//p')
+
+    	if [[ "$PhaseEncoding_task" == 1a ]]; then 
+			x="A" 
+			y="P"
+		elif [[ "$PhaseEncoding_task" == 1b ]]; then 
+			x="P" 
+			y="A"
+		elif [[ "$PhaseEncoding_task" == 2a ]]; then 
+			x="I" 
+			y="S"
+		elif [[ "$PhaseEncoding_task" == 2b ]]; then 
+			x="S" 
+			y="I"
+		elif [[ "$PhaseEncoding_task" == 3a ]]; then 
+			x="R" 
+			y="L"
+		elif [[ "$PhaseEncoding_task" == 3b ]]; then 
+			x="L" 
+			y="R"
+		fi
+
+    	if [[ $PED == ?$x? ]]; then
+    		PhaseEncodingDirection_x="j"
+    	elif [[ $PED == ?$y? ]]; then
+    		PhaseEncodingDirection_x="-j"
+    	elif [[ $PED == $x?? ]]; then
+    		PhaseEncodingDirection_x="i"
+		elif [[ $PED == $y?? ]]; then
+    		PhaseEncodingDirection_x="-i"
+    	elif [[ $PED == ??$x ]]; then
+    		PhaseEncodingDirection_x="k"
+		elif [[ $PED == ??$y ]]; then
+    		PhaseEncodingDirection_x="-k"
+    	fi
+
+		if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && 
+			[ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
+	    	echo "$subid OK"
+	    else 
+	        cd $bidsdir/sub-$subid/ses-$sessid/func/
+	        filename="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.json"
+	        echo -e "{\n\t\"TaskName\": \"$taskalpha\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccellerationFactor\": $MultibandAccellerationFactor,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 
+	    	ls "$filename" >> $errorlog
+	    fi
 	done
 fi
 
