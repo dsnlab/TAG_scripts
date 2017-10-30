@@ -44,7 +44,7 @@ if [ "${convertanat}" == "TRUE" ]; then
 
 	if [[ "$file" =~ "${anat}" ]]; then
 		if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$InversionTime" == "$InversionTime_x" ]; then
-			echo "$subid OK"
+			echo "OK"
 		else 
 	    	cd $bidsdir/sub-$subid/ses-$sessid/anat/
 	    	filename="sub-"$subid"_ses-"$sessid"_T1w.json"
@@ -131,11 +131,12 @@ if [ "${convertrest}" == "TRUE" ]; then
     	if [[ "$file" =~ "${rest}" ]]; then
 			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && 
 				[ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
-	   			echo "$subid OK"
+	   			echo "OK"
 			else 
 	    		cd $bidsdir/sub-$subid/ses-$sessid/func/
 	    		filename="sub-"$subid"_ses-"$sessid"_task-rest_run-0"$runnum"_bold.json"
 	    		echo -e "{\n\t\"TaskName\": \"rest\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccelerationFactor\": $MultibandAccelerationFactor_x,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 
+	    		echo "not OK"
 	    		ls "$filename" >> $errorlog
 	    	fi
 	    fi
@@ -146,7 +147,6 @@ fi
 # task fMRI 
 if [ "${converttask}" == "TRUE" ]; then
 	echo -e "\nChecking task fMRI"
-	echo ${tasks[@]}
 
 	for task in ${tasks[@]}; do 
 		echo $task
@@ -224,12 +224,12 @@ if [ "${converttask}" == "TRUE" ]; then
 
     	if [[ "$file" =~ "${task}" ]]; then
 			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
-	    		echo "${subid} OK"
+	    		echo "OK"
 	    	else 
 	        	cd $bidsdir/sub-$subid/ses-$sessid/func/
 	        	filename="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.json"
 	        	echo -e "{\n\t\"TaskName\": \"$taskalpha\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccellerationFactor\": $MultibandAccellerationFactor,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 
-				echo "${subid} not OK"	
+				echo "not OK"	
     			ls "$filename" >> $errorlog
 	    	fi
 		fi
