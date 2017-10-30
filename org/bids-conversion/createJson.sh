@@ -35,7 +35,7 @@ if [ "${convertanat}" == "TRUE" ]; then
     FlipAngle_x=$(ls | grep 'Flip angle' $file | sed 's/^.*: //' | awk '{printf "%.0f", $0}')
     InversionTime_x=$(echo "($(ls -l| grep 'Inversion time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
 
-	if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$InversionTime" == "$InversionTime_x" ]
+	if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$InversionTime" == "$InversionTime_x" ];
 	then
 	    echo "$subid OK"
 	else 
