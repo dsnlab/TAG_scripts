@@ -150,7 +150,15 @@ if [ "${converttask}" == "TRUE" ]; then
 #
 		#Check subject Json info and create seperate file if different
 		cd $niidir/$subid/task
-		file=$(echo "$(ls | grep $task | grep 'info')")
+		if [ $(ls *"${task}"*info.txt ] | wc -l) -eq 1 ]; then
+			file=$(echo "$(ls | grep $task | grep 'info')")
+		elif [ $(ls *"${task}"*info.txt ] | wc -l) -eq 0 ]; then
+			echo "${task}: MISSING" >> $errorlog
+		else 
+			largestfile=$(du -sh *"${task}"*.nii.gz | sort -n | tail -1 | cut -f2 | cut -c 1-9)
+			file=$("${largestfile}"*info.txt)
+		fi
+		
 		RepetitionTime_x=$(echo "($(ls -l| grep 'Repetition time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.0f", $0}')
     	EchoTime_x=$(echo "($(ls -l| grep 'Echo time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.3f", $0}')
     	FlipAngle_x=$(ls | grep 'Flip angle' $file | sed 's/^.*: //' | awk '{printf "%.0f", $0}')
