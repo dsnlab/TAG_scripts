@@ -16,7 +16,8 @@ declare -a anat="mprage_p2"
 declare -a fmap="fieldmap_2mm"
 declare -a dti="diff"
 declare -a resting=("Resting_1" "Resting_2")
-declare -a tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
+#declare -a tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
+tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
 
 #Set phase encoding direction for fmap and task
 #1a = A-P
