@@ -29,4 +29,4 @@ convertrest="TRUE"
 converttask="TRUE"
 
 # Set error log file
-errorlog="/projects/dsnlab/tag/TAG_scripts/org/errorlog.txt"
+errorlog="/projects/dsnlab/tag/TAG_scripts/org/bids-conversion/errorlog.txt"

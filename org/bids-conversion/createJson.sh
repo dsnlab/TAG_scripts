@@ -226,8 +226,7 @@ if [ "${converttask}" == "TRUE" ]; then
 	    	else 
 	        	cd $bidsdir/sub-$subid/ses-$sessid/func/
 	        	filename="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.json"
-	        	echo -e "{\n\t\"TaskName\": \"$taskalpha\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccellerationFactor\": $MultibandAccellerationFactor,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 
-		echo "${subid} not OK"	
+	        	echo -e "{\n\t\"TaskName\": \"$taskalpha\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccellerationFactor\": $MultibandAccellerationFactor,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 	
     		ls "$filename" >> $errorlog
 	    	fi
 	else 
@@ -251,7 +250,7 @@ if [ "${convertfmap}" == "TRUE" ]; then
 
 	file=$(find *info.txt -type f | xargs ls -1S | head -n 1)
 	EchoTime1_x=$(echo "scale=5; ($(ls | grep 'Echo time\[[1]*\]' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
-    EchoTime2_x=$(echo "scale=5; ($(ls | grep 'Echo time\[[2]*\]' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
+    	EchoTime2_x=$(echo "scale=5; ($(ls | grep 'Echo time\[[2]*\]' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
 
 	if [ "$EchoTime1" == "$EchoTime1_x" ] && [ "$EchoTime2" == "$EchoTime2_x" ]; then
 	    echo "${subid} OK"
