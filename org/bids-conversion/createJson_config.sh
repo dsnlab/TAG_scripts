@@ -31,7 +31,7 @@ PhaseEncoding_task=1a
 
 # Set which sequences to create Json
 convertanat="FALSE"
-convertfmap="FALSE"
+convertfmap="TRUE"
 convertdti="FALSE"
 convertrest="FALSE"
 converttask="TRUE"
