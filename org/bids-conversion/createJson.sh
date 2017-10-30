@@ -182,17 +182,17 @@ if [ "${converttask}" == "TRUE" ]; then
 			y="R"
 		fi
 
-    	if [[ $PED == ?$x? ]]; then
+		if [[ "$PED" == ?$x? ]]; then
     		PhaseEncodingDirection_x="j"
-    	elif [[ $PED == ?$y? ]]; then
+    	elif [[ "$PED" == ?$y? ]]; then
     		PhaseEncodingDirection_x="-j"
-    	elif [[ $PED == $x?? ]]; then
+    	elif [[ "$PED" == $x?? ]]; then
     		PhaseEncodingDirection_x="i"
-		elif [[ $PED == $y?? ]]; then
+		elif [[ "$PED" == $y?? ]]; then
     		PhaseEncodingDirection_x="-i"
-    	elif [[ $PED == ??$x ]]; then
+    	elif [[ "$PED" == ??$x ]]; then
     		PhaseEncodingDirection_x="k"
-		elif [[ $PED == ??$y ]]; then
+		elif [[ "$PED" == ??$y ]]; then
     		PhaseEncodingDirection_x="-k"
     	fi
 
