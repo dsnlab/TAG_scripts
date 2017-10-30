@@ -30,28 +30,27 @@ if [ "${convertanat}" == "TRUE" ]; then
 	#Check subject Json info and create seperate file if different
 	cd $niidir/$subid/anat
 
-	if [ $(ls *"${anat}"_info.txt | wc -l) -eq 1 ]; then
-    	file=$(echo "$(ls | grep "${anat}"_info)")
-    else
-    	echo "ERROR: wrong number of files"
-        echo "${subid}: Wrong number of ${anat}" >> $errorlog
-    fi	
+	if [ $(ls *"${anat}"*info.txt | wc -l) -eq 1 ]; then
+        file=$(echo "$(ls | grep $anat | grep 'info')")
+        RepetitionTime_x=$(echo "($(ls -l| grep 'Repetition time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.1f", $0}')
+    	EchoTime_x=$(echo "($(ls -l| grep 'Echo time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
+    	FlipAngle_x=$(ls | grep 'Flip angle' $file | sed 's/^.*: //' | awk '{printf "%.0f", $0}')
+    	InversionTime_x=$(echo "($(ls -l| grep 'Inversion time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
 
-	RepetitionTime_x=$(echo "($(ls -l| grep 'Repetition time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.1f", $0}')
-    EchoTime_x=$(echo "($(ls -l| grep 'Echo time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
-    FlipAngle_x=$(ls | grep 'Flip angle' $file | sed 's/^.*: //' | awk '{printf "%.0f", $0}')
-    InversionTime_x=$(echo "($(ls -l| grep 'Inversion time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.1f", $0}')
-
-	if [[ "$file" =~ "${anat}" ]]; then
 		if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$InversionTime" == "$InversionTime_x" ]; then
-			echo "$subid OK"
+	    	echo "$subid OK"
 		else 
 	    	cd $bidsdir/sub-$subid/ses-$sessid/anat/
 	    	filename="sub-"$subid"_ses-"$sessid"_T1w.json"
 	    	echo -e "{\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"InversionTime\": $InversionTime_x,\n}" >> "$filename" 
 	    	ls "$filename" >> $errorlog
 		fi
-	fi
+
+    else
+    	echo "ERROR: no files; nothing to use"
+        echo "${subid}: MISSING ${anat}" >> $errorlog
+    fi	
+
 fi
 
 # rest fMRI 
@@ -74,13 +73,13 @@ if [ "${convertrest}" == "TRUE" ]; then
 		EffectiveEchoSpacing=$(ls | grep 'EffectiveEchoSpacing' $groupfile | sed 's/^.*: //' | sed 's/,$//')
 
 		#Check subject Json info and create seperate file if different
-		cd $niidir/$subid/resting
+		cd $niidir/$subid/task
 
 		if [ $(ls *"${rest}"*info.txt | wc -l) -eq 1 ]; then
             file=$(echo "$(ls | grep $rest | grep 'info')")
         else 
-            echo "ERROR: wrong number of files"
-            echo "${subid}: Wrong number of ${rest}" >> $errorlog
+            echo "ERROR: wrong number of files; files not used"
+            echo "${subid}: MISSING ${rest}" >> $errorlog
         fi
 
 		RepetitionTime_x=$(echo "($(ls -l| grep 'Repetition time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.0f", $0}')
@@ -128,16 +127,14 @@ if [ "${convertrest}" == "TRUE" ]; then
     		PhaseEncodingDirection_x="-k"
     	fi
 
-    	if [[ "$file" =~ "${rest}" ]]; then
-			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && 
-				[ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
-	   			echo "$subid OK"
-			else 
-	    		cd $bidsdir/sub-$subid/ses-$sessid/func/
-	    		filename="sub-"$subid"_ses-"$sessid"_task-rest_run-0"$runnum"_bold.json"
-	    		echo -e "{\n\t\"TaskName\": \"rest\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccelerationFactor\": $MultibandAccelerationFactor_x,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 
-	    		ls "$filename" >> $errorlog
-	    	fi
+		if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && 
+			[ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
+	   		echo "$subid OK"
+		else 
+	    	cd $bidsdir/sub-$subid/ses-$sessid/func/
+	    	filename="sub-"$subid"_ses-"$sessid"_task-rest_run-0"$runnum"_bold.json"
+	    	echo -e "{\n\t\"TaskName\": \"rest\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccelerationFactor\": $MultibandAccelerationFactor_x,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 
+	    	ls "$filename" >> $errorlog
 	    fi
 	done
 
@@ -229,10 +226,11 @@ if [ "${converttask}" == "TRUE" ]; then
 	    	else 
 	        	cd $bidsdir/sub-$subid/ses-$sessid/func/
 	        	filename="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.json"
-	        	echo -e "{\n\t\"TaskName\": \"$taskalpha\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccellerationFactor\": $MultibandAccellerationFactor,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 
-				echo "${subid} not OK"	
-    			ls "$filename" >> $errorlog
+	        	echo -e "{\n\t\"TaskName\": \"$taskalpha\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccellerationFactor\": $MultibandAccellerationFactor,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 	
+    		ls "$filename" >> $errorlog
 	    	fi
+	else 
+		echo "NO" 
 		fi
 	done
 fi
@@ -252,7 +250,7 @@ if [ "${convertfmap}" == "TRUE" ]; then
 
 	file=$(find *info.txt -type f | xargs ls -1S | head -n 1)
 	EchoTime1_x=$(echo "scale=5; ($(ls | grep 'Echo time\[[1]*\]' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
-    EchoTime2_x=$(echo "scale=5; ($(ls | grep 'Echo time\[[2]*\]' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
+    	EchoTime2_x=$(echo "scale=5; ($(ls | grep 'Echo time\[[2]*\]' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
 
 	if [ "$EchoTime1" == "$EchoTime1_x" ] && [ "$EchoTime2" == "$EchoTime2_x" ]; then
 	    echo "${subid} OK"
