@@ -79,39 +79,39 @@ if [ "${convertrest}" == "TRUE" ]; then
     	fileSTRING="sub-"$subid"_ses-"$sessid"_task-rest_run-0"$runnum"_bold.nii.gz"
     	PED=$(ls | grep "$fileSTRING" $file | sed -n 's/^.*nii.gz,[[:space:]]*//p')
 
-    			if [[ "$PhaseEncoding_task" == 1a ]]; then 
-					x="A" 
-					y="P"
-				elif [[ "$PhaseEncoding_task" == 1b ]]; then 
-					x="P" 
-					y="A"
-				elif [[ "$PhaseEncoding_task" == 2a ]]; then 
-					x="I" 
-					y="S"
-				elif [[ "$PhaseEncoding_task" == 2b ]]; then 
-					x="S" 
-					y="I"
-				elif [[ "$PhaseEncoding_task" == 3a ]]; then 
-					x="R" 
-					y="L"
-				elif [[ "$PhaseEncoding_task" == 3b ]]; then 
-					x="L" 
-					y="R"
-				fi
+    	if [[ "$PhaseEncoding_task" == 1a ]]; then 
+			x="A" 
+			y="P"
+		elif [[ "$PhaseEncoding_task" == 1b ]]; then 
+			x="P" 
+			y="A"
+		elif [[ "$PhaseEncoding_task" == 2a ]]; then 
+			x="I" 
+			y="S"
+		elif [[ "$PhaseEncoding_task" == 2b ]]; then 
+			x="S" 
+			y="I"
+		elif [[ "$PhaseEncoding_task" == 3a ]]; then 
+			x="R" 
+			y="L"
+		elif [[ "$PhaseEncoding_task" == 3b ]]; then 
+			x="L" 
+			y="R"
+		fi
 
-    			if [[ $PED == ?$x? ]]; then
-    				PhaseEncodingDirection_x="j"
-    			else if [[ $PED == ?$y? ]]; then
-    				PhaseEncodingDirection_x="-j"
-    			else if [[ $PED == $x?? ]]; then
-    				PhaseEncodingDirection_x="i"
-				else if [[ $PED == $y?? ]]; then
-    				PhaseEncodingDirection_x="-i"
-    			else if [[ $PED == ??$x ]]; then
-    				PhaseEncodingDirection_x="k"
-				else if [[ $PED == ??$y ]]; then
-    				PhaseEncodingDirection_x="-k"
-    			fi
+    	if [[ $PED == ?$x? ]]; then
+    		PhaseEncodingDirection_x="j"
+    	else if [[ $PED == ?$y? ]]; then
+    		PhaseEncodingDirection_x="-j"
+    	else if [[ $PED == $x?? ]]; then
+    		PhaseEncodingDirection_x="i"
+		else if [[ $PED == $y?? ]]; then
+    		PhaseEncodingDirection_x="-i"
+    	else if [[ $PED == ??$x ]]; then
+    		PhaseEncodingDirection_x="k"
+		else if [[ $PED == ??$y ]]; then
+    		PhaseEncodingDirection_x="-k"
+    	fi
 
 		if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && 
 			[ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ];
@@ -122,7 +122,7 @@ if [ "${convertrest}" == "TRUE" ]; then
 	    	filename="sub-"$subid"_ses-"$sessid"_task-rest_run-0"$runnum"_bold.json"
 	    	echo -e "{\n\t\"TaskName\": \"rest\",\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"MultibandAccelerationFactor\": $MultibandAccelerationFactor_x,\n\t\"PhaseEncodingDirection\": \"$PhaseEncodingDirection_x\",\n\t\"EffectiveEchoSpacing\": $EffectiveEchoSpacing_x\n}" >> "$filename" 
 	    	ls "$filename" >> $errorlog
-	    	fi
+	    fi
 	done
 
 fi
@@ -158,42 +158,42 @@ if [ "${converttask}" == "TRUE" ]; then
     	fileSTRING="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.nii.gz"
     	PED=$(ls | grep "$fileSTRING" $file | sed -n 's/^.*nii.gz,[[:space:]]*//p')
 
-    			if [[ "$PhaseEncoding_task" == 1a ]]; then 
-					x="A" 
-					y="P"
-				elif [[ "$PhaseEncoding_task" == 1b ]]; then 
-					x="P" 
-					y="A"
-				elif [[ "$PhaseEncoding_task" == 2a ]]; then 
-					x="I" 
-					y="S"
-				elif [[ "$PhaseEncoding_task" == 2b ]]; then 
-					x="S" 
-					y="I"
-				elif [[ "$PhaseEncoding_task" == 3a ]]; then 
-					x="R" 
-					y="L"
-				elif [[ "$PhaseEncoding_task" == 3b ]]; then 
-					x="L" 
-					y="R"
-				fi
+    	if [[ "$PhaseEncoding_task" == 1a ]]; then 
+			x="A" 
+			y="P"
+		elif [[ "$PhaseEncoding_task" == 1b ]]; then 
+			x="P" 
+			y="A"
+		elif [[ "$PhaseEncoding_task" == 2a ]]; then 
+			x="I" 
+			y="S"
+		elif [[ "$PhaseEncoding_task" == 2b ]]; then 
+			x="S" 
+			y="I"
+		elif [[ "$PhaseEncoding_task" == 3a ]]; then 
+			x="R" 
+			y="L"
+		elif [[ "$PhaseEncoding_task" == 3b ]]; then 
+			x="L" 
+			y="R"
+		fi
 
-    			if [[ $PED == ?$x? ]]; then
-    				PhaseEncodingDirection_x="j"
-    			else if [[ $PED == ?$y? ]]; then
-    				PhaseEncodingDirection_x="-j"
-    			else if [[ $PED == $x?? ]]; then
-    				PhaseEncodingDirection_x="i"
-				else if [[ $PED == $y?? ]]; then
-    				PhaseEncodingDirection_x="-i"
-    			else if [[ $PED == ??$x ]]; then
-    				PhaseEncodingDirection_x="k"
-				else if [[ $PED == ??$y ]]; then
-    				PhaseEncodingDirection_x="-k"
-    			fi
+    	if [[ $PED == ?$x? ]]; then
+    		PhaseEncodingDirection_x="j"
+    	else if [[ $PED == ?$y? ]]; then
+    		PhaseEncodingDirection_x="-j"
+    	else if [[ $PED == $x?? ]]; then
+    		PhaseEncodingDirection_x="i"
+		else if [[ $PED == $y?? ]]; then
+    		PhaseEncodingDirection_x="-i"
+    	else if [[ $PED == ??$x ]]; then
+    		PhaseEncodingDirection_x="k"
+		else if [[ $PED == ??$y ]]; then
+    		PhaseEncodingDirection_x="-k"
+    	fi
 
-		if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"];
-		then
+		if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && 
+			[ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
 	    	echo "$subid OK"
 	    else 
 	        cd $bidsdir/sub-$subid/ses-$sessid/func/
