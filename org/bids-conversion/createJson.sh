@@ -35,8 +35,7 @@ if [ "${convertanat}" == "TRUE" ]; then
     FlipAngle_x=$(ls | grep 'Flip angle' $file | sed 's/^.*: //' | awk '{printf "%.0f", $0}')
     InversionTime_x=$(echo "($(ls -l| grep 'Inversion time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
 
-	if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$InversionTime" == "$InversionTime_x" ];
-	then
+	if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$InversionTime" == "$InversionTime_x" ]; then
 	    echo "$subid OK"
 	else 
 	    cd $bidsdir/sub-$subid/ses-$sessid/anat/
@@ -114,8 +113,7 @@ if [ "${convertrest}" == "TRUE" ]; then
     	fi
 
 		if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && 
-			[ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ];
-		then
+			[ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
 	   		echo "$subid OK"
 		else 
 	    	cd $bidsdir/sub-$subid/ses-$sessid/func/
@@ -130,6 +128,7 @@ fi
 # task fMRI 
 if [ "${converttask}" == "TRUE" ]; then
 	echo -e "\nChecking task fMRI"
+
 	for task in ${tasks[@]}; do 
 		runnum="$(echo "${task}" | sed 's/[^0-9]//g')"
 		taskalpha="$(echo "${task}" | sed 's/[^a-zA-Z]//g')"
@@ -220,8 +219,7 @@ if [ "${convertfmap}" == "TRUE" ]; then
 	EchoTime1_x=$(echo "scale=5; ($(ls | grep 'Echo time\[[1]*\]' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
     EchoTime2_x=$(echo "scale=5; ($(ls | grep 'Echo time\[[2]*\]' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
 
-	if [ "$EchoTime1" == "$EchoTime1_x" ] && [ "$EchoTime2" == "$EchoTime2_x" ]
-	then
+	if [ "$EchoTime1" == "$EchoTime1_x" ] && [ "$EchoTime2" == "$EchoTime2_x" ]; then
 	    echo "$subid OK"
 	else 
 	    cd $bidsdir/sub-$subid/ses-$sessid/fmap/
