@@ -49,7 +49,8 @@ if [ "${convertanat}" == "TRUE" ]; then
 	    	cd $bidsdir/sub-$subid/ses-$sessid/anat/
 	    	filename="sub-"$subid"_ses-"$sessid"_T1w.json"
 	    	echo -e "{\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"InversionTime\": $InversionTime_x,\n}" >> "$filename" 
-	    	ls "$filename" >> $errorlog
+	    	echo "not OK"
+		ls "$filename" >> $errorlog
 		fi
 	fi
 fi
@@ -130,7 +131,7 @@ if [ "${convertrest}" == "TRUE" ]; then
 
     	if [[ "$file" =~ "${rest}" ]]; then
 			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && 
-				[ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
+				[ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x"] && [ "$MultibandAccelerationFactor" == "$MultibandAccelerationFactor_x" ]; then
 	   			echo "OK"
 			else 
 	    		cd $bidsdir/sub-$subid/ses-$sessid/func/
@@ -223,7 +224,7 @@ if [ "${converttask}" == "TRUE" ]; then
     	fi
 
     	if [[ "$file" =~ "${task}" ]]; then
-			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x" ] && [ "MultibandAccelerationFactor" == "MultibandAccelerationFactor_x" ]; then
+			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x" ] && [ "$MultibandAccelerationFactor" == "$MultibandAccelerationFactor_x" ]; then
 	    		echo "OK"
 	    	else 
 	        	cd $bidsdir/sub-$subid/ses-$sessid/func/
@@ -254,11 +255,12 @@ if [ "${convertfmap}" == "TRUE" ]; then
     EchoTime2_x=$(echo "scale=5; ($(ls | grep 'Echo time\[[2]*\]' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
 
 	if [ "$EchoTime1" == "$EchoTime1_x" ] && [ "$EchoTime2" == "$EchoTime2_x" ]; then
-	    echo "${subid} OK"
+	    echo "OK"
 	else 
 	    cd $bidsdir/sub-$subid/ses-$sessid/fmap/
 	    filename="sub-"$subid"_ses-"$sessid"_phasediff.json"
 	    echo -e "{\n\t\"EchoTime1\": $EchoTime1_x,\n\t\"EchoTime2\": $EchoTime2_x,\n\t\"IntendedFor\": [\"func/task-DSD_bold.nii.gz\", \"func/task-SVC_bold.nii.gz\"]\" \n}" >> "$filename" 
+	    echo "not OK"
 	    ls "$filename" >> $errorlog
 	fi
 fi
