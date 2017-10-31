@@ -224,7 +224,8 @@ if [ "${converttask}" == "TRUE" ]; then
     	fi
 
     	if [[ "$file" =~ "${task}" ]]; then
-			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x" ] && [ "$MultibandAccelerationFactor" == "$MultibandAccelerationFactor_x" ]; then
+			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && 
+				[ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x" ] && [ "$MultibandAccelerationFactor" == "$MultibandAccelerationFactor_x" ]; then
 	    		echo "OK"
 	    	else 
 	        	cd $bidsdir/sub-$subid/ses-$sessid/func/
