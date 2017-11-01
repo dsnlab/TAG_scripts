@@ -30,10 +30,10 @@ tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
 PhaseEncoding_task=1a
 
 # Set which sequences to create Json
-convertanat="FALSE"
+convertanat="TRUE"
 convertfmap="TRUE"
 convertdti="FALSE"
-convertrest="FALSE"
+convertrest="TRUE"
 converttask="TRUE"
 
 # Set error log file

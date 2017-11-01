@@ -84,7 +84,7 @@ if [ "${convertrest}" == "TRUE" ]; then
             echo "${subid}: Wrong number of ${rest}" >> $errorlog
         fi
 
-		RepetitionTime_x=$(echo "($(ls -l| grep 'Repetition time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.0f", $0}')
+		RepetitionTime_x=$(echo "($(ls -l| grep 'Repetition time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.3f", $0}')
     	EchoTime_x=$(echo "($(ls -l| grep 'Echo time' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.3f", $0}')
     	FlipAngle_x=$(ls | grep 'Flip angle' $file | sed 's/^.*: //' | awk '{printf "%.0f", $0}')
     	MultibandAccelerationFactor_x=$(ls | grep 'Acceleration factor' $file | sed 's/^.*: //')
