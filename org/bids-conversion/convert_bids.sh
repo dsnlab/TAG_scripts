@@ -80,9 +80,9 @@ if [ "${convertrest}" == "TRUE" ]; then
 	mkdir resting
 	restingoutput="$niidir/${subid}/resting"
 	for rest in ${resting[@]}; do 
-		mcverter -o "${restingkoutput}"/ --format=nifti --nii --fourd --match="${rest}" -F -PatientName-PatientId-SeriesDate-SeriesTime-StudyId-StudyDescription+SeriesNumber-SequenceName-ProtocolName+SeriesDescription $dicomdir
+		mcverter -o "${restingoutput}"/ --format=nifti --nii --fourd --match="${rest}" -F -PatientName-PatientId-SeriesDate-SeriesTime-StudyId-StudyDescription+SeriesNumber-SequenceName-ProtocolName+SeriesDescription $dicomdir
 	done
-	cd "${restingkoutput}"
+	cd "${restingoutput}"
 	du -sh *.nii
 	gzip -f *.nii
 fi
@@ -187,7 +187,7 @@ if [ "${convertrest}" == "TRUE" ]; then
 	for rest in ${resting[@]}; do 
 		if [ $(ls "${restingoutput}"/*"${rest}".nii.gz | wc -l) -eq 1 ]; then
 			runnum="$(echo "${rest}" | tail -c 2)"
-			cp ${cpflags} "${restingkoutput}"/*"${rest}".nii.gz  "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-rest_run-0"${runnum}"_bold.nii.gz
+			cp ${cpflags} "${restingoutput}"/*"${rest}".nii.gz  "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/func/sub-"${subid}"_ses-"${sessid}"_task-rest_run-0"${runnum}"_bold.nii.gz
 		elif [ $(ls "${restingoutput}"/*"${rest}".nii.gz  | wc -l) -eq 0 ]; then
 			# print missing file paths in errorlog.txt if = 0 files
 			echo "ERROR: no files; nothing to copy"
