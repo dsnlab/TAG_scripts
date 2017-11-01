@@ -8,7 +8,7 @@
 # * $subid from batch_createJson.sh
 
 # Load variables
-source /projects/dsnlab/tag/TAG_scripts/org/bids-conversion/createJson_config.sh
+source /projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/createJson_config.sh
 echo "${subid}"
 
 # Create error log file

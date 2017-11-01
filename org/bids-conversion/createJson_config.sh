@@ -6,8 +6,8 @@
 # Sequence variables are based on the sequence protocol names
 
 # Set directory names
-niidir="/projects/dsnlab/tag/archive/clean_nii"
-bidsdir="/projects/dsnlab/tag/bids_data"
+niidir="/projects/dsnlab/shared/tag/archive/clean_nii"
+bidsdir="/projects/dsnlab/shared/tag/bids_data"
 
 # Set study info
 sessid="wave1"
@@ -37,4 +37,4 @@ convertrest="FALSE"
 converttask="TRUE"
 
 # Set error log file
-errorlog="/projects/dsnlab/tag/TAG_scripts/org/bids-conversion/errorlog_Json.txt"
+errorlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/errorlog_Json.txt"
