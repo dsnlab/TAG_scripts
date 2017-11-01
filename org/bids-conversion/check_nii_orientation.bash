@@ -2,9 +2,10 @@
 
 #Please run this from the directory where the subject folders are located!
 
-#Path to afni 3dinfo binary (just 3dinfo if it's in your path already)
+#!/bin/bash
+
+#Load afni
 module load prl afni
-#afniinfo=/usr/lib/afni/bin/3dinfo
 
 #manual sublist like:
 #sub-TAG000
@@ -14,7 +15,7 @@ module load prl afni
 #sublist=`cat ~/sublist.txt`
 sublist=`ls -1d sub*`
 
-outputfile=test_out.csv
+outputfile=3dinfo_out.csv
 
 echo "sid,file,orient" > $outputfile
 

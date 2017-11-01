@@ -6,10 +6,10 @@
 # Sequence variables are based on the sequence protocol names
 
 # Set directory names
-archivedir="/projects/dsnlab/tag/archive"
-dicomdir=$(echo "/projects/dsnlab/tag/archive/DICOMS/${subid}"*)
-niidir="/projects/dsnlab/tag/archive/clean_nii"
-bidsdir="/projects/dsnlab/tag/bids_data"
+archivedir="/projects/dsnlab/shared/tag/archive"
+dicomdir=$(echo "/projects/dsnlab/shared/tag/archive/DICOMS/${subid}"*)
+niidir="/projects/dsnlab/shared/tag/archive/clean_nii"
+bidsdir="/projects/dsnlab/shared/tag/bids_data"
 
 # Set study info
 sessid="wave1"
@@ -22,11 +22,11 @@ declare -a resting=("Resting_1" "Resting_2")
 declare -a tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
 
 # Set which sequences to convert
-convertanat="TRUE"
-convertfmap="TRUE"
-convertdti="TRUE"
+convertanat="FALSE"
+convertfmap="FALSE"
+convertdti="FALSE"
 convertrest="TRUE"
-converttask="TRUE"
+converttask="FALSE"
 
 # Set error log file
-errorlog="/projects/dsnlab/tag/TAG_scripts/org/bids-conversion/errorlog.txt"
+errorlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/errorlog.txt"

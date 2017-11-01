@@ -91,7 +91,7 @@ if [ "${convertrest}" == "TRUE" ]; then
     	EffectiveEchoSpacing_x=$(echo "($(ls -l| grep 'Effective echo spacing' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
 
 		cd $bidsdir 
-    	afnifile=test_out.csv
+    	afnifile=3dinfo_out.csv
     	fileSTRING="sub-"$subid"_ses-"$sessid"_task-rest_run-0"$runnum"_bold.nii.gz"
     	PED=$(ls | grep "$fileSTRING" $afnifile | sed -n 's/^.*nii.gz,[[:space:]]*//p')
 
@@ -185,7 +185,7 @@ if [ "${converttask}" == "TRUE" ]; then
     	EffectiveEchoSpacing_x=$(echo "($(ls -l| grep 'Effective echo spacing' $file | sed 's/^.*: //')) / 1000" | bc -l | awk '{printf "%.5f", $0}')
 
     	cd $bidsdir 
-    	afnifile=test_out.csv
+    	afnifile=3dinfo_out.csv
     	fileSTRING="sub-"$subid"_ses-"$sessid"_task-"$taskalpha"_run-0"$runnum"_bold.nii.gz"
     	PED=$(ls | grep "$fileSTRING" $afnifile | sed -n 's/^.*nii.gz,[[:space:]]*//p')
 
