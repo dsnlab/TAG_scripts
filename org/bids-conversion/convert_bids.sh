@@ -170,6 +170,10 @@ if [ "${convertdti}" == "TRUE" ]; then
 	if [ $(ls "${dtioutput}"/*"${dti}"*.nii.gz | wc -l) -eq 2 ]; then
 		cp ${cpflags} "${dtioutput}"/*"${dti}"*rl.nii.gz "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/dwi/sub-"${subid}"_ses-"${sessid}"_dir-rl_dwi.nii.gz
 		cp ${cpflags} "${dtioutput}"/*"${dti}"*lr.nii.gz "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/dwi/sub-"${subid}"_ses-"${sessid}"_dir-lr_dwi.nii.gz
+		cp ${cpflags} "${dtioutput}"/*"${dti}"*rl_bvecs "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/dwi/sub-"${subid}"_ses-"${sessid}"_dir-rl_dwi_bvecs
+		cp ${cpflags} "${dtioutput}"/*"${dti}"*rl_bvals "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/dwi/sub-"${subid}"_ses-"${sessid}"_dir-rl_dwi_bvals
+		cp ${cpflags} "${dtioutput}"/*"${dti}"*lr_bvecs "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/dwi/sub-"${subid}"_ses-"${sessid}"_dir-lr_dwi_bvecs
+		cp ${cpflags} "${dtioutput}"/*"${dti}"*lr_bvals "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/dwi/sub-"${subid}"_ses-"${sessid}"_dir-lr_dwi_bvals
 	elif [ $(ls "${dtioutput}"/*"${dti}"*.nii.gz | wc -l) -eq 0 ]; then
 		# print missing file paths in errorlog.txt if = 0 files
 		echo "ERROR: no files; nothing to copy"
