@@ -7,12 +7,12 @@
 
 # Set directory names
 archivedir="/projects/dsnlab/shared/tag/archive"
-dicomdir=$(echo "/projects/dsnlab/shared/tag/archive/DICOMS/${subid}"*)
 niidir="/projects/dsnlab/shared/tag/archive/clean_nii"
 bidsdir="/projects/dsnlab/shared/tag/bids_data"
+scriptsdir="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion"
+dicom="/projects/dsnlab/shared/tag/archive/DICOMS"
 
 # Set study info
-sessid="wave1"
 cpflags="-n -v"
 fieldmapEPI="FALSE"
 declare -a anat="mprage_p2"
@@ -22,11 +22,11 @@ declare -a resting=("Resting_1" "Resting_2")
 declare -a tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
 
 # Set which sequences to convert
-convertanat="FALSE"
-convertfmap="FALSE"
-convertdti="FALSE"
+convertanat="TRUE"
+convertfmap="TRUE"
+convertdti="TRUE"
 convertrest="TRUE"
-converttask="FALSE"
+converttask="TRUE"
 
 # Set error log file
-errorlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/errorlog.txt"
+errorlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/errorlog_convertBIDS.txt"

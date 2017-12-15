@@ -12,14 +12,20 @@ STUDY=/projects/dsnlab/shared/tag
 
 # Set subject list
 SUBJLIST=`cat subject_list_prac.txt`
-
+ 
 # Set output directory
-OUTPUTDIR=TAG_scripts/org/output
+OUTPUTDIR=TAG_scripts/org/bids-conversion/output
 
 # Set job script
 JOB=TAG_scripts/org/bids-conversion/createJson.sh
 
 for SUBJ in ${SUBJLIST[@]}
+
 do
- sbatch --export subid=${SUBJ} --job-name createJson_"${SUBJ}" --mem-per-cpu=2G --cpus-per-task=1 --partition=short --time 00:00:10 -o "${STUDY}"/"${OUTPUTDIR}"/"${SUBJ}"_createJson_output.txt -e "${STUDY}"/"${OUTPUTDIR}"/"${SUBJ}"_createJson_error.txt "${STUDY}"/"${JOB}"
+
+SUBID=`echo $SUBJ|awk '{print $1}' FS=","`
+SESSID=`echo $SUBJ|awk '{print $2}' FS=","`
+
+sbatch --export subid=${SUBID},sessid=${SESSID} --job-name createJson_"${SUBJ}" --mem-per-cpu=2G --cpus-per-task=1 --partition=short --time 00:00:10 -o "${STUDY}"/"${OUTPUTDIR}"/"${SUBJ}"_createJson_output.txt -e "${STUDY}"/"${OUTPUTDIR}"/"${SUBJ}"_createJson_error.txt "${STUDY}"/"${JOB}"
+
 done
