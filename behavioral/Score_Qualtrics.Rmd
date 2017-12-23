@@ -8,7 +8,8 @@ output: html_document
 Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
-workdir=as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
+#You should set this to the behavioral directory on the TAG file server 
+workdir='~/workdir/'
 ```
 
 Load required packages
@@ -27,7 +28,7 @@ rm(packages)
 
 Extract qualtrics data from website
 ```{r Extract Qualtrics, message=FALSE, warning=FALSE, include=FALSE}
-credsFile<-paste0(workdir,"Questionnaires/Confidential/credentials.yaml.DEFAULT")
+credsFile<-file.path(workdir,"Questionnaires/Confidential/credentials.yaml.DEFAULT")
 creds<-creds_from_file(credsFile)
 
 survey_info<-qualtrics::get_surveys(creds) %>% 
@@ -49,7 +50,9 @@ get_survey_data<-function(surveysDF,pid_col){
   long_survey_data<-survey_data %>% 
     filter(dim(survey_data)[1]>0) %>%
     do({
-      gather_cols<-names(.$survey_data)[!grepl(pid_col,names(.$survey_data))]
+      colNames <- names(.$survey_data)
+      gather_cols_list <- lapply(pid_col, function(x) colNames[!grepl(x, colNames)])
+      gather_cols<-Reduce(intersect, gather_cols_list)
       aDF<-gather_(.$survey_data,
                    'item',
                    'value',
@@ -60,23 +63,45 @@ get_survey_data<-function(surveysDF,pid_col){
   long_survey_data
 }
 
-long_survey_data<-get_survey_data(survey_info,pid_col="SID") %>% mutate(value = ifelse(value == -99, NA, value)) %>%
+raw_survey_data <- get_survey_data(survey_info,pid_col=c("SID", "SID_embed"))
+
+long_survey_data<- raw_survey_data %>% mutate(value = ifelse(value == -99, NA, value)) %>%
   mutate(SID=ifelse(SID=="",SID_embed,
                     ifelse(is.na(SID),SID_embed,SID))) %>%
   select(-SID_embed)
-embedded_qs<-survey_info %>% filter(SurveyName=="TAG - Home Qs - V3 - with SID embedded")
-sortbyqid_data<-get_survey_data(embedded_qs,pid_col="qid") %>% mutate(value = ifelse(value == -99, NA, value))
+
+embedded_qs<-survey_info %>% 
+  filter(SurveyName %in% c("TAG - Home Qs - V3 - with SID embedded", 
+                           "TAG - W1 Home Qs - Current V4")) 
+sortbyqid_data <- get_survey_data(embedded_qs,pid_col="qid") %>% mutate(value = ifelse(value == -99, NA, value))
+
 rm(creds,credsFile,get_survey_data)
 ```
 
 Clean qualtrics (from scratch)
 ```{r Clean qualtrics, message=FALSE, warning=FALSE, include=FALSE}
-cleaned_survey_data<- long_survey_data %>% 
-  mutate(tagid=ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID)) %>%
-  select(tagid, item, value, survey_name) %>%
-  filter(!tagid=="TAG000",
-         !tagid=="TAG999") %>%
-  mutate(tagid=ifelse(tagid=="013 ", "TAG013", tagid))
+#This is too slow. See data table implementation below.
+# system.time({
+# cleaned_survey_data<- long_survey_data %>% 
+#   mutate(tagid=ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID)) %>%
+#   select(tagid, item, value, survey_name) %>%
+#   filter(!tagid=="TAG000",
+#          !tagid=="TAG999") %>%
+#   mutate(tagid=ifelse(tagid=="013 ", "TAG013", tagid))
+# })
+#   user  system elapsed 
+# 45.024   2.324  46.810 
+
+library(data.table)
+cleaned_survey_data <- as.data.table(long_survey_data)
+cleaned_survey_data[, tagid := ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID)]
+cleaned_survey_data[, SID := NULL]
+cleaned_survey_data <- cleaned_survey_data[!(tagid %in% c('TAG000', 'TAG999'))]
+cleaned_survey_data[tagid == '013 ', tagid := 'TAG013']
+cleaned_survey_data <- as.data.frame(cleaned_survey_data)
+#The above is much much quicker.
+#  user  system elapsed 
+# 0.228   0.012   0.241 
 
 IDs<-unique(cleaned_survey_data$tagid)
 
@@ -98,18 +123,25 @@ gather_cols<-unique(TAGHomeQ$item)
 TAGEmbeddedHomeQ_Gathered <- TAGHomeQ %>% 
   spread(item,value) %>%
   mutate(tagid=ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID))
-test1 <- TAGEmbeddedHomeQ_Gathered[c(227,2,1,3:226)]
-test2<-gather(test1,"item","value",3:227)
+test1 <- select(TAGEmbeddedHomeQ_Gathered, tagid, survey_name, qid, everything())
+test2 <- gather(test1,"item","value",3:dim(test1)[2]) %>%
+  filter(!tagid=='')
 
-cleaned_survey_data2<-bind_rows(cleaned_survey_data,test2)
+cleaned_survey_data2 <- bind_rows(cleaned_survey_data, test2)
 cleaned_survey_data3<-cleaned_survey_data2 %>% distinct(tagid,item,value,survey_name,.keep_all = TRUE)
 
 # Remove missing data and the duplicated data from the embedded ID home questionnaires
-cleaned_survey_data<-cleaned_survey_data3 %>% filter(!tagid=="") %>% filter(!tagid=="SV_eqvWqPtsOO4uqPP")
+cleaned_survey_data<-cleaned_survey_data3 %>% 
+  filter(!tagid=="") %>% 
+  filter(!tagid=="SV_eqvWqPtsOO4uqPP") %>%
+  filter(grepl('TAG', tagid))
 
 # Change the one participant with a ghost SID
 cleaned_survey_data <- cleaned_survey_data %>%
-  mutate(tagid=ifelse(tagid=="078\177","TAG078",tagid))
+  mutate(tagid=ifelse(tagid=="078\177","TAG078",tagid)) 
+
+#Check odd IDs:
+#cleaned_survey_data %>% filter(item == 'qid') %>% distinct(tagid, survey_name, value) %>% filter(!grepl('TAG', tagid)) %>% write.csv('~/weirdIDs.csv')
 
 rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sortbyqid_data,TAGEmbeddedHomeQ_Gathered,TAGHomeQ,test1,test2,i,gather_cols,IDs)
 rm(long_survey_data)
@@ -119,23 +151,25 @@ surveyed
 
 print(paste0("A total of ",length(surveyed)," participants have completed surveys!"))
 print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Home",survey_name)))$tagid))," participants have completed home surveys!"))
-print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Sess 1",survey_name)))$tagid))," participants have completed Session 1 surveys!"))
-print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Sess 2",survey_name)))$tagid))," participants have completed Session 2 surveys!"))
+print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Sess 1",survey_name) | grepl("W1S1",survey_name)))$tagid))," participants have completed Wave 1 Session 1 surveys!"))
+print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Sess 2",survey_name) | grepl("W1S2",survey_name)))$tagid))," participants have completed Wave 1 Session 2 surveys!"))
+print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W2S1",survey_name)))$tagid))," participants have completed Wave 2 Session 1 surveys!"))
+print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W2S2",survey_name)))$tagid))," participants have completed Wave 2 Session 2 surveys!"))
 
 rm(surveyed)
-
 ```
 
 Load and clean redcap info
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
-redcapData <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
-  filter(!grepl("wave_2",redcap_event_name))
+redcapData <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
+  # filter(!grepl("wave_2",redcap_event_name))
 redcapData_dob<-redcapData %>%
   select(dob,subject_spit_id) %>%
   filter(!dob=="")
 redcapData_sessiondates<-redcapData %>%
-  select(sa_date,sb_date,subject_spit_id) %>%
-  filter(!sa_date=="")
+  select(sa_date,sb_date,redcap_event_name,subject_spit_id) %>%
+  filter(!sa_date=="") %>%
+  extract(redcap_event_name, c('wave'), 'wave_([\\d]).*')
 redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
   filter(!subject_spit_id=="TAG_001P") %>%
@@ -148,14 +182,15 @@ rm(redcapData_dob,redcapData,redcapData_sessiondates)
 Configure anthro information
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
 redcap_anthro <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_anthro.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
-  filter(!anthro_doc=="")%>%
-  filter(!grepl("wave_2",redcap_event_name)) %>%
+  filter(!anthro_doc=="") %>%
+  extract(redcap_event_name, c('wave'), 'wave_([\\d]).*') %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
   filter(!subject_spit_id=="TAG_001P") %>%
   mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid)) %>%
   mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
   select(-subject_spit_id)
-anthro<-left_join(redcap_anthro,redcap_cleaned,by="tagid") %>%
+anthro<-left_join(redcap_anthro,redcap_cleaned,by=c("tagid", "wave")) %>%
+  mutate_at(vars(matches('(height|weight|waist).*')), funs(as.numeric)) %>%
   mutate(height_1=ifelse(height_system==3,(height_1*2.54),height_1),
          height_2=ifelse(height_system==3,(height_2*2.54),height_2),
          height_3=ifelse(height_system==3,(height_3*2.54),height_3),
@@ -165,18 +200,22 @@ anthro<-left_join(redcap_anthro,redcap_cleaned,by="tagid") %>%
          weight_1=ifelse(weight_system==2,(weight_1*0.453592),weight_1),
          weight_2=ifelse(weight_system==2,(weight_2*0.453592),weight_2),
          weight_3=ifelse(weight_system==2,(weight_3*0.453592),weight_3))
+anthro<- left_join(anthro, 
+                   anthro %>%
+                     group_by(tagid, wave) %>%
+                     summarise(height=ifelse(!is.na(height_1 & height_2 & height_3),
+                                             median(c(height_1,height_2,height_3)),
+                                             ifelse(!is.na(height_1 & height_2) & is.na(height_3),
+                                                    mean(c(height_1,height_2)),
+                                                    ifelse(!is.na(height_1) & is.na(height_2 & height_3), height_1,
+                                                           height_1)))))
 anthro<- left_join(anthro, anthro %>%
-                     group_by(tagid) %>%
-                     summarise(height=ifelse(!is.na(height_1 & height_2 & height_3), median(c(height_1,height_2,height_3)),
-                                             ifelse(!is.na(height_1 & height_2) & is.na(height_3), mean(c(height_1,height_2)),
-                                                    ifelse(!is.na(height_1) & is.na(height_2 & height_3), height_1, height_1)))))
-anthro<- left_join(anthro, anthro %>%
-                     group_by(tagid) %>%
+                     group_by(tagid, wave) %>%
                      summarise(weight=round(ifelse(!is.na(weight_1 & weight_2 & weight_3), median(c(weight_1, weight_2, weight_3)),
                                                    ifelse(!is.na(weight_1 & weight_2) & is.na(weight_3), mean(c(weight_1, weight_2)),
                                                           ifelse(!is.na(weight_1) & is.na(weight_2 & weight_3), weight_1, weight_1))),3)))
 anthro<- left_join(anthro, anthro %>%
-                     group_by(tagid) %>%
+                     group_by(tagid, wave) %>%
                      summarise(waist=ifelse(!is.na(waist_1 & waist_2 & waist_3), median(c(waist_1, waist_2, waist_3)),
                                             ifelse(!is.na(waist_1 & waist_2) & is.na(waist_3), mean(c(waist_1, waist_2)),
                                                    ifelse(!is.na(waist_1) & is.na(waist_2 & waist_3), waist_1, waist_1)))))
@@ -184,21 +223,34 @@ anthro<- left_join(anthro, anthro %>%
 anthro<-anthro %>% 
   filter(!is.na(anthro_doc)) %>%
   mutate(age=round((interval(start =dob, end = anthro_doc) / duration(num = 1, units = "years")),2)) %>%
-  select(-sa_date,-sb_date,-redcap_event_name,-contains("waist_"),-contains("height_"),-contains("weight_"),-dob)
+  select(-sa_date,-sb_date,-contains("waist_"),-contains("height_"),-contains("weight_"),-dob)
 
 heights_graph<-ggplot(anthro, aes(x=height)) +
-  geom_density(alpha=.3)+
-  ggtitle(paste0("Height (cm) for ",length(anthro$height[!is.na(anthro$height)])," Wave1 participants"))
+  geom_histogram(alpha=.3)+
+  ggtitle(paste0("Height (cm) for ",length(anthro$height[!is.na(anthro$height)])," participants"))+
+  facet_grid(~wave)
 
 weights_graph<-ggplot(anthro, aes(x=weight)) +
-  geom_density(alpha=.3)+
-  ggtitle(paste0("Weight (lb) for ",length(anthro$weight[!is.na(anthro$weight)])," Wave1 participants"))
+  geom_histogram(alpha=.3)+
+  ggtitle(paste0("Weight (lb) for ",length(anthro$weight[!is.na(anthro$weight)])," participants"))+
+  facet_grid(~wave)
 
 waist_graph<-ggplot(anthro, aes(x=waist)) +
-  geom_density(alpha=.3)+
-  ggtitle(paste0("Waist measurement (cm) for ",length(anthro$waist[!is.na(anthro$waist)])," Wave1 participants"))
+  geom_histogram(alpha=.3)+
+  ggtitle(paste0("Waist measurement (cm) for ",length(anthro$waist[!is.na(anthro$waist)])," participants"))+
+  facet_grid(~wave)
 
-rm(waist_graph,heights_graph,weights_graph,redcap_anthro)
+anthro_change_graph <- anthro %>%
+  select(tagid, height, weight, waist, age) %>%
+  gather(key='key', value='value', -tagid, -age) %>%
+  ggplot(aes(x=age, y=value, group=tagid)) +
+  geom_point(alpha=.15) +
+  geom_line(alpha=.5) +
+  geom_line(aes(group=NULL), stat = 'smooth', method = 'loess', span=1, color = 'blue') +
+  facet_wrap(~key, scales='free') +
+  theme_bw()
+
+rm(waist_graph,heights_graph,weights_graph,redcap_anthro,anthro_change_graph)
 ```
 
 DO NOT RUN: Prepare GUIDs
@@ -229,7 +281,7 @@ guid_colnames<-colnames(read.csv(paste0(workdir,"RDoCdb/templates/guid_sample_te
                                  stringsAsFactors = FALSE,
                                  nrow=1))
 
-consentedlist<-(redcap_NDA_info %>%
+consentedlist<-unique(redcap_NDA_info %>%
                   filter(nda_consent___1==1 & nda_consent___2==1) %>%
                   select(tagid))[[1]]
 
@@ -252,7 +304,7 @@ prepareGUIDs=function(subID){
 }
 
 guid_batch<-lapply(consentedlist,prepareGUIDs)
-guid_batch.df<-as.data.frame(do.call(rbind,guid_batch))
+guid_batch.df<-as.data.frame(do.call(rbind,guid_batch)) %>% distinct()
 guid_batch_ids<-guid_batch.df %>%
   select(subID) %>%
   mutate(ID=row.names(guid_batch.df),
@@ -264,8 +316,8 @@ colnames(guid_batch.df) <- guid_colnames
 guid_batch.df$ID <-row.names(guid_batch.df)
 print(paste0("GUID batch created for ",nrow(guid_batch.df)," participants!"))
 rm(guid_batch,guid_colnames,consentedlist,redcap_NDA_info)
-write.csv(guid_batch.df,file=paste0(workdir,"RDoCDb/confidential/GUID_batch_",Sys.Date(),".csv"),row.names = FALSE)
-write.csv(guid_batch_ids,file=paste0(workdir,"RDoCDb/confidential/GUID_batch_subIDkey_",Sys.Date(),".csv"),row.names = FALSE)
+write.csv(guid_batch.df,file=paste0(workdir,"RDoCdb/Confidential/GUID_batch_",Sys.Date(),".csv"),row.names = FALSE)
+write.csv(guid_batch_ids,file=paste0(workdir,"RDoCdb/Confidential/GUID_batch_subIDkey_",Sys.Date(),".csv"),row.names = FALSE)
 ```
 
 Get Survey Date info
