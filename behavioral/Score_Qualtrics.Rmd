@@ -9,7 +9,7 @@ Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
 #You should set this to the behavioral directory on the TAG file server 
-workdir='~/workdir/'
+workdir='/data/jflournoy/a_new_workdir/'
 ```
 
 Load required packages
@@ -31,39 +31,46 @@ Extract qualtrics data from website
 credsFile<-file.path(workdir,"Questionnaires/Confidential/credentials.yaml.DEFAULT")
 creds<-creds_from_file(credsFile)
 
-survey_info<-qualtrics::get_surveys(creds) %>% 
-  filter(!grepl("NV", SurveyName)) %>% 
-  dplyr::select(SurveyID, SurveyName)
-
-get_survey_data<-function(surveysDF,pid_col){
-  #Takes the data.frame that is returned by `get_surveys`
-  #Returns a long format data.frame of survey data with names
-  # "SID variable name"         "item"        "value"       "survey_name"
-  survey_data<-surveysDF %>% 
-    group_by(SurveyID) %>%
-    do(
-      survey_name=.$SurveyName[[1]],
-      survey_data=qualtrics::get_survey_responses(
-        creds,
-        surveyid=.$SurveyID[[1]])
-    )
-  long_survey_data<-survey_data %>% 
-    filter(dim(survey_data)[1]>0) %>%
-    do({
-      colNames <- names(.$survey_data)
-      gather_cols_list <- lapply(pid_col, function(x) colNames[!grepl(x, colNames)])
-      gather_cols<-Reduce(intersect, gather_cols_list)
-      aDF<-gather_(.$survey_data,
-                   'item',
-                   'value',
-                   gather_cols)
-      aDF$survey_name<-.$survey_name
-      aDF
-    })
-  long_survey_data
+if(!file.exists(file.path(workdir, 'Questionnaires/Confidential/saved_survey_data.RDS')))
+{
+  survey_info<-qualtrics::get_surveys(creds) %>% 
+    filter(!grepl("NV", SurveyName)) %>% 
+    dplyr::select(SurveyID, SurveyName)
+  
+  get_survey_data<-function(surveysDF,pid_col){
+    #Takes the data.frame that is returned by `get_surveys`
+    #Returns a long format data.frame of survey data with names
+    # "SID variable name"         "item"        "value"       "survey_name"
+    survey_data<-surveysDF %>% 
+      group_by(SurveyID) %>%
+      do(
+        survey_name=.$SurveyName[[1]],
+        survey_data=qualtrics::get_survey_responses(
+          creds,
+          surveyid=.$SurveyID[[1]])
+      )
+    long_survey_data<-survey_data %>% 
+      filter(dim(survey_data)[1]>0) %>%
+      do({
+        colNames <- names(.$survey_data)
+        gather_cols_list <- lapply(pid_col, function(x) colNames[!grepl(x, colNames)])
+        gather_cols<-Reduce(intersect, gather_cols_list)
+        aDF<-gather_(.$survey_data,
+                     'item',
+                     'value',
+                     gather_cols)
+        aDF$survey_name<-.$survey_name
+        aDF
+      })
+    long_survey_data
+  }
+  
+  raw_survey_data <- get_survey_data(survey_info,pid_col=c("SID", "SID_embed"))
+  
+  saveRDS(raw_survey_data, file.path(workdir, 'Questionnaires/Confidential/saved_survey_data.RDS'))
+} else {
+  raw_survey_data <- readRDS(file.path(workdir, 'Questionnaires/Confidential/saved_survey_data.RDS'))
 }
-
-raw_survey_data <- get_survey_data(survey_info,pid_col=c("SID", "SID_embed"))
 
 long_survey_data<- raw_survey_data %>% mutate(value = ifelse(value == -99, NA, value)) %>%
   mutate(SID=ifelse(SID=="",SID_embed,
@@ -75,7 +82,7 @@ embedded_qs<-survey_info %>%
                            "TAG - W1 Home Qs - Current V4")) 
 sortbyqid_data <- get_survey_data(embedded_qs,pid_col="qid") %>% mutate(value = ifelse(value == -99, NA, value))
 
-rm(creds,credsFile,get_survey_data)
+# rm(creds,credsFile,get_survey_data)
 ```
 
 Clean qualtrics (from scratch)
@@ -143,8 +150,8 @@ cleaned_survey_data <- cleaned_survey_data %>%
 #Check odd IDs:
 #cleaned_survey_data %>% filter(item == 'qid') %>% distinct(tagid, survey_name, value) %>% filter(!grepl('TAG', tagid)) %>% write.csv('~/weirdIDs.csv')
 
-rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sortbyqid_data,TAGEmbeddedHomeQ_Gathered,TAGHomeQ,test1,test2,i,gather_cols,IDs)
-rm(long_survey_data)
+# rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sortbyqid_data,TAGEmbeddedHomeQ_Gathered,TAGHomeQ,test1,test2,i,gather_cols,IDs)
+# rm(long_survey_data)
 
 surveyed<-unique(cleaned_survey_data$tagid)
 surveyed
@@ -156,7 +163,7 @@ print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("
 print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W2S1",survey_name)))$tagid))," participants have completed Wave 2 Session 1 surveys!"))
 print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W2S2",survey_name)))$tagid))," participants have completed Wave 2 Session 2 surveys!"))
 
-rm(surveyed)
+# rm(surveyed)
 ```
 
 Load and clean redcap info
@@ -176,7 +183,7 @@ redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
   mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid)) %>%
   mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
   select(-subject_spit_id)
-rm(redcapData_dob,redcapData,redcapData_sessiondates)
+# rm(redcapData_dob,redcapData,redcapData_sessiondates)
 ```
 
 Configure anthro information
@@ -250,7 +257,7 @@ anthro_change_graph <- anthro %>%
   facet_wrap(~key, scales='free') +
   theme_bw()
 
-rm(waist_graph,heights_graph,weights_graph,redcap_anthro,anthro_change_graph)
+# rm(waist_graph,heights_graph,weights_graph,redcap_anthro,anthro_change_graph)
 ```
 
 DO NOT RUN: Prepare GUIDs
@@ -274,7 +281,7 @@ redcap_NDA_info<-merge(redcapNDA_sessiondates,redcapNDA_data) %>%
          sa_date=as.Date(sa_date),
          sb_date=as.Date(sb_date))
 
-rm(redcapNDA_data,redcapNDA_sessiondates)
+# rm(redcapNDA_data,redcapNDA_sessiondates)
 
 guid_colnames<-colnames(read.csv(paste0(workdir,"RDoCdb/templates/guid_sample_template.csv"),
                                  header = TRUE,
@@ -315,18 +322,22 @@ guid_batch.df<-cbind(guid_colnames[1],guid_batch.df)
 colnames(guid_batch.df) <- guid_colnames
 guid_batch.df$ID <-row.names(guid_batch.df)
 print(paste0("GUID batch created for ",nrow(guid_batch.df)," participants!"))
-rm(guid_batch,guid_colnames,consentedlist,redcap_NDA_info)
-write.csv(guid_batch.df,file=paste0(workdir,"RDoCdb/Confidential/GUID_batch_",Sys.Date(),".csv"),row.names = FALSE)
-write.csv(guid_batch_ids,file=paste0(workdir,"RDoCdb/Confidential/GUID_batch_subIDkey_",Sys.Date(),".csv"),row.names = FALSE)
+# rm(guid_batch,guid_colnames,consentedlist,redcap_NDA_info)
+write.csv(guid_batch.df,file=paste0(workdir,"RDoCdb/Confidential/GUID_batch_",Sys.Date(),".csv"),row.names = FALSE, quote = F)
+write.csv(guid_batch_ids,file=paste0(workdir,"RDoCdb/Confidential/GUID_batch_subIDkey_",Sys.Date(),".csv"),row.names = FALSE, quote = F)
 ```
 
 Get Survey Date info
 ```{r}
+#add wave to cleaned survey data
+cleaned_survey_data <- cleaned_survey_data %>%
+    mutate(wave = ifelse(grepl('W2', survey_name), 2, 1))
+
 survey_startdate<-filter(cleaned_survey_data, grepl("StartDate",item)) %>%
   filter(!survey_name=="Sharing Task Experience Survey") %>%
   mutate(startdate=as.Date(value),
-         survey_type=ifelse(grepl("Sess 1",survey_name),"Sess 1",
-                            ifelse(grepl("Sess 2",survey_name),"Sess 2",
+         survey_type=ifelse(grepl("(Sess 1|W1S1|W2S1)",survey_name),"Sess 1",
+                            ifelse(grepl("(Sess 2|W1S2|W2S2)",survey_name),"Sess 2",
                                    ifelse(grepl("Parent",survey_name),"Parent",
                                           ifelse(grepl("Home",survey_name),"Home",
                                                  NA)))))  %>%
@@ -338,8 +349,8 @@ survey_originaldate<-filter(cleaned_survey_data, grepl("original.date.timestamp"
   filter(!survey_name=="Sharing Task Experience Survey") %>%
   filter(!value=="") %>%
   mutate(originaldate=as.Date(value),
-         survey_type=ifelse(grepl("Sess 1",survey_name),"Sess 1",
-                            ifelse(grepl("Sess 2",survey_name),"Sess 2",
+         survey_type=ifelse(grepl("(Sess 1|W1S1|W2S1)",survey_name),"Sess 1",
+                            ifelse(grepl("(Sess 2|W1S2|W2S2)",survey_name),"Sess 2",
                                    ifelse(grepl("Parent",survey_name),"Parent",
                                           ifelse(grepl("Home",survey_name),"Home",
                                                  NA))))) %>%
@@ -352,10 +363,11 @@ survey_date<-left_join(survey_startdate,survey_originaldate) %>%
   select(-originaldate,-startdate)
 
 graph_dates<-ggplot(survey_date, aes(x=value, y=tagid, group=tagid)) +
-  geom_line(aes(colour="black"), alpha=.5) +
+  geom_line(colour="black", alpha=.5) +
   geom_point(aes(colour = survey_type)) +
   scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") +
-  theme(axis.text.y=element_blank())
+  theme(axis.text.y=element_blank())+
+  facet_wrap(~wave, scales='free_x')
 graph_dates
 
 timebetween=function(subid){
@@ -392,10 +404,18 @@ rm(time_between,graph_dates)
 
 Prepare NDAR template
 ```{r}
+generated_guids <- read.delim(file.path(workdir,'RDoCdb/Confidential/GUID_Batch_Current/output_guid_1515883994322.txt'), header = F, sep = '-') 
+
+generated_psuedo_guids <- read.delim(file.path(workdir,'RDoCdb/Confidential/GUID_Batch_Current/output_pguid_1515883994322.txt'), header = F, sep = '-') 
+
+NDAR_ids <- bind_rows(generated_guids, generated_psuedo_guids)
+names(NDAR_ids) <- c('ID', 'guid')
+
 # Before running this you must have generated GUIDs for each participant to be uploaded
 # Load the subject key which has the original TAGID, an anonymized ID, and the GUID
-ndar_key<-left_join(read.csv(file=paste0(workdir,"RDoCdb/Confidential/GUID_Batch_Current/GUID_batch_subIDkey.csv"),stringsAsFactors = FALSE),
-                    read.csv(file=paste0(workdir,"RDoCdb/Confidential/TAG_RDoC_key.csv"),stringsAsFactors = FALSE),by="tagid")
+ndar_key<-left_join(read.csv(file=paste0(workdir,"RDoCdb/Confidential/GUID_Batch_Current/GUID_batch_subIDkey_2018-01-12.csv"),stringsAsFactors = FALSE),
+                    read.csv(file=paste0(workdir,"RDoCdb/Confidential/TAG_RDoC_key.csv"),stringsAsFactors = FALSE),by="tagid") %>% 
+    left_join(NDAR_ids)
 
 # NDAR requires a constrained answer for a participants "race"
 ethnicity_long<-cleaned_survey_data %>%
@@ -403,11 +423,14 @@ ethnicity_long<-cleaned_survey_data %>%
   filter(!value=="") %>%
   arrange(tagid) %>%
   select(-survey_name) %>%
-  arrange(tagid)
+  arrange(tagid) %>%
+  distinct(item, value, tagid, wave)
 
-figure_out_ethnicity=function(subid){
+figure_out_ethnicity=function(adf){
+  subid <- adf['tagid']
+  wave <- adf['wave']
   subethnicity<-ethnicity_long %>%
-    filter(tagid==as.character(subid))
+    filter(tagid==as.character(subid), wave == wave)
   numethnicity<-nrow(subethnicity %>%
                        filter(!item=="Ethnicity_7_TEXT"))
   if (numethnicity<2 & (nrow(subethnicity)==1)){
@@ -421,24 +444,25 @@ figure_out_ethnicity=function(subid){
                                                           ifelse(subethnicity$item=="Ethnicity_6","More than one race",
                                                                  ifelse(subethnicity$item=="Ethnicity_8","Unknown or not reported",
                                                                         ifelse(subethnicity$item=="Ethnicity_9","Unknown or not reported",""))))))))))
-    cbind(subid,race)
+    cbind(subid,race,wave)
   } else if (numethnicity<2 & (nrow(subethnicity)==2)){
     race=as.character(subethnicity %>%
                         filter(item=="Ethnicity_7_TEXT") %>%
                         select(value))
-    cbind(subid,race)
+    cbind(subid,race,wave)
   } else if (numethnicity>1) {
     race="More than one race"
-    cbind(subid,race)
+    cbind(subid,race,wave)
   }
 }
-ndar_ethnicity<-lapply(as.list(unique(ethnicity_long$tagid)),figure_out_ethnicity)
-ndar_ethnicity.df<-data.frame(matrix(unlist(ndar_ethnicity), nrow=length(ndar_ethnicity), byrow=T),stringsAsFactors=FALSE)
+ndar_ethnicity<-apply(unique(ethnicity_long[,c('tagid', 'wave')]),1,figure_out_ethnicity)
+ndar_ethnicity.df<-data.frame(t(ndar_ethnicity),stringsAsFactors=FALSE)
 
 ndar_race<- ndar_ethnicity.df %>%
   mutate(tagid=.[[1]],
-         race=.[[2]]) %>%
-  select(tagid, race) %>%
+         race=.[[2]],
+         wave=.[[3]]) %>%
+  select(tagid, race, wave) %>%
   mutate(race=ifelse(race=="Asian white","More than one race",
                      ifelse(race=="Caucasian ","White",
                             ifelse(race=="1/4 Mexican / white","More than one race",
@@ -447,7 +471,7 @@ ndar_race<- ndar_ethnicity.df %>%
 #
 participants_ndar_data <- redcap_cleaned %>%
   filter(!is.na(dob),!is.na(sb_date)) %>%
-  select(tagid, sa_date, dob) %>%
+  select(tagid, sa_date, dob, wave) %>%
   arrange(tagid) %>%
   mutate(src_subject_id=tagid,
          interview_date=paste0(sprintf("%02d",month(sa_date)),"/",sprintf("%02d",day(sa_date)),"/",year(sa_date)),
@@ -459,21 +483,22 @@ participants_ndar_data <- redcap_cleaned %>%
          sibling_study="No",
          family_study="No",
          sample_taken="Yes",
-         sample_id_original="Session1_Saliva",
+         sample_id_original=paste0("Session",wave,"_Saliva"),
          sample_description="saliva",
          biorepository_name="NA",
          sample_id_biorepository="NA",
          patient_id_biorepository="NA",
          site="University of Oregon",
-         comments_misc="Wave1 Session1",
-         study="UO TAG Study")
+         comments_misc=paste0("Wave",wave," Session1"),
+         study="UO TAG Study",
+         wave)
 participants_ndar_data<-left_join(participants_ndar_data,(ndar_race %>%
-                                                            filter(tagid %in% ndar_key$tagid)), by="tagid") %>%
+                                                            filter(tagid %in% ndar_key$tagid)), by=c("tagid","wave")) %>%
   mutate(race=ifelse(is.na(race),"Unknown or not reported",race))
 participants_ndar_data<-left_join(ndar_key,participants_ndar_data, by="tagid") %>%
   mutate(src_subject_id=anontagid,
          subjectkey=guid) %>%
-  select(-tagid,-sa_date,-dob,-anontagid,-ID,-guid) 
+  select(-tagid,-sa_date,-dob,-anontagid,-ID,-guid,-wave) 
 
 
 ndar_subject <- as.list(read.csv(paste0(workdir,"RDoCdb/templates/ndar_subject01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
@@ -486,8 +511,8 @@ part2<-colnames(ndar_subject_df)
 part3<-as.matrix(ndar_subject_df)
 colnames(part3)<-NULL
 together<-rbind(ndar_subject_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+# rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
 ```
 
 Prepare BFI-10
@@ -495,12 +520,13 @@ Prepare BFI-10
 BFI10<-left_join(filter(cleaned_survey_data, grepl("BFI",item)) %>% 
                    mutate(value=as.numeric(value)) %>% 
                    filter(!is.na(value)) %>% 
-                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
-                   spread(item,value),redcap_cleaned %>%
-                   filter(!is.na(dob),!is.na(sa_date)) %>%
-                   select(tagid, sa_date, sb_date, dob),by="tagid")
+                   distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
+                   spread(item,value), 
+                 redcap_cleaned %>%
+                   filter(!is.na(dob),!is.na(sa_date))  %>% mutate(wave=as.numeric(wave)) %>%
+                   select(tagid, sa_date, sb_date, dob, wave),by=c("tagid","wave"))
 
-BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>% 
+BFI10_Wave12<-left_join(BFI10,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-value) %>%
@@ -564,38 +590,42 @@ BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>%
          BFI10_open_mean=rowMeans(cbind(BFI_10_5,BFI_10_10), na.rm=T))
 
 ## Save it
-write.csv(BFI10_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/BFI10_Wave1.csv"))
+write.csv(BFI10_Wave12, file = paste0(workdir,"Questionnaires/Waves_12/BFI10_Wave12.csv"))
 
 ## Graph it
-BFI10_Wave1_totals<-BFI10_Wave1 %>%
-  select(tagid,BFI10_neuro_total,BFI10_open_total,BFI10_consc_total,BFI10_agree_total,BFI10_extra_total) %>%
+BFI10_Wave12_totals<-BFI10_Wave12 %>%
+  select(tagid,wave,BFI10_neuro_total,BFI10_open_total,BFI10_consc_total,BFI10_agree_total,BFI10_extra_total) %>%
   mutate(Neuroticism=BFI10_neuro_total,
          Opennes=BFI10_open_total,
          Conscientiousness=BFI10_consc_total,
          Agreeableness=BFI10_agree_total,
          Extraversion=BFI10_extra_total) %>%
-  gather('item','value',2:length(.)) %>%
-  filter(!grepl("BFI10",item))
-BFI10_Wave1_totals_graph<-ggplot(BFI10_Wave1_totals, aes(x=value, colour=item)) +
+  gather('item','value',3:length(.)) %>%
+  filter(!grepl("BFI10",item)) 
+BFI10_Wave1_totals_graph<-ggplot(BFI10_Wave12_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("BFI Wave1 total for ",length(BFI10_Wave1_totals$tagid[!is.na(BFI10_Wave1_totals$tagid)])," participants"))
+  ggtitle(paste0("BFI Wave1 total for ",length(BFI10_Wave12_totals$tagid[!is.na(BFI10_Wave12_totals$tagid)])," participants")) +
+    facet_wrap(~wave, scales='free_x')
 
 
-BFI10_Wave1_means<-BFI10_Wave1 %>%
-  select(tagid,BFI10_neuro_mean,BFI10_open_mean,BFI10_consc_mean,BFI10_agree_mean,BFI10_extra_mean) %>%
+BFI10_Wave12_means<-BFI10_Wave12 %>%
+  select(tagid,wave,BFI10_neuro_mean,BFI10_open_mean,BFI10_consc_mean,BFI10_agree_mean,BFI10_extra_mean) %>%
   mutate(Neuroticism=BFI10_neuro_mean,
          Opennes=BFI10_open_mean,
          Conscientiousness=BFI10_consc_mean,
          Agreeableness=BFI10_agree_mean,
          Extraversion=BFI10_extra_mean) %>%
-  gather('item','value',2:length(.)) %>%
+  gather('item','value',3:length(.)) %>%
   filter(!grepl("BFI10",item))
-BFI10_Wave1_means_graph<-ggplot(BFI10_Wave1_means, aes(x=value, colour=item)) +
+BFI10_Wave12_means_graph<-ggplot(BFI10_Wave12_means, aes(x=value, colour=item)) +
   geom_density(alpha=.3) +
-  ggtitle(paste0("BFI Wave1 means for ",length(BFI10_Wave1_means$tagid[!is.na(BFI10_Wave1_means$tagid)])," participants"))
+  ggtitle(paste0("BFI Wave1 means for ",length(BFI10_Wave12_means$tagid[!is.na(BFI10_Wave12_means$tagid)])," participants")) +
+    facet_wrap(~wave, scales='free_x')
+
+redcap_cleaned <- mutate(redcap_cleaned, wave = as.numeric(wave))
 
 ## Make RDOC ready file
-ndar_bfi10_data <- left_join(BFI10_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_bfi10_data <- left_join(BFI10_Wave12,redcap_cleaned,by=c("tagid","wave")) %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
          gender="F",
@@ -622,15 +652,15 @@ bfi10_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/bfi1001_template.c
 
 bfi10_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/bfi1001_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 bfi10_temp_df<-data.frame(bfi10_temp)
-ndar_bfi10_data<-bind_rows(bfi10_temp_df,ndar_bfi10_data)
+ndar_bfi10_data<-bind_rows(bfi10_temp_df,ndar_bfi10_data %>% select(-wave))
 
 part2<-colnames(ndar_bfi10_data)
 part3<-as.matrix(ndar_bfi10_data)
 colnames(part3)<-NULL
 together<-rbind(bfi10_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(BFI10,BFI10_Wave1,BFI10_Wave1_means,BFI10_Wave1_means_graph,BFI10_Wave1_totals,BFI10_Wave1_totals_graph,
-   bfi10_df_header,bfi10_temp,bfi10_temp_df,part3,part2,together)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+# rm(BFI10,BFI10_Wave1,BFI10_Wave1_means,BFI10_Wave1_means_graph,BFI10_Wave1_totals,BFI10_Wave1_totals_graph,
+#    bfi10_df_header,bfi10_temp,bfi10_temp_df,part3,part2,together)
 ```
 
 Prepare CAMM
@@ -638,12 +668,12 @@ Prepare CAMM
 CAMM<-left_join(filter(cleaned_survey_data, grepl("CAMM",item)) %>% 
                   mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value)) %>% 
-                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                  distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                   spread(item,value),redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
-                  select(tagid, sa_date, sb_date, dob),by="tagid")
+                  select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-CAMM_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>% 
+CAMM_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-value) %>%
@@ -721,7 +751,7 @@ CAMM_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>%
          CAMM_total=rowSums(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10), na.rm=F))
 
 ## Save it
-write.csv(CAMM_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CAMM_Wave1.csv"))
+write.csv(CAMM_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/CAMM_Wave12.csv"))
 
 ## Graph it
 CAMM_Wave1_total_graph<-ggplot(CAMM_Wave1, aes(x=CAMM_total, colour="deeppink")) +
@@ -733,7 +763,7 @@ CAMM_Wave1_mean_graph<-ggplot(CAMM_Wave1, aes(x=CAMM_mean, colour="deeppink")) +
   ggtitle(paste0("Child and Adolescent Mindfulness Wave1 means for ",length(CAMM_Wave1$CAMM_mean[!is.na(CAMM_Wave1$CAMM_mean)])," participants"))
 
 ## Make RDOC ready file
-ndar_camm_data <- left_join(CAMM_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_camm_data <- left_join(CAMM_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
          gender="F",
@@ -761,13 +791,13 @@ camm_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/camm01_template.csv
 
 camm_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/camm01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 camm_temp_df<-data.frame(camm_temp)
-ndar_camm_data<-bind_rows(camm_temp_df,ndar_camm_data)
+ndar_camm_data<-bind_rows(camm_temp_df,ndar_camm_data %>% select(-wave))
 
 part2<-colnames(ndar_camm_data)
 part3<-as.matrix(ndar_camm_data)
 colnames(part3)<-NULL
-together<-rbind(camm_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/camm01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+together<-rbind(camm_df_header,part2,part3) 
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/camm01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(CAMM,CAMM_Wave1,CAMM_Wave1_means,CAMM_Wave1_means_graph,CAMM_Wave1_totals,CAMM_Wave1_totals_graph,
    camm_df_header,camm_temp,camm_temp_df,part3,part2,together)
 ```
@@ -778,13 +808,13 @@ PDS<-left_join(filter(cleaned_survey_data, grepl("PDS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!grepl("Parent",survey_name)) %>%
                  filter(!is.na(value)) %>% 
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>% 
+PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-value) %>%
@@ -857,7 +887,7 @@ PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>%
                                                                                                                                                NA))))))))))))))))))) %>%
   mutate(pdss=rowMeans(cbind(adrenf2,gonadf2),na.rm=F))                                            
 ## Save it
-write.csv(PDS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PDS_Wave1.csv"))
+write.csv(PDS_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/PDS_Wave12.csv"))
 
 
 ## Graph it
@@ -866,7 +896,7 @@ PDS_Wave1_pdss_graph<-ggplot(PDS_Wave1, aes(x=pdss, colour="deeppink")) +
   ggtitle(paste0("PDSS scores for ",length(PDS_Wave1$pdss[!is.na(PDS_Wave1$pdss)])," Wave 1 participants"))
 
 options(scipen=999)
-PDS_withage<-(left_join(PDS_Wave1,redcap_cleaned,by="tagid") %>%
+PDS_withage<-(left_join(PDS_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
                 filter(!is.na(survey_date),!survey_date=="")%>%
                 mutate(age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "years")),2)))
 PDS_Wave1_pdss_by_age_graph<-ggplot(PDS_withage, aes(x=age,y=pdss)) +
@@ -876,7 +906,7 @@ PDS_Wave1_pdss_by_age_graph<-ggplot(PDS_withage, aes(x=age,y=pdss)) +
                  cor.test(PDS_withage$age,PDS_withage$pdss,use=na.or.complete)[[3]]))
 
 ## Make RDOC ready file
-ndar_pds_data <- left_join(PDS_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_pds_data <- left_join(PDS_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -895,7 +925,8 @@ ndar_pds_data <- left_join(PDS_Wave1,redcap_cleaned,by="tagid") %>%
          pds_7b_pv=PDS_F5,
          pds_girl_rs=999
   )
-ndar_pds_data <- left_join(ndar_pds_data,anthro %>% select(tagid,weight,height), by="tagid") %>%
+anthro <- mutate(anthro, wave = as.numeric(wave))
+ndar_pds_data <- left_join(ndar_pds_data,anthro %>% select(tagid,weight,height,wave), by=c("tagid","wave")) %>%
   mutate(height_std=height,
          weight_std=weight)
 ndar_pds_data <- left_join(ndar_key,ndar_pds_data, by="tagid") %>%
@@ -911,13 +942,13 @@ pds_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/pds01_template.csv")
 
 pds_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/pds01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 pds_temp_df<-data.frame(pds_temp)
-ndar_pds_data<-bind_rows(pds_temp_df,ndar_pds_data)
+ndar_pds_data<-bind_rows(pds_temp_df,ndar_pds_data %>% select(-wave))
 
 part2<-colnames(ndar_pds_data)
 part3<-as.matrix(ndar_pds_data)
 colnames(part3)<-NULL
 together<-rbind(pds_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/pds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/pds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(pds_temp_df,pds_temp,pds_df_header,PDS_Wave1_pdss_by_age_graph,PDS_withage,PDS_Wave1_pdss_graph,
    PDS_Wave1,PDS)
 ```
@@ -927,13 +958,13 @@ Prepare PBIP
 PBIP<-left_join(filter(cleaned_survey_data, grepl("PBIP",item)) %>% 
                   mutate(value=as.numeric(value)) %>%
                   filter(!is.na(value)) %>% 
-                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                  distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                   spread(item,value),
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
-                  select(tagid, sa_date, sb_date, dob),by="tagid")
+                  select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-PBIP_Wave1<-left_join(PBIP,survey_date, by = c("tagid","survey_name")) %>% 
+PBIP_Wave1<-left_join(PBIP,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-value) %>%
@@ -946,7 +977,7 @@ PBIP_Wave1<-left_join(PBIP,survey_date, by = c("tagid","survey_name")) %>%
   mutate(stage=rowMeans(cbind(PBIP_1A,PBIP_2A),na.rm=T)) %>%
   filter(!stage=="NaN")
 ## Save it
-write.csv(PBIP_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PBIP_Wave1.csv"))
+write.csv(PBIP_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/PBIP_Wave12.csv"))
 
 
 ## Graph it
@@ -955,7 +986,7 @@ PBIP_Wave1_pbip_graph<-ggplot(PBIP_Wave1, aes(x=stage, colour="deeppink")) +
   ggtitle(paste0("Tanner stage for ",length(PBIP_Wave1$stage[!is.na(PBIP_Wave1$stage)])," Wave 1 participants"))
 
 options(scipen=999)
-PBIP_PDS_Wave1<-left_join(PBIP_Wave1,read.csv(paste0(workdir,"Questionnaires/Wave_1/PDS_Wave1.csv"),header=TRUE,stringsAsFactors = FALSE))
+PBIP_PDS_Wave1<-left_join(PBIP_Wave1,read.csv(paste0(workdir,"Questionnaires/Waves_12/PDS_Wave12.csv"),header=TRUE,stringsAsFactors = FALSE))
 PBIP_Wave1_pbip_by_pds_graph<-ggplot(PBIP_PDS_Wave1, aes(x=pdss,y=stage)) +
   geom_point(show.legend = FALSE)+
   ggtitle(paste0("PDSS by age for ",length(PBIP_PDS_Wave1$stage[!is.na(PBIP_PDS_Wave1$stage)])," Wave 1 participants. r = ",
@@ -963,7 +994,7 @@ PBIP_Wave1_pbip_by_pds_graph<-ggplot(PBIP_PDS_Wave1, aes(x=pdss,y=stage)) +
                  cor.test(PBIP_PDS_Wave1$stage,PBIP_PDS_Wave1$pdss,use=na.or.complete)[[3]]))
 
 ## Make RDOC ready file
-ndar_pbip_data <- left_join(PBIP_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_pbip_data <- left_join(PBIP_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -987,13 +1018,13 @@ pbip_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/tanner_sms01_templa
 
 pbip_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/tanner_sms01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 pbip_temp_df<-data.frame(pbip_temp)
-ndar_pbip_data<-bind_rows(pbip_temp_df,ndar_pbip_data)
+ndar_pbip_data<-bind_rows(pbip_temp_df,ndar_pbip_data %>% select(-wave))
 
 part2<-colnames(ndar_pbip_data)
 part3<-as.matrix(ndar_pbip_data)
 colnames(part3)<-NULL
 together<-rbind(pbip_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/tanner_sms01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/tanner_sms01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(pbip_temp_df,pbip_temp,pbip_df_header,PBIP_Wave1_pbip_by_pds_graph,PBIP_PDS_Wave1,
    PBIP_Wave1_pbip_graph,PBIP_Wave1,PBIP,part3,part2,together)
 ```
@@ -1003,12 +1034,12 @@ Prepare CARE-R Soc
 CARE_R_SOC<-left_join(filter(cleaned_survey_data, grepl("CARE_R",item)) %>% 
                         mutate(value=as.numeric(value)) %>% 
                         filter(!is.na(value)) %>% 
-                        distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                        distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                         spread(item,value),redcap_cleaned %>%
                         filter(!is.na(dob),!is.na(sa_date)) %>%
-                        select(tagid, sa_date, sb_date, dob),by="tagid")
+                        select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-CARE_R_SOC_Wave1<-left_join(CARE_R_SOC,survey_date, by = c("tagid","survey_name")) %>% 
+CARE_R_SOC_Wave1<-left_join(CARE_R_SOC,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-value) %>%
@@ -1029,7 +1060,7 @@ CARE_R_SOC_Wave1<-left_join(CARE_R_SOC,survey_date, by = c("tagid","survey_name"
          carersoc_avoidgraffiti=CARE_R_8B)  
 
 ## Save it
-write.csv(CARE_R_SOC_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CARE_R_SOC_Wave1.csv"))
+write.csv(CARE_R_SOC_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/CARE_R_SOC_Wave12.csv"))
 
 ## Graph it
 CARE_R_SOC_Wave1_DO<-CARE_R_SOC_Wave1 %>%
@@ -1060,7 +1091,7 @@ CARE_R_SOC_Wave1_DONT_graph<-ggplot(CARE_R_SOC_Wave1_DONT, aes(x=value, colour=i
 
 
 ## Make RDOC ready file
-ndar_carersoc_data <- left_join(CARE_R_SOC_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_carersoc_data <- left_join(CARE_R_SOC_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -1115,13 +1146,13 @@ carersoc_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/caore01_templat
 
 carersoc_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/caore01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 carersoc_temp_df<-data.frame(carersoc_temp)
-ndar_carersoc_data<-bind_rows(carersoc_temp_df,ndar_carersoc_data)
+ndar_carersoc_data<-bind_rows(carersoc_temp_df,ndar_carersoc_data %>% select(-wave))
 
 part2<-colnames(ndar_carersoc_data)
 part3<-as.matrix(ndar_carersoc_data)
 colnames(part3)<-NULL
 together<-rbind(carersoc_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/caore01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/caore01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,carersoc_df_header,carersoc_temp,carersoc_temp_df,CARE_R_SOC,CARE_R_SOC_Wave1,CARE_R_SOC_Wave1_DO,
    CARE_R_SOC_Wave1_DO_graph,CARE_R_SOC_Wave1_DONT_graph,CARE_R_SOC_Wave1_DONT)
 ```
@@ -1131,12 +1162,12 @@ Prepare CES-DC
 CESDC<-left_join(filter(cleaned_survey_data, grepl("CES_DC",item)) %>% 
                    mutate(value=as.numeric(value)) %>% 
                    filter(!is.na(value)) %>% 
-                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                    spread(item,value),redcap_cleaned %>%
                    filter(!is.na(dob),!is.na(sa_date)) %>%
-                   select(tagid, sa_date, sb_date, dob),by="tagid")
+                   select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-CESDC_Wave1<-left_join(CESDC,survey_date, by = c("tagid","survey_name")) %>% 
+CESDC_Wave1<-left_join(CESDC,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-value) %>%
@@ -1173,7 +1204,7 @@ CESDC_Wave1<-left_join(CESDC,survey_date, by = c("tagid","survey_name")) %>%
     CES_DC_total=rowSums(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20), na.rm=F))
 
 ## Save it
-write.csv(CESDC_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CESDC_Wave1.csv"))
+write.csv(CESDC_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/CESDC_Wave12.csv"))
 
 ## Graph it
 CESDC_Wave1_totals_graph<-ggplot(CESDC_Wave1, aes(x=CES_DC_total, colour="deeppink")) +
@@ -1185,7 +1216,7 @@ CESDC_Wave1_means_graph<-ggplot(CESDC_Wave1, aes(x=CES_DC_mean, colour="dodgerbl
   ggtitle(paste0("CESD-C mean scores for ",length(CESDC_Wave1$CES_DC_mean[!is.na(CESDC_Wave1$CES_DC_mean)])," Wave 1 participants"))
 
 ## Make RDOC ready file
-ndar_cesdc_data <- left_join(CESDC_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_cesdc_data <- left_join(CESDC_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -1233,13 +1264,13 @@ cesdc_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/ces_d01_template.c
 
 cesdc_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/ces_d01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 cesdc_temp_df<-data.frame(cesdc_temp)
-ndar_cesdc_data<-bind_rows(cesdc_temp_df,ndar_cesdc_data)
+ndar_cesdc_data<-bind_rows(cesdc_temp_df,ndar_cesdc_data %>% select(-wave))
 
 part2<-colnames(ndar_cesdc_data)
 part3<-as.matrix(ndar_cesdc_data)
 colnames(part3)<-NULL
 together<-rbind(cesdc_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ces_d01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/ces_d01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,cesdc_df_header,cesdc_temp,cesdc_temp_df,CESDC,CESDC_Wave1,CESDC_Wave1_means_graph,CESDC_Wave1_totals_graph)
 ```
 
@@ -1248,12 +1279,12 @@ Prepare CRQ
 CRQ<-left_join(filter(cleaned_survey_data, grepl("CRQ",item)) %>% 
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>% 
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                  spread(item,value),redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-CRQ_Wave1<-left_join(CRQ,survey_date, by = c("tagid","survey_name")) %>% 
+CRQ_Wave1<-left_join(CRQ,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-value) %>%
@@ -1275,7 +1306,7 @@ CRQ_Wave1<-left_join(CRQ,survey_date, by = c("tagid","survey_name")) %>%
          CRQ_problemtalk_mean=round(rowMeans(cbind(CRQ_2,CRQ_5,CRQ_6,CRQ_10), na.rm=T),3))
 
 ## Save it
-write.csv(CRQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CRQ_Wave1.csv"))
+write.csv(CRQ_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/CRQ_Wave12.csv"))
 
 ## Graph it
 CRQ_Wave1_totals<-CRQ_Wave1 %>%
@@ -1301,7 +1332,7 @@ CRQ_Wave1_means_graph<-ggplot(CRQ_Wave1_means, aes(x=value, colour=item)) +
   ggtitle(paste0("CRQ mean subscores for ",length(CRQ_Wave1$CRQ_mean[!is.na(CRQ_Wave1$CRQ_mean)])," participants"))
 
 ## Make RDOC ready file
-ndar_crq_data <- left_join(CRQ_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_crq_data <- left_join(CRQ_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -1347,13 +1378,13 @@ crq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv")
 
 crq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/crq01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 crq_temp_df<-data.frame(crq_temp)
-ndar_crq_data<-bind_rows(crq_temp_df,ndar_crq_data)
+ndar_crq_data<-bind_rows(crq_temp_df,ndar_crq_data %>% select(-wave))
 
 part2<-colnames(ndar_crq_data)
 part3<-as.matrix(ndar_crq_data)
 colnames(part3)<-NULL
 together<-rbind(crq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/crq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/crq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,crq_df_header,crq_temp,crq_temp_df,CRQ,CRQ_Wave1,CRQ_Wave1_means,CRQ_Wave1_means_graph,CRQ_Wave1_totals,CRQ_Wave1_totals_graph)
 ```
 
@@ -1364,13 +1395,13 @@ CTQ<-left_join(filter(cleaned_survey_data, grepl("CTQ",item)) %>%
                  filter(!value=="") %>%
                  filter(!grepl("TEXT",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-CTQ_Wave1<-left_join(CTQ,survey_date, by = c("tagid","survey_name")) %>% 
+CTQ_Wave1<-left_join(CTQ,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-contains("TEXT")) %>%
@@ -1459,7 +1490,7 @@ CTQ_Wave1<-left_join(CTQ,survey_date, by = c("tagid","survey_name")) %>%
          CTQ_validity_mean=rowMeans(cbind(CTQ_10,CTQ_16,CTQ_22),na.rm=F))
 
 ## Save it
-write.csv(CTQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CTQ_Wave1.csv"))
+write.csv(CTQ_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/CTQ_Wave12.csv"))
 
 ## Graph it
 CTQ_Wave1_totals<-CTQ_Wave1 %>%
@@ -1493,7 +1524,7 @@ CTQ_Wave1_means_graph<-ggplot(CTQ_Wave1_means, aes(x=value, colour=item)) +
   ggtitle(paste0("CTQ mean subscores for ",length(unique(CTQ_Wave1$tagid[!is.na(CTQ_Wave1$tagid)]))," participants"))
 
 ## Make RDOC ready file
-ndar_ctq_data <- left_join(CTQ_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_ctq_data <- left_join(CTQ_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -1550,13 +1581,13 @@ ctq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/ctq01_template.csv")
 
 ctq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/ctq01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 ctq_temp_df<-data.frame(ctq_temp)
-ndar_ctq_data<-bind_rows(ctq_temp_df,ndar_ctq_data)
+ndar_ctq_data<-bind_rows(ctq_temp_df,ndar_ctq_data %>% select(-wave))
 
 part2<-colnames(ndar_ctq_data)
 part3<-as.matrix(ndar_ctq_data)
 colnames(part3)<-NULL
 together<-rbind(ctq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ctq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/ctq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ctq_df_header,ctq_temp,ctq_temp_df,CTQ,CTQ_Wave1,CTQ_Wave1_means,CTQ_Wave1_means_graph,CTQ_Wave1_totals,CTQ_Wave1_totals_graph)
 ```
 
@@ -1565,13 +1596,13 @@ Prepare DIT
 DIT<-left_join(filter(cleaned_survey_data, grepl("DIT",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-DIT_Wave1<-left_join(DIT,survey_date, by = c("tagid","survey_name")) %>% 
+DIT_Wave1<-left_join(DIT,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -1616,7 +1647,7 @@ DIT_Wave1<-left_join(DIT,survey_date, by = c("tagid","survey_name")) %>%
          DIT_group_mean=round(rowMeans(cbind(DIT_11,DIT_12,DIT_13,DIT_14), na.rm=T),3))
 
 ## Save it
-write.csv(DIT_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/DIT_Wave1.csv"))
+write.csv(DIT_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/DIT_Wave12.csv"))
 
 ## Graph it
 DIT_Wave1_totals<-DIT_Wave1 %>%
@@ -1646,7 +1677,7 @@ DIT_Wave1_means_graph<-ggplot(DIT_Wave1_means, aes(x=value, colour=item)) +
   ggtitle(paste0("DIT mean subscores for ",length(unique(DIT_Wave1$tagid[!is.na(DIT_Wave1$tagid)]))," participants"))
 
 ## Make RDOC ready file
-ndar_dit_data <- left_join(DIT_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_dit_data <- left_join(DIT_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -1682,13 +1713,13 @@ dit_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/dit01_template.csv")
 
 dit_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/dit01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 dit_temp_df<-data.frame(dit_temp)
-ndar_dit_data<-bind_rows(dit_temp_df,ndar_dit_data)
+ndar_dit_data<-bind_rows(dit_temp_df,ndar_dit_data %>% select(-wave))
 
 part2<-colnames(ndar_dit_data)
 part3<-as.matrix(ndar_dit_data)
 colnames(part3)<-NULL
 together<-rbind(dit_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/dit01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/dit01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,dit_df_header,dit_temp,dit_temp_df,DIT,DIT_Wave1,DIT_Wave1_means,DIT_Wave1_means_graph,DIT_Wave1_totals,DIT_Wave1_totals_graph)
 ```
 
@@ -1697,13 +1728,13 @@ Prepare DSHI
 DSHI<-left_join(filter(cleaned_survey_data, grepl("DSHI",item)) %>%
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(DSHI$tagid) == length(unique(DSHI$tagid))){
+if (length(DSHI$tagid) == dim(unique(DSHI[,c('tagid','wave')]))[1]){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
@@ -1712,13 +1743,13 @@ if (length(DSHI$tagid) == length(unique(DSHI$tagid))){
 DSHI<- DSHI %>%
   filter(!(tagid=="TAG055" & grepl("Sess 2",survey_name)))
 
-if (length(DSHI$tagid) == length(unique(DSHI$tagid))){
+if (length(DSHI$tagid) == dim(unique(DSHI[,c('tagid','wave')]))[1]){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-DSHI_Wave1<-left_join(DSHI,survey_date, by = c("tagid","survey_name")) %>% 
+DSHI_Wave1<-left_join(DSHI,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -1730,10 +1761,10 @@ DSHI_Wave1<-left_join(DSHI,survey_date, by = c("tagid","survey_name")) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob)
 
 ## Save it
-write.csv(DSHI_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/DSHI_Wave1.csv"))
+write.csv(DSHI_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/DSHI_Wave12.csv"))
 
 ## Make RDOC ready file
-ndar_dshi_data <- left_join(DSHI_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_dshi_data <- left_join(DSHI_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -1878,13 +1909,13 @@ dshi_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/dshi01_template.csv
 
 dshi_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/dshi01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 dshi_temp_df<-data.frame(dshi_temp)
-ndar_dshi_data<-bind_rows(dshi_temp_df,ndar_dshi_data)
+ndar_dshi_data<-bind_rows(dshi_temp_df,ndar_dshi_data %>% select(-wave))
 
 part2<-colnames(ndar_dshi_data)
 part3<-as.matrix(ndar_dshi_data)
 colnames(part3)<-NULL
 together<-rbind(dshi_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/dshi01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/dshi01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,dshi_df_header,dshi_temp,dshi_temp_df,DSHI,DSHI_Wave1)
 ```
 
@@ -1893,13 +1924,13 @@ Prepare EHI
 EHI<-left_join(filter(cleaned_survey_data, grepl("EHI",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-EHI_Wave1<-left_join(EHI,survey_date, by = c("tagid","survey_name")) %>% 
+EHI_Wave1<-left_join(EHI,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -1909,10 +1940,10 @@ EHI_Wave1<-left_join(EHI,survey_date, by = c("tagid","survey_name")) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob)
 
 ## Save it
-write.csv(EHI_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/EHI_Wave1.csv"))
+write.csv(EHI_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/EHI_Wave12.csv"))
 
 ## Make RDOC ready file
-ndar_ehi_data <- left_join(EHI_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_ehi_data <- left_join(EHI_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -2003,13 +2034,13 @@ ehi_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/edinburgh_hand01_tem
 
 ehi_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/edinburgh_hand01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 ehi_temp_df<-data.frame(ehi_temp)
-ndar_ehi_data<-bind_rows(ehi_temp_df,ndar_ehi_data)
+ndar_ehi_data<-bind_rows(ehi_temp_df,ndar_ehi_data %>% select(-wave))
 
 part2<-colnames(ndar_ehi_data)
 part3<-as.matrix(ndar_ehi_data)
 colnames(part3)<-NULL
 together<-rbind(ehi_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/edinburgh_hand01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/edinburgh_hand01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ehi_df_header,ehi_temp,ehi_temp_df,EHI,EHI_Wave1)
 ```
 
@@ -2018,13 +2049,13 @@ Prepare ERQ
 ERQ<-left_join(filter(cleaned_survey_data, grepl("ERQ",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-ERQ_Wave1<-left_join(ERQ,survey_date, by = c("tagid","survey_name")) %>% 
+ERQ_Wave1<-left_join(ERQ,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -2042,7 +2073,7 @@ ERQ_Wave1<-left_join(ERQ,survey_date, by = c("tagid","survey_name")) %>%
          ERQ_suppression_total=rowSums(cbind(ERQ_2, ERQ_4, ERQ_6, ERQ_9),na.rm=F))
 
 ## Save it
-write.csv(ERQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/ERQ_Wave1.csv"))
+write.csv(ERQ_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/ERQ_Wave1.csv"))
 
 ## Graph it
 ERQ_Wave1_totals<-ERQ_Wave1 %>%
@@ -2066,7 +2097,7 @@ ERQ_Wave1_means_graph<-ggplot(ERQ_Wave1_means, aes(x=value, colour=item)) +
   ggtitle(paste0("ERQ mean subscores for ",length(unique(ERQ_Wave1$tagid[!is.na(ERQ_Wave1$tagid)]))," participants"))
 
 ## Make RDOC ready file
-ndar_erq_data <- left_join(ERQ_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_erq_data <- left_join(ERQ_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -2099,13 +2130,13 @@ erq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/emrq01_template.csv"
 
 erq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/emrq01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 erq_temp_df<-data.frame(erq_temp)
-ndar_erq_data<-bind_rows(erq_temp_df,ndar_erq_data)
+ndar_erq_data<-bind_rows(erq_temp_df,ndar_erq_data %>% select(-wave))
 
 part2<-colnames(ndar_erq_data)
 part3<-as.matrix(ndar_erq_data)
 colnames(part3)<-NULL
 together<-rbind(erq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/emrq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/emrq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,erq_df_header,erq_temp,erq_temp_df,ERQ,ERQ_Wave1,ERQ_Wave1_means,ERQ_Wave1_means_graph,
    ERQ_Wave1_totals,ERQ_Wave1_totals_graph)
 
@@ -2117,19 +2148,28 @@ IFS<-left_join(filter(cleaned_survey_data, grepl("IFS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(IFS$tagid) == length(unique(IFS$tagid))){
+if (length(IFS$tagid) == dim(unique(IFS[,c('tagid','wave')]))[1]){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-IFS_Wave1<-left_join(IFS,survey_date, by = c("tagid","survey_name")) %>% 
+IFS <- IFS %>%
+    filter(!(survey_name == 'TAG - W1S2 - Current V3' & tagid == 'TAG034'))
+
+if (length(IFS$tagid) == dim(unique(IFS[,c('tagid','wave')]))[1]){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+IFS_Wave1<-left_join(IFS,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -2164,7 +2204,7 @@ IFS_Wave1<-left_join(IFS,survey_date, by = c("tagid","survey_name")) %>%
                                             IFS_29,IFS_30,IFS_31,IFS_32),na.rm=TRUE),3))
 
 ## Save it
-write.csv(IFS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/IFS_Wave1.csv"))
+write.csv(IFS_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/IFS_Wave1.csv"))
 
 ## Graph it
 IFS_Wave1_totals<-IFS_Wave1 %>%
@@ -2205,7 +2245,7 @@ IFS_Wave1_means_graph<-ggplot(IFS_Wave1_means, aes(x=value, colour=item)) +
 
 
 ## Make RDOC ready file
-ndar_ifs_data <- left_join(IFS_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_ifs_data <- left_join(IFS_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -2273,13 +2313,13 @@ ifs_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/ifs01_template.csv")
 
 ifs_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/ifs01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 ifs_temp_df<-data.frame(ifs_temp)
-ndar_ifs_data<-bind_rows(ifs_temp_df,ndar_ifs_data)
+ndar_ifs_data<-bind_rows(ifs_temp_df,ndar_ifs_data %>% select(-wave))
 
 part2<-colnames(ndar_ifs_data)
 part3<-as.matrix(ndar_ifs_data)
 colnames(part3)<-NULL
 together<-rbind(ifs_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ifs01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/ifs01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ifs_df_header,ifs_temp,ifs_temp_df,IFS,IFS_Wave1_means,IFS_Wave1,IFS_Wave1_totals,IFS_Wave1_totals_graph)
 
 ```
@@ -2289,13 +2329,13 @@ Prepare IRI
 IRI<-left_join(filter(cleaned_survey_data, grepl("IRI",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>% 
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-IRI_Wave1<-left_join(IRI,survey_date, by = c("tagid","survey_name")) %>% 
+IRI_Wave1<-left_join(IRI,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -2387,7 +2427,7 @@ IRI_Wave1<-left_join(IRI,survey_date, by = c("tagid","survey_name")) %>%
          IRI_FS_mean=rowMeans(cbind(IRI_1,IRI_5,IRI_7,IRI_12,IRI_16,IRI_23,IRI_26), na.rm=T))
 
 ## Save it
-write.csv(IRI_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/IRI_Wave1.csv"))
+write.csv(IRI_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/IRI_Wave1.csv"))
 
 ## Graph it
 IRI_Wave1_totals<-IRI_Wave1 %>%
@@ -2413,7 +2453,7 @@ IRI_Wave1_means_graph<-ggplot(IRI_Wave1_means, aes(x=value, colour=item)) +
   ggtitle(paste0("IRI mean subscores for ",length(unique(IRI_Wave1$tagid[!is.na(IRI_Wave1$tagid)]))," participants"))
 
 ## Make RDOC ready file
-ndar_iri_data <- left_join(IRI_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_iri_data <- left_join(IRI_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -2466,13 +2506,13 @@ iri_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/iri01_template.csv")
 
 iri_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/iri01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 iri_temp_df<-data.frame(iri_temp)
-ndar_iri_data<-bind_rows(iri_temp_df,ndar_iri_data)
+ndar_iri_data<-bind_rows(iri_temp_df,ndar_iri_data %>% select(-wave))
 
 part2<-colnames(ndar_iri_data)
 part3<-as.matrix(ndar_iri_data)
 colnames(part3)<-NULL
 together<-rbind(iri_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/iri01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/iri01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,iri_df_header,iri_temp,iri_temp_df,IRI,IRI_Wave1,IRI_Wave1_means,IRI_Wave1_means_graph,IRI_Wave1_totals,IRI_Wave1_totals_graph)
 
 ```
@@ -2483,14 +2523,15 @@ KSRQ<-left_join(filter(cleaned_survey_data, grepl("K_SRQ",item)) %>%
                   mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value)) %>%
                   filter(!value=="") %>%
-                  distinct(tagid,item,value,.keep_all = FALSE) %>% 
+                  distinct(tagid,item,value,wave,.keep_all = FALSE) %>% 
                   mutate(survey_name="Sess 1") %>%
+                  filter(!(tagid == 'TAG081' & item %in% c('K_SRQ_2', 'K_SRQ_6') & value == '6')) %>%
                   spread(item,value),
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
-                  select(tagid, sa_date, sb_date, dob),by="tagid")
+                  select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name")) %>% 
+KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -2504,7 +2545,7 @@ KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name")) %>%
          KSRQ_social_mean=round(rowMeans(cbind(K_SRQ_4,K_SRQ_10,K_SRQ_14), na.rm=T),3))
 
 ## Save it
-write.csv(KSRQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/KSRQ_Wave1.csv"))
+write.csv(KSRQ_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/KSRQ_Wave1.csv"))
 
 ## Graph it
 KSRQ_Wave1_means<-KSRQ_Wave1 %>%
@@ -2523,7 +2564,7 @@ KSRQ_Wave1_means_graph<-ggplot(KSRQ_Wave1_means, aes(x=value, colour=item)) +
   ggtitle(paste0("KSRQ mean subscores for ",length(unique(KSRQ_Wave1$tagid[!is.na(KSRQ_Wave1$tagid)]))," participants"))
 
 ## Make RDOC ready file
-ndar_ksrq_data <- left_join(KSRQ_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_ksrq_data <- left_join(KSRQ_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -2575,13 +2616,13 @@ ksrq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"
 
 ksrq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 ksrq_temp_df<-data.frame(ksrq_temp)
-ndar_ksrq_data<-bind_rows(ksrq_temp_df,ndar_ksrq_data)
+ndar_ksrq_data<-bind_rows(ksrq_temp_df,ndar_ksrq_data %>% select(-wave))
 
 part2<-colnames(ndar_ksrq_data)
 part3<-as.matrix(ndar_ksrq_data)
 colnames(part3)<-NULL
 together<-rbind(ksrq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ksrq_df_header,ksrq_temp,ksrq_temp_df,KSRQ,KSRQ_Wave1,KSRQ_Wave1_means,KSRQ_Wave1_means_graph)
 ```
 
@@ -2591,17 +2632,17 @@ MSPSS<-left_join(filter(cleaned_survey_data, grepl("MSPSS",item)) %>%
                   mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value)) %>%
                   filter(!value=="") %>%
-                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                  distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                   spread(item,value),
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
-                  select(tagid, sa_date, sb_date, dob),by="tagid")
+                  select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
 if (length(MSPSS$tagid) == length(unique(MSPSS$tagid))){
   print("No duplicate tagids in data")
 }
 
-MSPSS_Wave1<-left_join(MSPSS,survey_date, by = c("tagid","survey_name")) %>% 
+MSPSS_Wave1<-left_join(MSPSS,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -2623,7 +2664,7 @@ MSPSS_Wave1<-left_join(MSPSS,survey_date, by = c("tagid","survey_name")) %>%
   mutate(MSPSS_total=rowSums(cbind(MSPSS_fam_total,MSPSS_fri_total,MSPSS_so_total), na.rm=F))
 
 ## Save it
-write.csv(MSPSS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/MSPSS_Wave1.csv"))
+write.csv(MSPSS_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/MSPSS_Wave1.csv"))
 
 ## Graph it
 MSPSS_Wave1_totals<-MSPSS_Wave1 %>%
@@ -2650,7 +2691,7 @@ MSPSS_Wave1_means_graph<-ggplot(MSPSS_Wave1_means, aes(x=value, colour=item)) +
 
 
 ## Make RDOC ready file
-ndar_mspss_data <- left_join(MSPSS_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_mspss_data <- left_join(MSPSS_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -2684,13 +2725,13 @@ mspss_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.c
 
 mspss_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 mspss_temp_df<-data.frame(mspss_temp)
-ndar_mspss_data<-bind_rows(mspss_temp_df,ndar_mspss_data)
+ndar_mspss_data<-bind_rows(mspss_temp_df,ndar_mspss_data %>% select(-wave))
 
 part2<-colnames(ndar_mspss_data)
 part3<-as.matrix(ndar_mspss_data)
 colnames(part3)<-NULL
 together<-rbind(mspss_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/mspss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/mspss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,mspss_df_header,mspss_temp,mspss_temp_df,MSPSS,MSPSS_Wave1,MSPSS_Wave1_means,MSPSS_Wave1_means_graph,
    MSPSS_Wave1_totals,MSPSS_Wave1_totals_graph)
 ```
@@ -2706,17 +2747,20 @@ PSS<-left_join(filter(cleaned_survey_data, grepl("^PSS",item)) %>%
                                             ifelse(tagid=="TAG132" && item=="PSS_7",3,
                                                    ifelse(tagid=="TAG132" && item=="PSS_9",2,value))))
                  ) %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(PSS$tagid) == length(unique(PSS$tagid))){
+if (sum(duplicated(select(PSS, tagid, wave))) == 0){
   print("No duplicate tagids in data")
 }
 
-PSS_Wave1<-left_join(PSS,survey_date, by = c("tagid","survey_name")) %>% 
+PSS <- PSS %>%
+    filter(!(survey_name == 'TAG - Sess 2 - V2' & tagid == 'TAG055'))
+
+PSS_Wave1<-left_join(PSS,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -2755,7 +2799,7 @@ PSS_Wave1<-left_join(PSS,survey_date, by = c("tagid","survey_name")) %>%
          PSS_mean=rowMeans(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=T))
   
 ## Save it
-write.csv(PSS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PSS_Wave1.csv"))
+write.csv(PSS_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/PSS_Wave1.csv"))
 
 ## Graph it
 PSS_Wave1_totals<-PSS_Wave1 %>%
@@ -2778,7 +2822,7 @@ PSS_Wave1_means_graph<-ggplot(PSS_Wave1_means, aes(x=value, colour=item)) +
 
 
 ## Make RDOC ready file
-ndar_pss_data <- left_join(PSS_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_pss_data <- left_join(PSS_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -2815,13 +2859,13 @@ pss_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv")
 
 pss_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 pss_temp_df<-data.frame(pss_temp)
-ndar_pss_data<-bind_rows(pss_temp_df,ndar_pss_data)
+ndar_pss_data<-bind_rows(pss_temp_df,ndar_pss_data %>% select(-wave))
 
 part2<-colnames(ndar_pss_data)
 part3<-as.matrix(ndar_pss_data)
 colnames(part3)<-NULL
 together<-rbind(pss_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/pss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/pss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,pss_df_header,pss_temp,pss_temp_df,PSS,PSS_Wave1,PSS_Wave1_means,PSS_Wave1_means_graph,
    PSS_Wave1_totals,PSS_Wave1_totals_graph)
 ```
@@ -2832,17 +2876,17 @@ RMET<-left_join(filter(cleaned_survey_data, grepl("RMET",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(RMET$tagid) == length(unique(RMET$tagid))){
+if (sum(duplicated(select(RMET, tagid, wave))) == 0){
   print("No duplicate TAGIDs in data")
 }
 
-RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name")) %>% 
+RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -3001,7 +3045,7 @@ RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name")) %>%
                                         RMET_25_correct,RMET_26_correct,
                                         RMET_27_correct,RMET_28_correct),na.rm = T)/RMET_1_numcompleted)*100)
 ## Save it
-write.csv(RMET_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/RMET_Wave1.csv"))
+write.csv(RMET_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/RMET_Wave1.csv"))
 
 ## Graph it
 RMET_Wave1_percentcorrect<-RMET_Wave1 %>%
@@ -3013,7 +3057,7 @@ RMET_Wave1_percentcorrect_graph<-ggplot(RMET_Wave1_percentcorrect, aes(x=value, 
 
 
 ## Make RDOC ready file
-ndar_rmet_data <- left_join(RMET_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_rmet_data <- left_join(RMET_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -3073,13 +3117,13 @@ rmet_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/rmet_cv01_template.
 
 rmet_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/rmet_cv01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 rmet_temp_df<-data.frame(rmet_temp)
-ndar_rmet_data<-bind_rows(rmet_temp_df,ndar_rmet_data)
+ndar_rmet_data<-bind_rows(rmet_temp_df,ndar_rmet_data %>% select(-wave))
 
 part2<-colnames(ndar_rmet_data)
 part3<-as.matrix(ndar_rmet_data)
 colnames(part3)<-NULL
 together<-rbind(rmet_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/rmet_cv01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/rmet_cv01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,rmet_df_header,rmet_temp,rmet_temp_df,RMET,RMET_Wave1,RMET_Wave1_percentcorrect,RMET_Wave1_percentcorrect_graph)
 ```
 
@@ -3089,13 +3133,13 @@ RSCS<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(RSCS$tagid) == length(unique(RSCS$tagid))){
+if (sum(duplicated(select(RSCS, tagid, wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
@@ -3106,23 +3150,23 @@ TAG023_special<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
                             filter(!is.na(value)) %>%
                             filter(!value=="") %>%
                             filter(tagid=="TAG023") %>%
-                            distinct(tagid,item,value,.keep_all = FALSE) %>%
+                            distinct(tagid,item,value,wave,.keep_all = FALSE) %>%
                             spread(item,value),
                           redcap_cleaned %>%
                             filter(!is.na(dob),!is.na(sa_date),tagid=="TAG023") %>%
-                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
+                            select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave")) %>%
   mutate(survey_name="TAG - Sess 1 - V1 - (EATQ-R_2 & on)")
 
 RSCS <- bind_rows(RSCS %>% filter(!tagid=="TAG023"),TAG023_special)
   
 
-if (length(RSCS$tagid) == length(unique(RSCS$tagid))){
+if (sum(duplicated(select(RSCS, tagid, wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-RSCS_Wave1<-left_join(RSCS,survey_date, by = c("tagid","survey_name")) %>% 
+RSCS_Wave1<-left_join(RSCS,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -3145,7 +3189,7 @@ RSCS_Wave1<-left_join(RSCS,survey_date, by = c("tagid","survey_name")) %>%
          RSCS_socanx_mean=rowMeans(cbind(R_SCS_C_13,R_SCS_C_17,R_SCS_C_18,R_SCS_C_19,R_SCS_C_25,R_SCS_C_26,R_SCS_C_29), na.rm=T))
 
 ## Save it
-write.csv(RSCS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/RSCS_Wave1.csv"))
+write.csv(RSCS_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/RSCS_Wave1.csv"))
 
 ## Graph it
 RSCS_Wave1_totals<-RSCS_Wave1 %>%
@@ -3172,7 +3216,7 @@ RSCS_Wave1_means_graph<-ggplot(RSCS_Wave1_means, aes(x=value, colour=item)) +
 
 
 ## Make RDOC ready file
-ndar_rscs_data <- left_join(RSCS_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_rscs_data <- left_join(RSCS_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -3231,13 +3275,13 @@ rscs_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.cs
 
 rscs_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 rscs_temp_df<-data.frame(rscs_temp)
-ndar_rscs_data<-bind_rows(rscs_temp_df,ndar_rscs_data)
+ndar_rscs_data<-bind_rows(rscs_temp_df,ndar_rscs_data %>% select(-wave))
 
 part2<-colnames(ndar_rscs_data)
 part3<-as.matrix(ndar_rscs_data)
 colnames(part3)<-NULL
 together<-rbind(rscs_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/rscsc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/rscsc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,rscs_df_header,rscs_temp,rscs_temp_df,RSCS,RSCS_Wave1_means,RSCS_Wave1,RSCS_Wave1_totals,RSCS_Wave1_totals_graph,
    TAG023_special)
 
@@ -3251,13 +3295,13 @@ SAQ<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(SAQ$tagid) == length(unique(SAQ$tagid))){
+if (sum(duplicated(select(SAQ, tagid, wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
@@ -3269,22 +3313,22 @@ TAG023_special<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
                             filter(!value=="") %>%
                             filter(tagid=="TAG023") %>%
                             filter(survey_name=="TAG - Sess 1 - V1 - (EATQ-R_2 & on)") %>%
-                            distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                            distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                             spread(item,value),
                           redcap_cleaned %>%
                             filter(!is.na(dob),!is.na(sa_date),tagid=="TAG023") %>%
-                            select(tagid, sa_date, sb_date, dob),by="tagid") 
+                            select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave")) 
 
 TAG002_special<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
                             mutate(value=as.numeric(value)) %>% 
                             filter(!is.na(value)) %>%
                             filter(!value=="") %>%
                             filter(tagid=="TAG002") %>%
-                            distinct(tagid,item,value,.keep_all = FALSE) %>%
+                            distinct(tagid,item,value,wave,.keep_all = FALSE) %>%
                             spread(item,value),
                           redcap_cleaned %>%
                             filter(!is.na(dob),!is.na(sa_date),tagid=="TAG002") %>%
-                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
+                            select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave")) %>%
   mutate(survey_name="TAG - Sess 1 - V1 - (SAQ & on)")
 
 
@@ -3293,13 +3337,13 @@ SAQ <- bind_rows(SAQ %>% filter(!tagid=="TAG002"),TAG002_special)
 SAQ <- SAQ %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
   
 
-if (length(SAQ$tagid) == length(unique(SAQ$tagid))){
+if (sum(duplicated(select(SAQ, tagid, wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-SAQ_Wave1<-left_join(SAQ,survey_date, by = c("tagid","survey_name")) %>% 
+SAQ_Wave1<-left_join(SAQ,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -3316,7 +3360,7 @@ SAQ_Wave1<-left_join(SAQ,survey_date, by = c("tagid","survey_name")) %>%
          SAQ_avoidgoals_mean=rowMeans(cbind(SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=T))
 
 ## Save it
-write.csv(SAQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SAQ_Wave1.csv"))
+write.csv(SAQ_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/SAQ_Wave1.csv"))
 
 ## Graph it
 SAQ_Wave1_totals<-SAQ_Wave1 %>%
@@ -3350,7 +3394,7 @@ SAQ_Wave1_means_graph<-ggplot(SAQ_Wave1_means, aes(x=value, colour=item)) +
 
 
 ## Make RDOC ready file
-ndar_saq_data <- left_join(SAQ_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_saq_data <- left_join(SAQ_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -3392,13 +3436,13 @@ saq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv")
 
 saq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/sag01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 saq_temp_df<-data.frame(saq_temp)
-ndar_saq_data<-bind_rows(saq_temp_df,ndar_saq_data)
+ndar_saq_data<-bind_rows(saq_temp_df,ndar_saq_data %>% select(-wave))
 
 part2<-colnames(ndar_saq_data)
 part3<-as.matrix(ndar_saq_data)
 colnames(part3)<-NULL
 together<-rbind(saq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/sag01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/sag01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,saq_df_header,saq_temp,saq_temp_df,SAQ,SAQ_Wave1,SAQ_Wave1_means,SAQ_Wave1_means_graph,SAQ_Wave1_socdev_items,
    SAQ_Wave1_socdev_items_graph,SAQ_Wave1_totals,SAQ_Wave1_totals_graph,TAG002_special,TAG023_special)
 
@@ -3410,19 +3454,19 @@ SCARED<-left_join(filter(cleaned_survey_data, grepl("SCARED",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(SCARED$tagid) == length(unique(SCARED$tagid))){
+if (sum(duplicated(select(SCARED,tagid,wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-SCARED_Wave1<-left_join(SCARED,survey_date, by = c("tagid","survey_name")) %>% 
+SCARED_Wave1<-left_join(SCARED,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -3443,7 +3487,7 @@ SCARED_Wave1<-left_join(SCARED,survey_date, by = c("tagid","survey_name")) %>%
   
 
 ## Save it
-write.csv(SCARED_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SCARED_Wave1.csv"))
+write.csv(SCARED_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/SCARED_Wave1.csv"))
 
 ## Graph it
 SCARED_Wave1_totals<-SCARED_Wave1 %>%
@@ -3461,7 +3505,7 @@ SCARED_Wave1_means_graph<-ggplot(SCARED_Wave1_means, aes(x=value, colour=item)) 
   ggtitle(paste0("SCARED means for ",length(unique(SCARED_Wave1$tagid[!is.na(SCARED_Wave1$SCARED_mean)]))," participants"))
 
 ## Make RDOC ready file
-ndar_scared_data <- left_join(SCARED_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_scared_data <- left_join(SCARED_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -3502,13 +3546,13 @@ scared_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/scared01_template
 
 scared_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/scared01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 scared_temp_df<-data.frame(scared_temp)
-ndar_scared_data<-bind_rows(scared_temp_df,ndar_scared_data)
+ndar_scared_data<-bind_rows(scared_temp_df,ndar_scared_data %>% select(-wave))
 
 part2<-colnames(ndar_scared_data)
 part3<-as.matrix(ndar_scared_data)
 colnames(part3)<-NULL
 together<-rbind(scared_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/scared01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/scared01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,scared_df_header,scared_temp,scared_temp_df,SCARED,SCARED_Wave1,SCARED_Wave1_means,SCARED_Wave1_means_graph,
    SCARED_Wave1_totals,SCARED_Wave1_totals_graph)
 ```
@@ -3519,13 +3563,13 @@ SCC<-left_join(filter(cleaned_survey_data, grepl("^SCC",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(SCC$tagid) == length(unique(SCC$tagid))){
+if (sum(duplicated(select(SCC,tagid,wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
@@ -3533,13 +3577,13 @@ if (length(SCC$tagid) == length(unique(SCC$tagid))){
 
 SCC <- SCC %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
 
-if (length(SCC$tagid) == length(unique(SCC$tagid))){
+if (sum(duplicated(select(SCC,tagid,wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-SCC_Wave1<-left_join(SCC,survey_date, by = c("tagid","survey_name")) %>% 
+SCC_Wave1<-left_join(SCC,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -3613,7 +3657,7 @@ SCC_Wave1<-left_join(SCC,survey_date, by = c("tagid","survey_name")) %>%
          SCC_mean=rowMeans(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=T))
 
 ## Save it
-write.csv(SCC_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SCC_Wave1.csv"))
+write.csv(SCC_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/SCC_Wave1.csv"))
 
 ## Graph it
 SCC_Wave1_total<-SCC_Wave1 %>%
@@ -3631,7 +3675,7 @@ SCC_Wave1_mean_graph<-ggplot(SCC_Wave1_mean, aes(x=value, colour=item)) +
   ggtitle(paste0("Self-Concept Clarity mean score for ",length(unique(SCC_Wave1$tagid[!is.na(SCC_Wave1$SCC_mean)]))," participants"))
 
 ## Make RDOC ready file
-ndar_scc_data <- left_join(SCC_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_scc_data <- left_join(SCC_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -3664,13 +3708,13 @@ scc_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/scc01_template.csv")
 
 scc_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/scc01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 scc_temp_df<-data.frame(scc_temp)
-ndar_scc_data<-bind_rows(scc_temp_df,ndar_scc_data)
+ndar_scc_data<-bind_rows(scc_temp_df,ndar_scc_data %>% select(-wave))
 
 part2<-colnames(ndar_scc_data)
 part3<-as.matrix(ndar_scc_data)
 colnames(part3)<-NULL
 together<-rbind(scc_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/scc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/scc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,scc_df_header,scc_temp,scc_temp_df,SCC,SCC_Wave1,SCC_Wave1_mean,SCC_Wave1_mean_graph,
    SCC_Wave1_total,SCC_Wave1_total_graph)
 ```
@@ -3681,13 +3725,13 @@ SPPA<-left_join(filter(cleaned_survey_data, grepl("SPPA",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(SPPA$tagid) == length(unique(SPPA$tagid))){
+if (sum(duplicated(select(SPPA,tagid,wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
@@ -3695,13 +3739,13 @@ if (length(SPPA$tagid) == length(unique(SPPA$tagid))){
 
 SPPA <- SPPA %>% filter(!(tagid=="TAG145" & survey_name=="TAG - Home Qs - V3 - with SID embedded"))
 
-if (length(SPPA$tagid) == length(unique(SPPA$tagid))){
+if (sum(duplicated(select(SPPA,tagid,wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-SPPA_Wave1<-left_join(SPPA,survey_date, by = c("tagid","survey_name")) %>% 
+SPPA_Wave1<-left_join(SPPA,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -3900,7 +3944,7 @@ SPPA_Wave1<-left_join(SPPA,survey_date, by = c("tagid","survey_name")) %>%
          SPPA_globalselfworth_mean=round(rowMeans(cbind(ha9,ha18,ha27,ha36,ha45),na.rm=T),3))
 
 ## Save it
-write.csv(SPPA_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SPPA_Wave1.csv"))
+write.csv(SPPA_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/SPPA_Wave1.csv"))
 
 ## Graph it
 SPPA_Wave1_totals<-SPPA_Wave1 %>%
@@ -3938,7 +3982,7 @@ SPPA_Wave1_means_graph<-ggplot(SPPA_Wave1_means, aes(x=value, colour=item)) +
   ggtitle(paste0("Self-Perception Profile for Adolescents mean subscores for ",length(unique(SPPA_Wave1$tagid[!is.na(SPPA_Wave1$SPPA_scholasticcomp_mean)]))," participants"))
 
 ## Make RDOC ready file
-ndar_sppa_data <- left_join(SPPA_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_sppa_data <- left_join(SPPA_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -3972,13 +4016,13 @@ sppa_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template
 
 sppa_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/harterac01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 sppa_temp_df<-data.frame(sppa_temp)
-ndar_sppa_data<-bind_rows(sppa_temp_df,ndar_sppa_data)
+ndar_sppa_data<-bind_rows(sppa_temp_df,ndar_sppa_data %>% select(-wave))
 
 part2<-colnames(ndar_sppa_data)
 part3<-as.matrix(ndar_sppa_data)
 colnames(part3)<-NULL
 together<-rbind(sppa_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/harterac01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/harterac01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,sppa_df_header,sppa_temp,sppa_temp_df,SPPA,SPPA_Wave1,SPPA_Wave1_means,SPPA_Wave1_means_graph,
    SPPA_Wave1_totals,SPPA_Wave1_totals_graph)
 ```
@@ -3989,13 +4033,13 @@ SSDS<-left_join(filter(cleaned_survey_data, grepl("SSDS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(SSDS$tagid) == length(unique(SSDS$tagid))){
+if (sum(duplicated(select(SSDS,tagid,wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
@@ -4006,22 +4050,25 @@ TAG149_special<-left_join(filter(cleaned_survey_data, grepl("SSDS",item)) %>%
                             filter(!is.na(value)) %>%
                             filter(!value=="") %>%
                             filter(tagid=="TAG149") %>%
-                            distinct(tagid,item,value,.keep_all = FALSE) %>%
+                            distinct(tagid,item,value,wave,.keep_all = FALSE) %>%
                             spread(item,value),
                           redcap_cleaned %>%
                             filter(!is.na(dob),!is.na(sa_date),tagid=="TAG149") %>%
-                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
+                            select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave")) %>%
   mutate(survey_name="TAG - Sess 2 - V3 for Home - (SSDS_2 and on)")
 
 SSDS <- bind_rows(SSDS %>% filter(!tagid=="TAG149"),TAG149_special)
+
+SSDS <- SSDS %>%
+    filter(!(tagid == 'TAG034' & survey_name == 'TAG - W1S2 - Current V3'))
   
-if (length(SSDS$tagid) == length(unique(SSDS$tagid))){
+if (sum(duplicated(select(SSDS,tagid,wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-SSDS_Wave1<-left_join(SSDS,survey_date, by = c("tagid","survey_name")) %>% 
+SSDS_Wave1<-left_join(SSDS,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -4039,7 +4086,7 @@ SSDS_Wave1<-left_join(SSDS,survey_date, by = c("tagid","survey_name")) %>%
          SSDS_physdev_disclosure_mean=round(rowMeans(cbind(SSDS_16,SSDS_17,SSDS_18,SSDS_19,SSDS_20,SSDS_21,SSDS_22,SSDS_23), na.rm=T),3))
   
 ## Save it
-write.csv(SSDS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SSDS_Wave1.csv"))
+write.csv(SSDS_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/SSDS_Wave1.csv"))
 
 ## Graph it
 SSDS_Wave1_totals<-SSDS_Wave1 %>%
@@ -4069,7 +4116,7 @@ SSDS_Wave1_means_graph<-ggplot(SSDS_Wave1_means, aes(x=value, colour=item)) +
 
 
 ## Make RDOC ready file
-ndar_ssds_data <- left_join(SSDS_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_ssds_data <- left_join(SSDS_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -4121,13 +4168,13 @@ ssds_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/ssds01_template.csv
 
 ssds_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/ssds01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 ssds_temp_df<-data.frame(ssds_temp)
-ndar_ssds_data<-bind_rows(ssds_temp_df,ndar_ssds_data)
+ndar_ssds_data<-bind_rows(ssds_temp_df,ndar_ssds_data %>% select(-wave))
 
 part2<-colnames(ndar_ssds_data)
 part3<-as.matrix(ndar_ssds_data)
 colnames(part3)<-NULL
 together<-rbind(ssds_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ssds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/ssds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ssds_df_header,ssds_temp,ssds_temp_df,SSDS,SSDS_Wave1,SSDS_Wave1_means,SSDS_Wave1_means_graph,
    SSDS_Wave1_totals,SSDS_Wave1_totals_graph)
 ```
@@ -4138,19 +4185,29 @@ PANAS<-left_join(filter(cleaned_survey_data, grepl("PANAS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
+                 select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(PANAS$tagid) == length(unique(PANAS$tagid))){
+if (sum(duplicated(select(PANAS, tagid, wave)))==0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-PANAS_Wave1<-left_join(PANAS,survey_date, by = c("tagid","survey_name")) %>% 
+PANAS <- PANAS %>%
+    filter(!(tagid == 'TAG034' & survey_name == 'TAG - W1S2 - Current V3'))
+
+if (sum(duplicated(select(PANAS, tagid, wave)))==0){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+
+PANAS_Wave1<-left_join(PANAS,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -4166,7 +4223,7 @@ PANAS_Wave1<-left_join(PANAS,survey_date, by = c("tagid","survey_name")) %>%
          PANAS_neg_mean=rowMeans(cbind(PANAS_C_2,PANAS_C_4,PANAS_C_6,PANAS_C_8,PANAS_C_10),na.rm=TRUE))
 
 ## Save it
-write.csv(PANAS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PANAS_Wave1.csv"))
+write.csv(PANAS_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/PANAS_Wave1.csv"))
 
 ## Graph it
 PANAS_Wave1_totals<-PANAS_Wave1 %>%
@@ -4200,7 +4257,7 @@ PANAS_Wave1_cor_graph<-ggplot(PANAS_Wave1, aes(x=PANAS_neg_mean,y=PANAS_pos_mean
                  cor.test(x=PANAS_Wave1$PANAS_pos_mean,y=PANAS_Wave1$PANAS_neg_mean,use=na.or.complete)[[3]]))
 
 ## Make RDOC ready file
-ndar_panas_data <- left_join(PANAS_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_panas_data <- left_join(PANAS_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -4230,13 +4287,13 @@ panas_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/panas_c01_template
 
 panas_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/panas_c01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 panas_temp_df<-data.frame(panas_temp)
-ndar_panas_data<-bind_rows(panas_temp_df,ndar_panas_data)
+ndar_panas_data<-bind_rows(panas_temp_df,ndar_panas_data %>% select(-wave))
 
 part2<-colnames(ndar_panas_data)
 part3<-as.matrix(ndar_panas_data)
 colnames(part3)<-NULL
 together<-rbind(panas_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/panas_c01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/panas_c01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,panas_df_header,panas_temp,panas_temp_df,PANAS,PANAS_Wave1_means,PANAS_Wave1,PANAS_Wave1_totals,PANAS_Wave1_totals_graph,
    PANAS_Wave1_cor_graph)
 ```
@@ -4267,19 +4324,19 @@ x <- c("Sport","Hobb","Club","Chore","Friends","Get_Along","Grades","Other_sub",
 CBCL<-left_join(filter(cleaned_survey_data, grepl("Parent",survey_name)) %>%
                   filter(grepl(paste(x, collapse = "|"),item)) %>%
                   filter(!is.na(value), !value=="") %>%
-                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                  distinct(tagid,item,value,survey_name,wave,.keep_all = FALSE) %>%
                   spread(item,value),
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
-                  select(tagid, sa_date, sb_date, dob),by="tagid")
+                  select(tagid, sa_date, sb_date, dob,wave),by=c("tagid","wave"))
 
-if (length(CBCL$tagid) == length(unique(CBCL$tagid))){
+if (sum(duplicated(select(CBCL,tagid,wave))) == 0){
   print("No duplicate TAGIDs in data")
   } else {
       print("DUPLICATE TAGIDs in data")
   }
 
-CBCL_Wave1<-left_join(CBCL,survey_date, by = c("tagid","survey_name")) %>% 
+CBCL_Wave1<-left_join(CBCL,survey_date, by = c("tagid","survey_name","wave")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
@@ -4290,11 +4347,11 @@ CBCL_Wave1<-left_join(CBCL,survey_date, by = c("tagid","survey_name")) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) 
 
 ## Save it
-write.csv(CBCL_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CBCL_Wave1.csv"))
+write.csv(CBCL_Wave1, file = paste0(workdir,"Questionnaires/Waves_12/CBCL_Wave1.csv"))
 
 
 ## Make RDOC ready file
-ndar_cbcl_data <- left_join(CBCL_Wave1,redcap_cleaned,by="tagid") %>%
+ndar_cbcl_data <- left_join(CBCL_Wave1,redcap_cleaned,by=c("tagid","wave")) %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
          interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
@@ -4536,13 +4593,13 @@ cbcl_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/cbcl01_template.csv
 
 cbcl_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/cbcl01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
 cbcl_temp_df<-data.frame(cbcl_temp)
-ndar_cbcl_data<-bind_rows(cbcl_temp_df,ndar_cbcl_data)[c(1:429)]
+ndar_cbcl_data<-bind_rows(cbcl_temp_df,ndar_cbcl_data %>% select(-wave))[c(1:429)]
 
 part2<-colnames(ndar_cbcl_data)
 part3<-as.matrix(ndar_cbcl_data)
 colnames(part3)<-NULL
 together<-rbind(cbcl_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/cbcl01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jan2018/cbcl01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,cbcl_df_header,cbcl_temp,cbcl_temp_df,CBCL,CBCL_Wave1)
 ```
 
@@ -4552,7 +4609,7 @@ qualtricsData_raw_parent_pds <-filter(qualtricsData_raw_long, grepl("Parent",sur
   filter(grepl("PDS",item)) %>%
   mutate(value=as.numeric(value)) %>% 
   filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
+  distinct(tagid,item,value,wave,.keep_all = TRUE) %>% 
   spread(item,value)
 
 qualtricsData_raw_parent_pds<-left_join(qualtricsData_raw_parent_pds,survey_date, by = c("tagid", "survey_name")) %>% 
