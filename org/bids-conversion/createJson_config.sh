@@ -10,8 +10,6 @@ niidir="/projects/dsnlab/shared/tag/archive/clean_nii"
 bidsdir="/projects/dsnlab/shared/tag/bids_data"
 
 # Set study info
-sessid="wave1"
-
 declare -a anat="mprage_p2"
 declare -a fmap="fieldmap_2mm"
 declare -a dti="diff"
@@ -36,5 +34,6 @@ convertdti="FALSE"
 convertrest="TRUE"
 converttask="TRUE"
 
-# Set error log file
-errorlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/errorlog_Json.txt"
+# Set log files of new Json files and errors
+newlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/new_Json.txt" #lists subject-specific functional and anatomical json files that are created.
+errorlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/errorlog_Json.txt" #lists when subjects were not checked by scan (i.e., missing files or wrong number of files)

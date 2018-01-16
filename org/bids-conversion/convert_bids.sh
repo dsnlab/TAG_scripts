@@ -166,10 +166,12 @@ fi
 
 # Run python script to extract Multiband Acceleration Factor
 echo -e "\nCreating text file with additionl acquisition info"
-python $scriptsdir/extract_dicom_fields.py "$dicomdir" "$niidir"/"${subid}"/"${sessid}"/"${subid}"_"${sessid}"_info.txt PatientName StudyDate SeriesNumber SeriesDescription ImageComments -a -n
+python $scriptsdir/extract_dicom_fields.py "$dicomdir" "$niidir"/"${subid}"/"${sessid}"/"${subid}"_"${sessid}"_multiband_accel.txt PatientName StudyDate SeriesNumber SeriesDescription ImageComments -a -n
+
+# Copy group meta-data to bids directory
+rsync -aiv $scriptsdir/metadata/ $bidsdir/
 
 # Create bids directory structure for one subject
-
 echo -e "\nCreating BIDS directory stucture..."
 mkdir -pv "$bidsdir"/sub-"${subid}"/ses-"${sessid}"
 cd "$bidsdir"/sub-"${subid}"/ses-"${sessid}"
