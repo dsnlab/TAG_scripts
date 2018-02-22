@@ -20,7 +20,7 @@ subj="${SUBID}"
 echo $subj
 group_id=tag
 echo $group_id
-pipeline=rsfMRI_preproc_noFDscrub
+pipeline=rsfMRI_preproc_noFDscrub_yesWBVR
 
 # set data directories
 top_dir=/projects/dsnlab/"${group_id}"

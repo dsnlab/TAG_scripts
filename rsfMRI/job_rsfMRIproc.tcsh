@@ -24,7 +24,7 @@ set subj="${SUBID}"
 echo $subj
 set group_id=tag
 echo $group_id
-set pipeline=rsfMRI_preproc_noFDscrub
+set pipeline=rsfMRI_preproc_noFDscrub_yesWBVR
 
 # set data directories
 set top_dir=/projects/dsnlab/"${group_id}"
@@ -64,7 +64,7 @@ afni_proc.py -subj_id $subj                                \
 -tcat_remove_first_trs 5                                  \
 -volreg_align_to MIN_OUTLIER                               \
 -volreg_align_e2a                                          \
--align_opts_aea -big_move                                 \
+-align_opts_aea -big_move                                  \
 -volreg_interp -Fourier \
 -mask_apply epi \
 -mask_test_overlap yes \
@@ -76,6 +76,7 @@ afni_proc.py -subj_id $subj                                \
 -regress_censor_outliers 0.1                               \
 -regress_bandpass 0.009 0.08                               \
 -regress_apply_mot_types demean deriv                      \
+-regress_ROI brain                                        \
 -regress_run_clustsim no
 
 tcsh -xef $pipeline.proc.$subj

@@ -9,14 +9,14 @@ echo "job_map_annots.sh ran on $(date) $line"
 
 echo -e "\nSetting Up Freesurfer6.0"
 
-source /projects/dsnlab/tag/TAG_scripts/sMRI/SetUpFreeSurfer.sh
+source /projects/dsnlab/shared/tag/TAG_scripts/sMRI/SetUpFreeSurfer.sh
 
 echo -e "\nSetting up AFNI"
 
 module use /projects/tau/packages/Modules/modulefiles/
 module load afni
 
-templatedir="/projects/dsnlab/tag/TAG_scripts/sMRI/templates/"
+templatedir="/projects/dsnlab/shared/tag/TAG_scripts/sMRI/templates/"
 
 echo -e "\nFreesurfer Home is $FREESURFER_HOME"
 echo -e "\nThe Subject Directory is $SUBJECTS_DIR"

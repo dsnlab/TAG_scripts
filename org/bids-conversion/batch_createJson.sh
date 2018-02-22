@@ -11,7 +11,7 @@
 STUDY=/projects/dsnlab/shared/tag
 
 # Set subject list
-SUBJLIST=`cat subject_list_001.txt`
+SUBJLIST=`cat subject_list3.txt`
  
 # Set output directory
 OUTPUTDIR=TAG_scripts/org/bids-conversion/output
