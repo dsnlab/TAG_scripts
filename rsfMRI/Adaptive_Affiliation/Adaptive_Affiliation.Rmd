@@ -1,0 +1,741 @@
+---
+title: "Strategic brain connectivity"
+author: "Kate Mills, John Flournoy, & TAG team"
+date: "October 4, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = TRUE,
+	warning = TRUE
+)
+```
+
+```{r Load Required Packages, message=FALSE, warning=FALSE, include=FALSE}
+## Load required packages ##
+packages <-  c("tidyverse", "lme4", "nlme", "parallel",
+               "data.table", "lubridate", "psych", "corrplot","zoo")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+
+invlogit <- function(x){
+  exp(x)/(exp(x)+1)
+}
+```
+
+Set graph/plot options
+```{r}
+theme_kate <- function () { 
+    theme_bw() +
+  theme_minimal(base_size = 14, base_family = "Avenir") +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        legend.position="none")
+}
+
+resave_plots=FALSE
+
+heatmap_color_palette <- colorRampPalette(c("#fde0dd", "#fa9fb5", "#c51b8a"))
+
+group_labels<-c("community"='Community', 
+                "foster"="Child Welfare Services")
+
+colour_labels=c("#fa9fb5", "#ae017e")
+
+purple_colours=c("#bcbddc","#756bb1","#54278f")
+
+group_colors <- c("community" = "#fa9fb5", "foster" = "#ae017e")
+```
+
+Set working directory
+```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
+getwd()
+workdir=as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
+```
+
+Extract rsfcMRI preprocessing stats
+```{r Extract and plot run times, echo=TRUE}
+# Set directory
+rsfcMRI_subjects=paste0(workdir,"../TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/")
+# create sub list based on folders within the resting state subjects folder
+subs<-list.files(path = rsfcMRI_subjects, pattern = "sub")
+# motion threshold
+scrubbingThreshold<-.2
+# extract info
+alignmentissues=function(sub){
+  if (file.exists(paste0(rsfcMRI_subjects,sub,"/",sub,".results/out.ss_review.",sub,".txt"))){
+      alignment<-(read.csv(paste0(rsfcMRI_subjects,sub,"/",sub,".results/out.ss_review.",sub,".txt")) %>%
+                    filter(grepl("anat/EPI",.[[1]])))
+      alignment<-(as.numeric(substring(as.character(alignment[[1]][1]),29,36)))
+      } else {
+        alignment<-NA
+      }
+  cbind(sub,alignment)
+}
+alignmentout<-lapply(subs,alignmentissues)
+alignmentout.df<-as.data.frame(do.call(rbind,alignmentout))
+
+extract_rsfcMRI_runinfo= function(sub){
+if (file.exists(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))){
+      log<-read.csv(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))
+      preproc_complete="yes"
+      blurps<-nrow(log %>% filter(.[[1]]>scrubbingThreshold))
+      potential<-(nrow(log)-(blurps*2))
+      viable<-ifelse(potential>=385,"yes","no")
+      cbind(sub,blurps,potential,viable,preproc_complete)
+    } else{
+      preproc_complete="no"
+      blurps<-NA
+      potential<-NA
+      viable<-"no"
+      cbind(sub,blurps,potential,viable,preproc_complete)
+      }
+}
+outputlist<-lapply(subs,extract_rsfcMRI_runinfo)
+output.df<-as.data.frame(do.call(rbind,outputlist)) %>% 
+  mutate(blurps=as.numeric(levels(blurps))[blurps],
+         potential=as.numeric(levels(potential))[potential]) %>%
+  mutate(potential=ifelse(potential<0,0,potential))
+
+useable <- ggplot((output.df %>% select(-blurps)),
+                aes(x=sub, y=(potential*.78)/60, fill=viable))
+useable + geom_bar(colour="black", stat="identity") 
+
+
+sublist<-output.df %>% 
+  filter(viable=="yes") %>%
+  select(sub)
+
+print(paste0(nrow(output.df%>%filter(viable=="yes"))," are viable"))
+```
+
+Exclude subs for various reasons
+```{r}
+sublist<- sublist %>%
+  filter(!sub=="sub-TAG000") # Pilot
+```
+
+Obtain demographic data
+```{r}
+# Females are 1 and Males are 0
+redcapData <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_dates.csv"),
+                       header = TRUE, stringsAsFactors = FALSE) %>%
+  filter(!grepl("wave_2",redcap_event_name))
+redcapData_dob<-redcapData %>%
+  select(dob,subject_spit_id) %>%
+  filter(!dob=="")
+redcapData_sessiondates<-redcapData %>%
+  select(sa_date,sb_date,subject_spit_id) %>%
+  filter(!sa_date=="")
+redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
+  mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
+  filter(!subject_spit_id=="TAG_001P") %>%
+  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid)) %>%
+  mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
+  select(-subject_spit_id)
+rm(redcapData_dob,redcapData,redcapData_sessiondates)
+
+print(paste0(length(unique(redcap_cleaned$tagid))," participants w/ demographic data"))
+
+demographics<-redcap_cleaned %>%
+  mutate(sub=paste0("sub-",tagid)) %>%
+        filter(sub %in% sublist$sub) %>%
+  mutate(ageatscan=round(interval(start = demographics$dob, end = demographics$sb_date) / 
+                     duration(num = 1, units = "years"),2))
+mean(demographics$ageatscan)
+```
+
+Clean DSD data
+```{r}
+# clean up the DSD behavior data (thanks John!)
+dataHeader <- c('trial', 'condition', 'left.target', 'right.target', 'left.coin', 'right.coin',
+                'disc.onset', 'target.choice','target.rt.seconds',
+                'statement.onset', 'statement.choice', 'statement.rt.seconds',
+                'payout', 'statement')
+# %   task.output.raw:
+# %       1. Trial Number
+# %       2. condition
+# %           [1-3] = Neutral; [4-6] = Affective;
+# %           [1,4] = loss to share; [2, 5] = loss to private; [3,6] equal
+# %       3. leftTarget (self == 1, friend == 2) 
+# %       4. rightTarget
+# %       5. leftCoin
+# %       6. rightCoin
+# %       7. Time since trigger for disclosure (choiceOnset - loopStartTime);
+# %       8. choiceResponse - Share or not? (leftkeys = 1, rightkeys = 2)
+# %       9. choiceRT - reaction time
+# %       10. Time since trigger for statement decisions (discoOnset - loopStartTime);
+# %       11. discoResponse - endorse or not?  (leftkeys = 1, rightkeys = 2)
+# %       12. discoRT - reaction time
+# %       13. task.payout
+# %       14. task.input.statement
+
+rawDataDir <- paste0(workdir,"task/output/")
+outDataDir <- paste0(workdir,"task/processed/")
+
+filesDF <- data.frame(file=list.files(rawDataDir, pattern="tag.*dsd.*output.txt"),
+                      stringsAsFactors=F)
+
+longDF <- filesDF %>%
+	extract(file, c('sid', 'run'), 'tag([0-9][0-9][0-9]).*run([12])', remove=F) %>%
+	group_by(sid, run) %>%
+	do({
+	  aDF.raw <- read.csv(file=paste0(rawDataDir,.$file[[1]]),
+	                      header=F, col.names=dataHeader,
+	                      stringsAsFactors=F)
+	  aDF <- aDF.raw %>%
+	    mutate(disclosed=as.numeric(target.choice==2),
+	           share.value=right.coin-left.coin,
+	           affective=condition %in% 4:6)
+		aDF
+	})	
+
+write.csv(longDF, paste0(outDataDir,'dsd_trials_long.csv'))
+
+allSubs <- ggplot(longDF, aes(x=share.value, y=disclosed, group=affective))+
+	geom_point(aes(color=affective),position=position_jitter(h=.1, w=.2))+
+	geom_line(aes(color=affective), stat='smooth', method='glm', 
+		  method.args=list(family='binomial'))+
+	geom_hline(yintercept=.5, color='gray')+
+	facet_wrap(~sid)+
+	scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
+	theme(strip.background=element_rect(fill='#eeeeee'),
+	      panel.spacing=unit(0, 'pt'),
+	      panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1))
+ggsave(allSubs, file=paste0(outDataDir, 'PSE-all_pid.png'),
+       width=10, height=15, dpi=72)
+
+allSubs2 <- longDF %>% 
+  mutate(endorsed=statement.choice==1) %>%
+  unite(affect_endorsed, affective, endorsed) %>%
+  ggplot(aes(x=share.value, y=disclosed, group=affect_endorsed))+
+  geom_point(aes(color=affect_endorsed),position=position_jitter(h=.1, w=.2))+
+  geom_line(aes(color=affect_endorsed), stat='smooth', method='glm', 
+            method.args=list(family='binomial'))+
+  geom_hline(yintercept=.5, color='gray')+
+  facet_wrap(~sid)+
+  scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
+  theme(strip.background=element_rect(fill='#eeeeee'),
+        panel.spacing=unit(0, 'pt'),
+        panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1),
+        text=element_text(size=12, face='bold'))
+ggsave(allSubs2, file=paste0(outDataDir, 'PSE-all_pid_endoresed.png'),
+       width=10, height=15, dpi=72)
+```
+
+Analyze behavioral data
+```{r}
+behavioraldata<-read.csv(paste0(workdir,"task/processed/dsd_trials_long.csv")) %>%
+  ## Add TAG header to behavioural data ##
+  mutate(tagid=sprintf("TAG%03d",sid)) %>%
+  select(tagid, disclosed, share.value, affective)
+print(paste0(length(unique(behavioraldata$tagid))," participants w/ behavioral data"))
+
+# test to see if resting state dataset is the same
+behavioraldata <- behavioraldata %>%
+  mutate(sub=paste0("sub-",tagid)) %>%
+  filter(sub %in% sublist$sub)
+print(paste0(length(unique(behavioraldata$tagid))," participants w/ rsfMRI and behavioral data"))
+
+# Model time
+nullmodel=(glmer(as.formula(paste0("disclosed ~ 1 + (1|tagid)")), behavioraldata, family=binomial))
+mainbmodel=(glmer(as.formula(paste0("disclosed ~ share.value + affective + (1|tagid)")), behavioraldata, family=binomial))
+mainbmodelrxvalue=(glmer(as.formula(paste0("disclosed ~ share.value + affective + (1+share.value|tagid)")), behavioraldata, family=binomial))
+#mainbmodelrxaffect=(glmer(as.formula(paste0("disclosed ~ share.value + affective + (1+affective|tagid)")), behavioraldata, family=binomial))
+mainbmodelrx2=(glmer(as.formula(paste0("disclosed ~ share.value + affective + (1+share.value+affective|tagid)")), behavioraldata, family=binomial))
+
+# Compare models
+modcomp <- anova(nullmodel, mainbmodel, mainbmodelrxvalue, mainbmodelrx2)
+print(modcomp)
+summary(mainbmodelrx2)
+invlogit(fixef(mainbmodelrx2))
+
+# Predicting data
+predictedData <- expand.grid(tagid=unique(behavioraldata$tagid),
+                             share.value=-2:2,
+                             affective=c(TRUE, FALSE),
+                             stringsAsFactors=F)
+
+predictedData$disclosure <- predict(mainbmodelrxvalue,
+                                    newdata=predictedData,
+                                    re.form=~(1+share.value|tagid),
+                                    type='response')
+
+predictedData$disclosure_uncond <- predict(mainbmodelrxvalue,
+                                           newdata=predictedData,
+                                           re.form=NA,
+                                           type='response')
+
+## Loess plots
+loessPlot<-ggplot(behavioraldata,
+                  aes(x=share.value,y=disclosed,
+                      group=affective))+
+		  geom_smooth(aes(color=affective),
+		              method='loess')+
+		  geom_count(aes(color=affective))+
+   scale_colour_manual(values=c(colour_labels[1], colour_labels[2]),
+                      labels=c('Neutral', 'Affective'))+
+  labs(y='Disclosed to Friend', color='Information',
+       x='Share Value') +
+  theme_bw() +
+  theme_minimal(base_size = 18, base_family = "Arial") +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        legend.position="right")
+ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "graphs/loessPlot.png"),
+       plot=loessPlot, width=6, height=5, units='in', dpi=300)
+
+## Predicted Model Plots
+modelPlot<-ggplot(predictedData,
+                  aes(x=share.value, y=disclosure))+
+	geom_line(aes(group=tagid), color=purple_colours[2], alpha=.2)+
+	geom_line(data=(predictedData %>% filter(affective==TRUE)),
+	                aes(y=disclosure_uncond), color=group_colors[2], size=2)+
+  	geom_line(data=(predictedData %>% filter(affective==FALSE)),
+	                aes(y=disclosure_uncond), color=group_colors[1], size=2)+
+  labs(y='Disclosed to Friend',
+       x='Share Value') +
+  theme_bw() +
+  theme_minimal(base_size = 18, base_family = "Arial") +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        legend.position="right")
+modelPlot
+ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "graphs/modelPlot.png"),
+       plot=modelPlot, width=4.5, height=5, units='in', dpi=300)
+
+
+# Check out random effects
+coef(mainbmodelrx2)
+
+# Pull together CRQ data
+
+affiliationdata <- read.csv(paste0(workdir,"Questionnaires/Wave_1/CRQ_Wave1.csv"),header = TRUE,stringsAsFactors = FALSE) %>%
+  mutate(sub=paste0("sub-",tagid)) %>%
+  filter(!CRQ_missing>2) %>%
+ select(tagid,sub,CRQ_mean,CRQ_total) 
+print(paste0(length(unique(affiliationdata$tagid))," participants w/ CRQ data"))
+
+# cut down affiliation data to right size
+
+affiliationdata <- affiliationdata %>%
+  filter(sub %in% sublist$sub)
+```
+
+Get timecourses
+```{r timecourses}
+# Set fixed variables
+numcores<-detectCores()[1]
+scrubbingThreshold<-.2
+sub_base_dir=paste0(workdir,"../TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/")
+parcellation_list_dir=paste0(workdir,"/sMRI/templates/lists")
+ 
+### John's dplyred timecourse extraction + clean function
+ collectAndCorTimecourses <- function(sub, parcels, scrubbingThreshold, sub_base_dir) {
+    #below makes a df with every parcel file location, that then reads in the data from that parcel.
+    #result is a long data frame with indexes within each parcel (e.g. volume number 1:514)
+    timecourses <- data.frame(file_location=paste0(sub_base_dir,sub,"/",sub,
+                                                   ".results/timecourses/",sub,'_',parcels$parcel_name,'.txt'),
+                              sub=sub,
+                              parcel=parcels$parcel_name,
+                              stringsAsFactors=F) %>%
+      group_by(sub,parcel) %>% do({
+        timecourse<-try(fread(.$file_location, stringsAsFactors=F))
+        if('try-error' %in% class(timecourse)) timecourse <- data.frame(NA)
+        timecourse
+      }) %>%
+      mutate(index=1:n()) %>% filter(!is.na(V1))
+    sub_dir <- paste0(sub_base_dir,sub,"/",sub,".results/")
+    #get the motion information and censor properly
+    fdfile <- data.frame(motion=read.table(paste0(sub_dir,"motion_",sub,"_enorm.1D"))$V1) %>%
+      mutate(index=1:n(),
+             censor_raw=as.integer(motion>scrubbingThreshold), #censor if over the threshold
+             censor_1after= censor_raw | lag(censor_raw,1, default=F), #censor 1 after any censored vols
+             censor=censor_1after | (lead(censor_1after,1, default=F) & lag(censor_1after,1, default=F))) #censor any vols between censored vols
+    #timecourse length == motion data length error checking
+    fdlength <- dim(fdfile)[1]
+    nada <- timecourses %>% group_by(parcel) %>%
+      summarize(n=n()) %>% group_by(parcel) %>%
+      do(thing=if(.$n != fdlength) stop(paste0('fdfile and timecourse ARE NOT SAME LENGTH!!!',
+                                               sub, ' ', .$parcel, '\n')))
+    #get a summary of motion for filtering later, and just for our info
+    motiondata <- summarize(fdfile,
+                            Blurps=sum(censor_raw),
+                            Numcensored=sum(censor))
+    #remove censored volumes
+    timecourses_censored <- left_join(timecourses, select(fdfile,index,censor)) %>% filter(!censor)
+    #more summary info for filtering subjects later
+    motiondata$Framesremaining <- timecourses_censored %>% group_by(parcel) %>% 
+      summarize(frames_remaining=n()) %>% distinct(frames_remaining) %>%
+      unlist  
+    #make the timecourse data nice for correlations
+    timecourses_censored_w <- timecourses_censored %>% 
+      select(sub, index, parcel, V1) %>% 
+      spread(parcel,V1) %>% ungroup %>% select(-index, -sub)
+    #correlate!
+    #CorrelationMatrix<-cor(timecourses_censored_w)
+    CorrelationMatrix<-fisherz(cor(timecourses_censored_w))
+    #just take the bottom triangle
+    CorrelationMatrix[upper.tri(CorrelationMatrix, diag=TRUE)] <- NA
+    #this gets the names for the rows and columns and assigns each cor value
+    #a name that is the combination of the row and column.
+    CorrDF <- as.data.frame(CorrelationMatrix) %>% #matrix colnames become df column names
+      mutate(var2=rownames(CorrelationMatrix)) %>% #add a column for matrix row names
+      gather(var1, cor, -var2) %>% #make wide cor mat long, but keep indexed by matrix row name
+      filter(!is.na(cor)) %>% #remove NA (upper tri) rows
+      unite(coi, var1, var2) #unite the row and col names, now next to each other, into a single name.
+    ## The CorrDF data frame now looks like, for example:
+    # key                         cor
+    # ---                         -----
+    # lh.Parcel_1_lh.Parcel_10    0.338
+    ##
+    # now we want to add in our summary timecourse info re motion etc, so we just 
+    # add columns to the correlation data frame, and turn it into a data table for
+    # efficiency later on.
+    subjDF <- CorrDF %>% mutate(sub=sub, 
+                                Blurps=motiondata$Blurps,
+                                Numcensored=motiondata$Numcensored,
+                                Framesremaining=motiondata$Framesremaining) %>% as.data.table
+    }
+
+
+## Social Brain + NAcc parcels
+if(!file.exists(paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/connectivity_matrices/",
+                     "Social_noWBVR_FishersZ_coisDT.RDS"))){
+  socrois<-c("aseg_26","aseg_58",
+             "lh.posterior-superior-temporal-sulcus","rh.posterior-superior-temporal-sulcus",
+             "lh.temporal-parietal-junction-p","rh.temporal-parietal-junction-p",
+             "lh.anterior-temporal-cortex","rh.anterior-temporal-cortex",
+             "lh.Brodmann-10-medial","rh.Brodmann-10-medial",
+             "lh.Parcel_1","rh.Parcel_162")
+  socroinames<-c("L_nacc","R_nacc",
+                 "L_psts","R_psts",
+                 "L_tpj","R_tpj",
+                 "L_atc","R_atc",
+                 "L_mBA10","R_mBA10",
+                 "L_precuneus","R_precuneus")
+
+  socialbrain_parcels <- data.frame(parcel_name=socrois, stringsAsFactors=F)
+
+  system.time(social_cois<- mclapply(as.list(as.character(sublist$sub)),
+                                     collectAndCorTimecourses, 
+                                     parcels=socialbrain_parcels,
+                                     scrubbingThreshold=scrubbingThreshold, 
+                                     sub_base_dir=sub_base_dir,
+                                     mc.cores=numcores))
+  print(object.size(social_cois), quote = FALSE, units = "Mb")
+  
+  # bind list of data.tables into one long data.table and filter by frames remaining (< 5 mins)
+  system.time(social_coisDT <- do.call(bind_rows, social_cois) %>% 
+                filter(Framesremaining >= 385) %>%
+                select(-Blurps, -Numcensored, -Framesremaining) %>%  
+                as.data.table)
+  print(object.size(social_coisDT), quote = FALSE, units = "Mb")
+  rm(social_cois);gc() #remove list, and garbage collect
+  save(social_coisDT,file = paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/connectivity_matrices/",
+                                   "Social_noWBVR_FishersZ_coisDT.RDS"))
+} else {
+  load(file = paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/connectivity_matrices/",
+                     "Social_noWBVR_FishersZ_coisDT.RDS"))
+}
+```
+
+Connectivity Analysis
+```{r}
+run_predict_disclose=FALSE
+run_disclose_affiliation=FALSE
+run_predict_affiliation=TRUE
+
+social_cois<-distinct(social_coisDT, coi)
+
+## Do individual differences in functional connectivity predict disclosure?
+## Do these connections interact with affective value in predicting disclosure?
+if(run_predict_disclose){
+  system.time(
+    disclose_models<-mclapply(X=as.character(as.list(social_cois$coi)), 
+                              demodata=behavioraldata,
+                              coidat=social_coisDT,
+                              mc.cores=numcores,
+                              FUN=function(coi_name, demodata, coidat){
+                                adf<-merge(as.data.table(filter(coidat,coi==coi_name)),
+                                           demodata,
+                                           by='sub',
+                                           allow.cartesian=T)
+                                beh_mod=glmer(as.formula(paste0("disclosed ~ share.value + affective +",
+                                                                "(1+share.value|tagid)")),
+                                              adf,
+                                              family=binomial)
+                                coi_mod=glmer(as.formula(paste0("disclosed ~ share.value + affective + cor +",
+                                                                "(1+share.value|tagid)")),
+                                              adf,
+                                              family=binomial)
+                                coi_int_mod=glmer(as.formula(paste0("disclosed ~ share.value + affective * cor +",
+                                                                    "(1+share.value|tagid)")),
+                                              adf,
+                                              family=binomial)
+                                mod_comp<-anova(beh_mod,coi_mod,coi_int_mod)
+                                if (mod_comp$'Pr(>Chisq)'[3]<.05 &
+                                    mod_comp$AIC[3]<mod_comp$AIC[2] &
+                                    mod_comp$AIC[3]<mod_comp$AIC[1]){
+                                  coiname<- as.character(coi_name)
+                                  chisq <- round(mod_comp$Chisq[3],2)
+                                  pval <- round(mod_comp$'Pr(>Chisq)'[3],4)
+                                  AIC <- round(mod_comp$AIC[3],2)
+                                  nullAIC <- round(mod_comp$AIC[1],2)
+                                  intbeta<- round(summary(coi_int_mod)$coefficients[5,1],2)
+                                  mainbeta<- round(summary(coi_int_mod)$coefficients[4,1],2)
+                                  mod_type <- "coi int model"
+                                  retDF<-cbind(coiname,intbeta,mainbeta,chisq,pval,AIC,nullAIC,mod_type)
+                                  retDF<-as.data.table(retDF)
+                                } else if (mod_comp$'Pr(>Chisq)'[2]<.05 &
+                                           mod_comp$AIC[2]<mod_comp$AIC[1]){
+                                  coiname<- as.character(coi_name)
+                                  chisq <- round(mod_comp$Chisq[2],2)
+                                  pval <- round(mod_comp$'Pr(>Chisq)'[2],4)
+                                  AIC <- round(mod_comp$AIC[2],2)
+                                  nullAIC <- round(mod_comp$AIC[1],2)
+                                  intbeta<- NA
+                                  mainbeta<-round(summary(coi_int_mod)$coefficients[4,1],2)
+                                  mod_type <- "coi main model"
+                                  retDF<-cbind(coiname,intbeta,mainbeta,chisq,pval,AIC,nullAIC,mod_type)
+                                  retDF<-as.data.table(retDF)
+                                } else {
+                                  coiname<- as.character(coi_name)
+                                  chisq <- NA
+                                  pval <- NA
+                                  AIC <- NA
+                                  nullAIC <- NA
+                                  intbeta <- NA
+                                  mainbeta <- NA
+                                  mod_type <- NA
+                                  retDF <- cbind(coiname,intbeta,mainbeta,chisq,pval,AIC,nullAIC,mod_type)
+                                  as.data.table(retDF)
+                                }
+                              }
+    ))
+  print(object.size(disclose_models), units='Mb')
+  disclose_modelsDT <- rbindlist(disclose_models) %>%
+    mutate(chisq=as.numeric(chisq),
+           pval=as.numeric(pval),
+           AIC=as.numeric(AIC),
+           intbeta=as.numeric(intbeta),
+           mainbeta=as.numeric(mainbeta),
+           nullAIC=as.numeric(nullAIM)) #make this into a dataframe 
+  print(object.size(disclose_modelsDT), units='Mb')
+  rm(disclose_models);gc()
+  save(disclose_modelsDT, file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "connectivity_models/disclose_models_DT.RDS"))
+  #write.csv(disclose_modelsDT,file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+  #                                   "connectivity_tables/disclose_models_DT.csv"))
+} else {
+  load(file= paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                    "connectivity_models/disclose_models_DT.RDS"))
+}
+
+## Do the connections that predict disclosure also correlate with adaptive affiliation?
+if(run_predict_affiliation){
+  system.time(
+    crq_conn_models<-mclapply(X=as.character(as.list((disclose_modelsDT %>% filter(mod_type=="coi int model"))$coiname)), 
+                              demodata=affiliationdata,
+                              coidat=social_coisDT,
+                              mc.cores=numcores,
+                              FUN=function(coi_name, demodata, coidat){
+                                adf<-merge(as.data.table(filter(coidat,coi==coi_name)),
+                                           demodata,
+                                           by='sub',
+                                           allow.cartesian=T)
+                                null_mod=lme(CRQ_mean ~ 1,
+                                            method="ML",
+                                            random = ~1|sub,
+                                            data=adf)
+                                coi_mod=lme(CRQ_mean ~ cor,
+                                            method="ML",
+                                            random = ~1|sub,
+                                            data=adf)
+                                mod_comp<-anova(null_mod,coi_mod)
+                                if (mod_comp$'p-value'[2]<.05 &
+                                           mod_comp$AIC[2]<mod_comp$AIC[1]){
+                                  coiname<- as.character(coi_name)
+                                  chisq <- round(mod_comp$L.Ratio[2],2)
+                                  pval <- round(mod_comp$'p-value'[2],4)
+                                  AIC <- round(mod_comp$AIC[2],2)
+                                  nullAIC <- round(mod_comp$AIC[1],2)
+                                  mod_type <- "coi predict crq"
+                                  retDF<-cbind(coiname,chisq,pval,AIC,nullAIC,mod_type)
+                                  retDF<-as.data.table(retDF)
+                                } else {
+                                  coiname<- as.character(coi_name)
+                                  chisq <- NA
+                                  pval <- NA
+                                  AIC <- NA
+                                  nullAIC <- NA
+                                  mod_type <- NA
+                                  retDF <- cbind(coiname,chisq,pval,AIC,nullAIC,mod_type)
+                                  as.data.table(retDF)
+                                }
+                              }
+    ))
+  print(object.size(crq_conn_models), units='Mb')
+  crq_conn_modelsDT <- rbindlist(crq_conn_models) %>%
+    mutate(chisq=as.numeric(chisq),
+           pval=as.numeric(pval),
+           AIC=as.numeric(AIC),
+           nullAIC=as.numeric(nullAIC)) #make this into a dataframe 
+  print(object.size(crq_conn_modelsDT), units='Mb')
+  rm(crq_conn_models);gc()
+  save(crq_conn_modelsDT, file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "connectivity_models/crq_conn_modelsDT.RDS"))
+} else {
+  load(file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                     "connectivity_models/crq_conn_modelsDT.RDS"))
+}
+
+```
+
+Unpack connectivity predicting disclosure results
+```{r}
+assign("predict_disclose_heat",read.csv(file=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                                  "connectivity_tables/disclose_models_DT.csv")))
+predict_disclose_heat<-left_join(predict_disclose_heat,(as.data.frame(cbind(socroinames,socrois)) %>% mutate(seed=socrois,
+                                                                              seed_name=socroinames) %>%
+                                          select(seed,seed_name)),by="seed")
+predict_disclose_heat<-left_join(predict_disclose_heat,(as.data.frame(cbind(socroinames,socrois)) %>% mutate(target=socrois,
+                                                                              target_name=socroinames) %>%
+                                          select(target,target_name)),by="target")
+
+seedroisnames<-cbind(socrois,socroinames)
+seedlevels<-c("L_nacc","R_nacc","L_atc","L_mBA10","L_precuneus","L_psts","L_tpj","R_atc","R_mBA10","R_precuneus","R_psts")
+targetlevels<-c("R_nacc","L_atc","L_mBA10","L_precuneus","L_psts","L_tpj","R_atc","R_mBA10","R_precuneus","R_psts","R_tpj")
+predict_disclose_heat$seed_name<-factor(predict_disclose_heat$seed_name,levels=seedlevels)
+predict_disclose_heat$target_name<-factor(predict_disclose_heat$target_name,levels=targetlevels)
+
+predict_disclose_heatmap<-ggplot(data = (predict_disclose_heat %>% mutate(chisq=ifelse(is.na(chisq),0,chisq))),
+       aes(x=seed_name, y=target_name, fill=chisq)) + 
+  scale_fill_distiller(palette = "RdPu")+
+  geom_tile()+
+  theme_minimal()+ 
+ theme(
+  axis.text.x = element_text(angle = 45, vjust = 1, size = 10, hjust = 1),
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank())+
+ coord_fixed()
+predict_disclose_heatmap
+
+# ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+#                                      "graphs/disclose_models_DT.png"),
+#        plot=predict_disclose_heatmap, width=6, height=5, units='in', dpi=300)
+
+
+# Check out example connection's effects
+lapply(X=as.character(as.list((disclose_modelsDT %>% filter(mod_type=="coi int model"))$coiname)), 
+         demodata=behavioraldata,
+         coidat=social_coisDT,
+         FUN=function(coi_name, demodata, coidat){
+           adf<-merge(as.data.table(filter(coidat,coi==coi_name)),
+                      demodata,
+                      by='sub',
+                      allow.cartesian=T)
+           cor=seq((mean(adf$cor)-sd(adf$cor)),
+                   (mean(adf$cor)+sd(adf$cor)),
+                   length.out = 3)
+           
+           lapply(X=cor,
+                  FUN=function(COR){
+                    coi_int_mod=glmer(as.formula(paste0("disclosed ~ share.value + affective * cor +",
+                                                        "(1+share.value|tagid)")),
+                                      adf,
+                                      family=binomial)
+                    predictedData <- expand.grid(tagid=unique(adf$tagid),
+                                                 share.value=-2:2,
+                                                 cor=COR,
+                                                 affective=c(TRUE, FALSE),
+                                                 stringsAsFactors=F)
+                    predictedData$disclosure <- predict(coi_int_mod,
+                                                        newdata=predictedData,
+                                                        re.form=~(1+share.value|tagid),
+                                                        type='response')
+                    predictedData$disclosure_uncond <- predict(coi_int_mod,
+                                                               newdata=predictedData,
+                                                               re.form=NA,
+                                                               type='response')
+                    ## Predicted Model plots
+                    assign(paste0("model_",coi_name,"_",round(COR,2)),
+                           ggplot(predictedData,
+                                  aes(x=share.value, y=disclosure))+
+                             geom_line(aes(group=tagid), color=purple_colours[2], alpha=.2)+
+                             geom_line(data=(predictedData %>% filter(affective==TRUE)),
+                                       aes(y=disclosure_uncond), color=colour_labels[2], size=2)+
+                             geom_line(data=(predictedData %>% filter(affective==FALSE)),
+                                       aes(y=disclosure_uncond), color=colour_labels[1], size=2)+
+                             labs(y='Disclosed to Friend',
+                                  x='Share Value') +
+                             theme_bw() +
+                             theme_minimal(base_size = 18, base_family = "Arial") +
+                             theme(axis.line = element_line(colour = "black"),
+                                   panel.grid.major = element_blank(),
+                                   panel.grid.minor = element_blank(),
+                                   panel.border = element_blank(),
+                                   panel.background = element_blank(),
+                                   legend.position="right"))
+                    get(paste0("model_",coi_name,"_",round(COR,2)))
+                    ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                                           "graphs/model_",coi_name,"_",round(COR,2),".png"),
+                           plot=get(paste0("model_",coi_name,"_",round(COR,2))), width=4.5, height=5, units='in', dpi=300)
+                  })
+         }) 
+
+
+```
+
+
+Unpack connectivity predicting affiliation results
+```{r}
+coi_name="aseg_58_rh.Brodmann-10-medial"
+connectivity_predict_CRQ<-ggplot((merge(as.data.table(filter(social_coisDT,coi==coi_name)),
+                                        affiliationdata,
+                                        by='sub',
+                                        allow.cartesian=T)),
+                                 aes(x=cor, y=CRQ_mean)) +
+  geom_point(color='maroon4',alpha=.3)+
+  geom_smooth(method=lm,
+                aes(x=cor,
+                    y=CRQ_mean),
+                size=.7,
+                alpha=0.2,
+                colour="maroon1",
+                fill = "maroon1")+
+  labs(y='Co-Rumination Questionnaire Mean',
+       x='right NAcc - right mBA10') +
+  theme_bw() +
+  theme_minimal(base_size = 18, base_family = "Arial") +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        legend.position="right")
+connectivity_predict_CRQ
+ggsave(filename=paste0(workdir,"../TAG_BIDS/derivatives/adaptive_affiliation/",
+                       "graphs/r_nacc-r_mBA10_CRQ.png"),
+       plot=connectivity_predict_CRQ, width=6, height=5, units='in', dpi=300)
+```
