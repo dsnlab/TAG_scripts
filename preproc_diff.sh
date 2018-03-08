@@ -2,6 +2,10 @@
 
 #Usage: srun preproc_diff.sh subject_list_sam.txt
 
+# Load FSL
+module load fsl/5.0.9
+export FSLPARALLEL=slurm
+
 pass=1
 while read subid
 do
@@ -24,9 +28,6 @@ masks="TRUE" 		#Note: Set to false if you won't be running tractography.
 
 # Set error log file
 errorlog=""$scriptsdir"/errorlog_preprocdiff.txt"
-
-# Load FSL
-module load fsl/5.0.9
 
 # Create error log file
 touch "${errorlog}"
