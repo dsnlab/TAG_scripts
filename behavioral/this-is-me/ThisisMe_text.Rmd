@@ -1,0 +1,94 @@
+---
+title: "ThisisMe_text"
+author: "Theresa Cheng"
+date: "November 19, 2016"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+```{r load packages, include=FALSE}
+osuRepo<-'http://ftp.osuosl.org/pub/cran/'
+
+#Check if the packages we need are installed, and if not, install them
+packages = c("plyr", "dplyr", "tidyr", "knitr", "ggplot2", "tidytext", "stringr")
+
+# load packages, install as needed
+package.check <- lapply(packages, FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+        install.packages(x, dependencies = TRUE)
+        library(x, character.only = TRUE) }})
+```
+
+```{r load and tidy text}
+rm(list=ls())
+setwd("/Volumes/psych-cog/dsnlab/TAG/behavior/This_Is_Me/Text")
+df_raw <- read.delim("thisisme_03192018.txt", header=FALSE)
+df_raw$V1 <- as.character(df_raw$V1)
+
+df_wide <- list() # initialize a list
+df_wide$SID <- filter(df_raw, startsWith(df_raw$V1, "TAG")) # create SID var w/ lines starting with "T"
+df_wide$text <- filter(df_raw, startsWith(df_raw$V1, "S") | startsWith(df_raw$V1, "0")) # create text var w/ lines that start with S; a few typos without the word S, so I start with "0" sometimes
+df_wide <- as.data.frame(df_wide) # change the list into a dataframe
+colnames(df_wide) <- c("SID", "text") # rename the variables
+
+df_wide <- separate(df_wide, col = SID, into = c("junk", "SID"), sep = "G") # separate TAG from the SIDs
+df_wide <- df_wide[,-1] # remove the junk, e.g., "TAG" column
+
+df_tidy <- unnest_tokens(df_wide, word, text) # tidy into one word per line
+```
+
+```{r remove unnecessary words}
+
+# terms that are being removed include 
+# the letters "s" and "e" which indicate the start and stop of 1 min
+# for privacy: 
+# when participants said their own name or the names of others
+# when participants said their age
+# when participants said the name of their school 
+df_tidy <- filter(df_tidy, word!="s" & word!= "e" & word!= "nayme" & word!= "ayge" & word!= "pahuse" & word!= "NOS" & word!= "incomp")
+
+# need to remove timestamps, age data or other numbers may incidentally be removed
+is_alphabet <- str_detect(df_tidy$word, "[:alpha:]") # logical vector answering the question: is it composed of letters from the alphabet?
+df_tidy <- filter(df_tidy, is_alphabet==TRUE) # filter such that only rows with letters of the alphabet are present
+```
+
+```{r create sentiment df}
+
+# count the total number of words uttered per subject
+total_num <- df_tidy %>% 
+  group_by(SID) %>%
+  summarise(total_num=n()) 
+
+# create a subset of the NRC sentiment library that is categorizes as "joyful" or "positive""
+nrcjoypos <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy" | sentiment == "positive")
+
+# count the number of words that subjects uttered that match words in nrcjoy library
+joypos_num <- inner_join(df_tidy, nrcjoypos) %>% 
+  group_by(SID) %>% 
+  summarise(joypos_num=n())
+
+# count the percentage of total words
+df_joypos <- left_join(total_num, joypos_num) %>% 
+  mutate(joypos_percent = joypos_num/total_num) 
+
+```
+
+```{r summarise sentiment data}
+# How many participants utter no words of joy or positivity?
+sum(is.na(df_joypos$joypos_num)) 
+
+# What is the average percentage of joy and positivity words?
+mean(df_joypos$joypos_percent, na.rm=TRUE)
+
+# what is the standard deviation of joy and positivity words? 
+sd(df_joypos$joypos_percent, na.rm=TRUE)
+
+# what is the distribution of joy and positivity words?
+ggplot(df_joypos, aes(x= joypos_percent)) + 
+  geom_dotplot(binwidth=.01) +
+  geom_density()
+
+```
