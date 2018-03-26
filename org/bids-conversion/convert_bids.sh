@@ -48,12 +48,12 @@ if [ $(ls -d "${dicom}"/"${subid}"* | wc -l) -eq 1 ]; then
 elif [ $(ls -d "${dicom}"/"${subid}"* | wc -l) -eq 2 ]; then
         dicom1=$(ls -d "/projects/dsnlab/shared/tag/archive/DICOMS/${subid}"* | head -1)
         dicom2=$(ls -d "/projects/dsnlab/shared/tag/archive/DICOMS/${subid}"* | tail -1)
-        date1=$(echo $dicom1 | grep -Eo '[0-9]+$' )
-        date2=$(echo $dicom2 | grep -Eo '[0-9]+$' )
+        date1=$(echo $dicom1 | grep -Eo '[0-9_]+$' | cut -c 5-12 )
+        date2=$(echo $dicom2 | grep -Eo '[0-9_]+$' | cut -c 5-12 )
         if [ $sessid == "wave1" ]; then
-                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date1)
+                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date1*)
         elif [ $sessid == "wave2" ]; then
-                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date2)
+                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date2*)
         fi
 
 elif [ $(ls -d "${dicom}"/"${subid}"* | wc -l) -eq 3 ]; then
@@ -61,17 +61,17 @@ elif [ $(ls -d "${dicom}"/"${subid}"* | wc -l) -eq 3 ]; then
         dicom2=$(ls -d "/projects/dsnlab/shared/tag/archive/DICOMS/${subid}"* | head -2 | tail -1)
         dicom3=$(ls -d "/projects/dsnlab/shared/tag/archive/DICOMS/${subid}"* | tail -1)
 
-        date1=$(echo $dicom1 | grep -Eo '[0-9]+$' )
-        date2=$(echo $dicom2 | grep -Eo '[0-9]+$' )
-        date3=$(echo $dicom3 | grep -Eo '[0-9]+$' )
+        date1=$(echo $dicom1 | grep -Eo '[0-9_]+$' | cut -c 5-12 )
+        date2=$(echo $dicom2 | grep -Eo '[0-9_]+$' | cut -c 5-12 )
+        date3=$(echo $dicom3 | grep -Eo '[0-9_]+$' | cut -c 5-12 )
         echo $date2
         echo $dicom2
         if [ $sessid == "wave1" ]; then
-                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date1)
+                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date1*)
         elif [ $sessid == "wave2" ]; then
-                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date2)
+                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date2*)
         elif [ $sessid == "wave3" ]; then
-                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date3)
+                dicomdir=$(ls -d "${dicom}"/"${subid}"*$date3*)
         fi
 
 else # print file paths in errorlog.txt if more than 3 files
@@ -90,7 +90,6 @@ cd "$niidir"
 mkdir -pv "${subid}"/"${sessid}"
 
 cd "$niidir"/"${subid}"/"${sessid}"
-
 if [ "${convertanat}" == "TRUE" ] && [ ! "$(ls -A anat)" ]; then
 	echo -e "\nConverting anatomical mprage into nifti"
 	mkdir anat
