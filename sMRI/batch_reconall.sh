@@ -11,11 +11,11 @@
 STUDY=/projects/dsnlab/shared/tag
 
 # Set subject list
-SUBJLIST=`cat subject_list.txt`
+SUBJLIST=`cat subject_list4.txt`
 #SUBJLIST=`cat test.txt`
 
 # 
 for SUBJ in $SUBJLIST
 do
- sbatch --export SUBID=${SUBJ} --job-name reconall --partition=long --mem-per-cpu=8G --time=20:00:00 --cpus-per-task=1 -o "${STUDY}"/TAG_scripts/sMRI/output/"${SUBJ}"_reconall_output.txt -e "${STUDY}"/TAG_scripts/sMRI/output/"${SUBJ}"_reconall_error.txt job_reconall.sh
+ sbatch --export SUBID=${SUBJ} --job-name reconall --partition=short --mem-per-cpu=8G --time=20:00:00 --cpus-per-task=1 -o "${STUDY}"/TAG_scripts/sMRI/output/"${SUBJ}"_reconall_output.txt -e "${STUDY}"/TAG_scripts/sMRI/output/"${SUBJ}"_reconall_error.txt job_reconall.sh
 done
