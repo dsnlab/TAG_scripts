@@ -193,10 +193,15 @@ if [ "${convertanat}" == "TRUE" ]; then
 		# print file paths in errorlog.txt if =~ 1 file; copy both files
 		echo "ERROR: wrong number of files; all files copied"
 		ls "${anatomicaloutput}"/*"${anat}".nii.gz >> $errorlog
-		t1w1=$(ls "${anatomicaloutput}"/*"${anat}".nii.gz | head -1)
-		t1w2=$(ls "${anatomicaloutput}"/*"${anat}".nii.gz | tail -1)
-		cp ${cpflags} "${t1w1}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/anat/sub-"${subid}"_ses-"${sessid}"_run-01_T1w.nii.gz
-		cp ${cpflags} "${t1w2}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/anat/sub-"${subid}"_ses-"${sessid}"_run-02_T1w.nii.gz
+		
+		#Uncomment the following 4 lines if you have repeated mprages and would like them to be saved in the bidsbir.
+		#For now, the script does not do this as we only re-do mprages if one is really bad quality - and I don't think the poor image 
+		#should be copied to bidsdir and used by bidsapps
+
+		#t1w1=$(ls "${anatomicaloutput}"/*"${anat}".nii.gz | head -1)
+		#t1w2=$(ls "${anatomicaloutput}"/*"${anat}".nii.gz | tail -1)
+		#cp ${cpflags} "${t1w1}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/anat/sub-"${subid}"_ses-"${sessid}"_run-01_T1w.nii.gz
+		#cp ${cpflags} "${t1w2}" "$bidsdir"/sub-"${subid}"/ses-"${sessid}"/anat/sub-"${subid}"_ses-"${sessid}"_run-02_T1w.nii.gz
 	fi
 fi
 
