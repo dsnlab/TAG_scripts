@@ -1,0 +1,186 @@
+---
+title: "TAG MRI Overview"
+author: "Nandi"
+date: "25 March 2018"
+output: html_document
+---
+This script creates an MRI overview document that reports who completed MRIs, which sequences were completed, the size of sequences, and any duplicated scans.
+Line 244 onwards will need to be edited for waves 2 and 3.
+
+###LOAD PACKAGES AND SET DIRECTORIES
+```{r, include=FALSE}
+packages <- c("dplyr", "zoo", "xlsx", "tidyr", "tibble")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
+```
+
+###IMPORT TAG OVERVIEW DOC FROM CAS
+```{r, include = F}
+overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- overview[,c(1,3,8)]
+overview <- overview %>% 
+  rename(SID = TAG_ID) %>%
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  arrange(Withdrawn_W1) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID))
+```
+
+###IMPORT MRI COMPLETION LISTS FROM REDCAP
+```{r, include=FALSE}
+redcapData <- read.csv(paste0(cas_dir,'/behavior/Questionnaires/Confidential/MRI_wave1.csv'),header=T)
+redcapData <- redcapData %>%
+  mutate(SID=gsub("[^0-9\\.]", "", subject_spit_id)) %>%
+  select(-subject_spit_id) %>%
+  select(SID,check_mri_completed,mri_incomplete)
+```
+
+###COMBINE OVERVIEW AND MRI COMPELTION LISTS
+```{r, include=FALSE}
+overview <- overview %>% full_join(.,redcapData) %>%
+  arrange(Withdrawn_W1,desc(check_mri_completed))
+```
+
+###IMPORT CLEAN NII LIST
+```{r, include=FALSE}
+clean_nii <- file.info(list.files(paste0(cas_dir,'archive/clean_nii'), recursive = TRUE,full.names=TRUE))
+
+clean_nii <- as.data.frame(clean_nii) %>%
+  rownames_to_column() %>%
+  mutate(rowname=as.character(rowname)) %>%
+  filter(grepl("wave",rowname)) %>% 
+  filter(grepl("nii.gz",rowname)) %>%
+  filter(!grepl("mprage_p2_ND",rowname)) %>% 
+  filter(!grepl("bvals",rowname)) %>% 
+  filter(!grepl("bvecs",rowname)) %>% 
+  filter(!grepl("fieldmap_2mm_01",rowname)) %>% 
+  filter(!grepl("fieldmap_2mm_02",rowname)) %>% 
+  mutate(rowname = sub('.*clean_nii', '', rowname)) %>%
+  separate(rowname,c("junk","SID","wave","scan","file"),sep="/") %>%
+  select(-junk) %>%
+  mutate(file = ifelse(grepl("mprage_p2",file),"mprage",
+                       ifelse(grepl("diff_mb2_g2_64dirs_2mm_rl",file),"diffRL",
+                              ifelse(grepl("diff_mb2_g2_64dirs_2mm_lr",file),"diffLR",
+                                     ifelse(grepl("Resting_1",file),"rest1",
+                                            ifelse(grepl("Resting_2",file),"rest2",
+                                                   ifelse(grepl("fieldmap_2mm",file),"fmap",
+                                                          ifelse(grepl("SVC_1",file),"svc1",
+                                                                 ifelse(grepl("SVC_2",file),"svc2",
+                                                                        ifelse(grepl("DSD_1",file),"dsd1",
+                                                                               ifelse(grepl("DSD_2",file),"dsd2",NA))))))))))) %>%
+  mutate(wave = as.factor(sub('wave','',wave)),
+         SID = as.factor(sub('TAG','',SID))) %>%
+  group_by(SID,wave,file) %>%
+  mutate(num = row_number()) %>%
+  select(SID,wave,file,num,size)
+```
+
+###WAVE 1 SUMMARIES
+```{r, include=FALSE}
+#wave1 overview of numbers
+MRI_wave1 <- clean_nii %>% filter(wave==1) %>% group_by(SID,file) %>% summarize(num=n()) %>%
+  spread(key=file, value=num) %>% ungroup
+MRI_wave1[is.na(MRI_wave1)] <- 0
+
+#wave1 overview of size - long format
+MRI_wave1_size <- clean_nii %>% filter(wave==1) 
+
+#wave1 overview of size - wide format
+MRI_wave1_size2 <- clean_nii %>% filter(wave==1) %>%
+  ungroup %>% select(-wave) %>%
+  gather(key="variable", value="value", c("size")) %>% 
+  mutate(file_by_variable = paste0(variable, "_", file)) %>%
+  select(SID, num, file_by_variable, value) %>%
+  spread(key=file_by_variable, value=value)
+
+#NOTE: FOLLOWING CODE NEEDS TO BE UPDATED FOR WAVE 2 & 3 
+#DEPENDING ON HOW MANY REPEATED SCANS ARE CONDUCTED (PER SEQUENCE) 
+
+#wave1 overview of size - wide format
+MRI_wave1_size3 <- clean_nii %>% filter(wave==1) %>%
+  ungroup %>% select(-wave) %>%
+  gather(key="variable", value="value", c("size")) %>% 
+  mutate(file_by_variable   = paste0(variable, "_", file, "_",num)) %>%
+  select(SID, file_by_variable, value) %>%
+  spread(key=file_by_variable, value=value) %>%
+  mutate(dsd1_size=ifelse((is.na(size_dsd1_2) & is.na(size_dsd1_3)), size_dsd1_1, 
+                      ifelse((!is.na(size_dsd1_2) & is.na(size_dsd1_3)), paste0(size_dsd1_1,",",size_dsd1_2),
+                             ifelse((!is.na(size_dsd1_2) & !is.na(size_dsd1_3)), paste0(size_dsd1_1,",",size_dsd1_2,",",size_dsd1_3),size_dsd1_1)))) %>%
+  mutate(dsd2_size=ifelse((is.na(size_dsd2_2)), size_dsd2_1, 
+                      ifelse((!is.na(size_dsd2_2)), paste0(size_dsd2_1,",",size_dsd2_2),size_dsd2_1))) %>%
+  mutate(svc1_size=ifelse((is.na(size_svc1_2)), size_svc1_1, 
+                      ifelse((!is.na(size_svc1_2)), paste0(size_svc1_1,",",size_svc1_2),size_svc1_1))) %>%
+   mutate(svc2_size=ifelse((is.na(size_svc2_2)), size_svc2_1, 
+                      ifelse((!is.na(size_svc2_2)), paste0(size_svc2_1,",",size_svc2_2),size_svc2_1))) %>% 
+  mutate(rest1_size=size_rest1_1) %>% 
+  mutate(rest2_size=ifelse((is.na(size_rest2_2)), size_rest2_1, 
+                      ifelse((!is.na(size_rest2_2)), paste0(size_rest2_1,",",size_rest2_2),size_rest2_1))) %>% 
+  mutate(fmap_size = size_fmap_1) %>%
+  mutate(mprage_size=ifelse((is.na(size_mprage_2)), size_mprage_1, 
+                      ifelse((!is.na(size_mprage_2)), paste0(size_mprage_1,",",size_mprage_2),size_mprage_1))) %>%
+  mutate(diffRL_size=ifelse((is.na(size_diffRL_2)), size_diffRL_1, 
+                      ifelse((!is.na(size_diffRL_2)), paste0(size_diffRL_1,",",size_diffRL_2),size_diffRL_1))) %>%
+  mutate(diffLR_size = size_diffLR_1) %>%
+  select(SID,mprage_size,diffRL_size,diffLR_size,rest1_size,rest2_size,fmap_size,svc1_size,svc2_size,dsd1_size,dsd2_size)
+
+MRI_wave1_size3 <- MRI_wave1 %>% left_join(., MRI_wave1_size3) %>% 
+  rename(mprage_num = mprage,
+         diffRL_num = diffRL,
+         diffLR_num = diffLR,
+         fmap_num = fmap,
+         svc1_num = svc1,
+         svc2_num = svc2,
+         dsd1_num = dsd1,
+         dsd2_num = dsd2,
+         rest1_num = rest1,
+         rest2_num = rest2) %>%
+  select(SID,contains("mprage"),contains("svc1"),contains("svc2"),contains("rest1"),contains("rest2"),contains("dsd1"),contains("dsd2"),contains("fmap"),contains("diffRL"),contains("diffLR"))
+```
+
+###MERGE CLEAN NII AND OVERVIEW DOCS
+```{r, include=FALSE}
+overview <- overview %>% full_join(.,MRI_wave1_size3) %>%
+  arrange(check_mri_completed) %>%
+  select(-mri_incomplete) %>%
+  arrange(Withdrawn_W1,desc(check_mri_completed),desc(mprage_num)) %>%
+  mutate(partial_comp = ifelse((!mprage_num==0) & (!svc1_num==0) & (!svc2_num==0) & (!rest1_num==0) & (!rest2_num==0) & (!dsd1_num==0) & (!dsd2_num==0) & (!fmap_num==0) & (!diffRL_num==0) & (!diffLR_num==0), 0, 1)) %>%
+  arrange(partial_comp)
+```
+
+###IMPORT DERIVATIVES FOLDER TO CHECK PPC (FOR FREESURFER & FMRIPREP ALONE)
+###CAN EASILY BE EXPANDED TO OTHER SEQUENCES
+```{r,include=FALSE}
+freesurfer <- list.dirs(paste0(cas_dir,'TAG_BIDS/derivatives/freesurfer6'), full.names=FALSE, recursive = FALSE)
+freesurfer <- as.data.frame(freesurfer) %>% mutate(SID=as.numeric(sub('.*sub-TAG','',freesurfer))) %>% filter(!is.na(SID)) %>% mutate(SID = as.factor(SID)) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>% mutate(freesurfer_id = SID) %>%
+  select(-freesurfer)
+
+fmriprep <- list.dirs(paste0(cas_dir,'TAG_BIDS/derivatives/fmriprep'), full.names=FALSE, recursive = FALSE)
+fmriprep <- as.data.frame(fmriprep) %>% mutate(SID=as.numeric(sub('.*sub-TAG','',fmriprep))) %>% filter(!is.na(SID)) %>% mutate(SID = as.factor(SID)) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>% mutate(fmriprep_id = SID) %>%
+  select(-fmriprep)
+```
+
+###CHECK PPC FOR EVERYONE IN OVERVIEW DOC
+```{r,include=FALSE}
+overview <- overview %>% full_join(.,freesurfer) %>% full_join(.,fmriprep)
+```
+
+###EXTRA
+```{r}
+bids <- read.csv("bids.csv",header=F)
+free <- read.csv("freesurfer.csv",header=F)
+fmri <- read.csv("fmriprep.csv",header=F)
+bidsL <- as.vector(bids$V1)
+freeL <- as.vector(free$V1)
+fmriL <- as.vector(fmri$V1)
+
+todo <- setdiff(freeL,fmriL)
+todo
+
+bids <- bids %>% mutate(SID = sub('TAG','',SID), bids_id = sub('TAG','',bids_id))
+free <- free %>% mutate(SID = sub('TAG','',SID), free_id = sub('TAG','',free_id))
+fmri <- fmri %>% mutate(SID = sub('TAG','',SID), fmri_id = sub('TAG','',fmri_id))
