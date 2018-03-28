@@ -1,0 +1,1014 @@
+---
+title: "TAG Puberty Measures"
+author: "Nandi"
+date: "24 January 2018"
+output: html_document
+---
+
+```{r, include=FALSE}
+#LOAD PACKAGES AND SET DIRECTORIES
+
+packages <- c("nlme", "ggplot2", "tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+in_dir <- '~/Downloads'
+quest_dir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Waves_12'
+quest_dir2 <- '/Volumes/psych-cog/dsnlab/TAG/behavior/Puberty_Followup'
+options(digits=3)
+```
+
+```{r, include=FALSE}
+#Set exclusion critera
+
+#Remove outliers?
+removeOut="TRUE"
+#Remove high CV?
+removeCV="TRUE"
+#Remove high 450 CV?
+remove450CV="FALSE"
+#Remove hair confounds?
+removeConfounds="FALSE"
+```
+
+###IMPORT AND CLEAN HAIR DATA
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+#import dataframe for each hormone, create SID as 3 digit numeric factor (i.e. "001"), combine all three hormones in one dataframe.
+Hair_DHEA <- read_xlsx(paste0(in_dir,'/TAG_HAIR_Master sheet.xlsx'), sheet=2)
+Hair_TEST <- read_xlsx(paste0(in_dir,'/TAG_HAIR_Master sheet.xlsx'), sheet=5)
+Hair_EST <- read_xlsx(paste0(in_dir,'/TAG_HAIR_Master sheet.xlsx'), sheet=8)
+
+Hair_DHEA <- Hair_DHEA %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         hair_DHEA = round(as.numeric(Concentration),3),
+         hair_DHEA_pgmg = round(as.numeric(`Concentration in pg/mg`),3)) %>%
+  select(SID,hair_DHEA,hair_DHEA_pgmg) %>%
+  filter(!is.na(SID)) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  select(-week) %>%
+  mutate(SID = as.factor(SID)) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0"))
+
+Hair_TEST <- Hair_TEST %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         hair_TEST = round(as.numeric(Concentration),3),
+         hair_TEST_pgmg = round(as.numeric(`Concentration in pg/mg`),3)) %>%
+  #mutate(hair_TEST_pgmg = if_else(hair_TEST_pgmg=='????',NA,hair_TEST_pgmg))
+  select(SID,hair_TEST,hair_TEST_pgmg) %>%
+  filter(!is.na(SID)) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  select(-week) %>%
+  mutate(SID = as.factor(SID)) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0"))
+
+Hair_EST <- Hair_EST %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         hair_EST = round(as.numeric(`Adjusted Concentration`),3),
+         hair_EST_pgmg = round(as.numeric(`Concentration in pg/ug`),3)) %>%
+  select(SID,hair_EST,hair_EST_pgmg) %>%
+  filter(!is.na(SID)) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  select(-week) %>%
+  mutate(SID = as.factor(SID)) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0"))
+
+#import and clean COV data
+Hair_DHEA_CV <- read_xlsx(paste0(in_dir,'/TAG_HAIR_Master sheet.xlsx'), sheet=1)
+Hair_TEST_CV <- read_xlsx(paste0(in_dir,'/TAG_HAIR_Master sheet.xlsx'), sheet=4)
+Hair_EST_CV <- read_xlsx(paste0(in_dir,'/TAG_HAIR_Master sheet.xlsx'), sheet=7)
+
+Hair_DHEA_CV <- Hair_DHEA_CV %>% 
+  filter(!is.na(Name)) %>%
+  select(Name,`CV (%)`) %>%
+  rename(ID = Name,
+         DHEA_CV = `CV (%)`) %>%
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         DHEA_CV = round(as.numeric(DHEA_CV),3)) %>%
+  select(SID,DHEA_CV) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID)) %>%
+  select(-week) %>%
+  filter(!is.na(SID))
+
+Hair_TEST_CV <- Hair_TEST_CV %>% 
+  filter(!is.na(Name)) %>%
+  select(Name,`CV (%)`) %>%
+  rename(ID = Name,
+         TEST_CV = `CV (%)`) %>%
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         TEST_CV = round(as.numeric(TEST_CV),3)) %>%
+  select(SID,TEST_CV) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID)) %>%
+  select(-week) %>%
+  filter(!is.na(SID))
+  
+Hair_EST_CV <- Hair_EST_CV %>% 
+  filter(!is.na(Name)) %>%
+  select(Name,`CV (%)`) %>%
+  rename(ID = Name,
+         EST_CV = `CV (%)`) %>%
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         EST_CV = round(as.numeric(EST_CV),3)) %>%
+  select(SID,EST_CV) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID)) %>%
+  select(-week) %>%
+  filter(!is.na(SID))
+
+#combine all saliva data into long format dataset
+Hair <- Hair_DHEA %>% left_join(.,Hair_TEST) %>% left_join(.,Hair_EST) %>%
+  mutate(SID = as.factor(SID)) %>% select(-hair_DHEA,-hair_TEST,-hair_EST)
+
+Hair_CV <- Hair_DHEA_CV %>% full_join(.,Hair_TEST_CV) %>% full_join(.,Hair_EST_CV)
+
+#long format dataset for saliva
+Hair_long <- Hair %>% select(SID,contains("pgmg")) %>% gather(., hormone, concentration, c(hair_DHEA_pgmg,hair_TEST_pgmg,hair_EST_pgmg), factor_key=TRUE)
+
+Hair_summary <- Hair_long %>% group_by(SID,hormone) %>% 
+  summarise(Conc = sum(!is.na(concentration)),
+            Missing = sum(is.na(concentration)))
+Hair_summary2 <- Hair_summary %>% group_by(hormone,Missing) %>% 
+  summarise(N = n()) 
+```
+
+####Samples sent
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+cat('No of Subjects: ') 
+cat(length(unique(Hair$SID)))
+```
+
+####Missing concentrations - unable to assay
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+kable(Hair_summary2, "html", align='c') %>%
+kable_styling(full_width = F, position = "left", font_size = 12)
+```
+
+####Checking for outliers (of mean of duplicates)
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+hist(Hair$hair_DHEA_pgmg, main="", xlab="DHEA")
+abline(v=100,col="red")
+writeLines("\n")
+writeLines("\n")
+hist(Hair$hair_TEST_pgmg, main="", xlab="TEST")
+abline(v=10,col="red")
+writeLines("\n")
+writeLines("\n")
+hist(Hair$hair_EST_pgmg, main="", xlab="EST")
+abline(v=100,col="red")
+writeLines("\n")
+
+#calculate number of outliers based on visual inspection cut-offs
+Hair <- Hair %>%
+  mutate(hair_DHEAout = if_else(hair_DHEA_pgmg > 100, 1, 0),
+         hair_TESTout = if_else(hair_TEST_pgmg > 10, 1, 0),
+         hair_ESTout = if_else(hair_EST_pgmg > 100, 1, 0))
+
+cat("\n*Number of outlier samples*")
+writeLines("\n")
+cat("\nDHEA: ")
+cat(summary(as.factor(Hair$hair_DHEAout))[2])
+writeLines("\n")
+writeLines("\n")
+cat("\nTEST: ")
+cat(summary(as.factor(Hair$hair_TESTout))[2])
+writeLines("\n")
+cat("\nEST: ")
+cat(summary(as.factor(Hair$hair_ESTout))[2])
+writeLines("\n")
+
+```
+
+####Check intra-assay CV
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+DHEA_CV<-ggplot(Hair_DHEA_CV, aes(x=DHEA_CV)) +
+  geom_histogram(color="black",fill="white") +
+  geom_vline(xintercept=30,linetype="dashed",colour="red")
+DHEA_CV
+Hair_DHEA_CV_exc <- Hair_DHEA_CV %>% filter(DHEA_CV > 30) %>% select(SID)
+
+TEST_CV<-ggplot(Hair_TEST_CV, aes(x=TEST_CV)) +
+  geom_histogram(color="black",fill="white") +
+  geom_vline(xintercept=30,linetype="dashed",colour="red")
+TEST_CV
+Hair_TEST_CV_exc <- Hair_TEST_CV %>% filter(TEST_CV > 30) %>% select(SID)
+
+EST_CV<-ggplot(Hair_EST_CV, aes(x=EST_CV)) +
+  geom_histogram(color="black",fill="white") +
+  geom_vline(xintercept=30,linetype="dashed",colour="red")
+EST_CV
+Hair_EST_CV_exc <- Hair_EST_CV %>% filter(EST_CV > 30) %>% select(SID)
+
+writeLines("\n")
+cat("\n*Number of high CVs*")
+writeLines("\n")
+cat("\nDHEA: ")
+cat(length(Hair_DHEA_CV_exc$SID))
+writeLines("\n")
+cat("\nTEST: ")
+cat(length(Hair_TEST_CV_exc$SID))
+writeLines("\n")
+cat("\nEST: ")
+cat(length(Hair_EST_CV_exc$SID))
+writeLines("\n")
+```
+
+
+```{r, include = FALSE}
+#High 450 CVs
+hairExc_EST = c("010","049","131","167","177")
+hairExc_DHEA = c("008","020")
+
+#Hair confounds
+hairExc_Q = c("029","036","045","059","072","091","093","100","102","111","113","117","120","127","166","175","203","209","211","003","049","053","056","067","068","073","075","083","085","086","099","107","114","132","160","181","205")
+
+Hair <- Hair %>%
+  mutate(hair_confounds = if_else(SID %in% hairExc_Q, 1, 0),
+         hair_DHEA_450 = if_else(SID %in% hairExc_DHEA, 1, 0),
+         hair_EST_450 = if_else(SID %in% hairExc_EST, 1, 0))
+```
+
+
+```{r, include=FALSE}
+#UPDATE DATAFRAMES WITH EXCLUSIONS
+#replace outlier values with NA
+if (removeOut) {
+Hair <- Hair %>%
+  mutate(hair_EST_pgmg = replace(hair_EST_pgmg, hair_EST_pgmg > 100, NA),
+         hair_TEST_pgmg = replace(hair_TEST_pgmg, hair_TEST_pgmg > 10, NA),
+         hair_DHEA_pgmg = replace(hair_DHEA_pgmg, hair_DHEA_pgmg > 100, NA))
+}
+
+#replace intrassay CV > 30 with NA
+if (removeCV) {
+  Hair <- Hair %>%
+    mutate(hair_DHEA_pgmg = replace(hair_DHEA_pgmg, SID %in% Hair_DHEA_CV_exc$SID, NA),
+           hair_TEST_pgmg = replace(hair_TEST_pgmg, SID %in% Hair_TEST_CV_exc$SID, NA),
+           hair_EST_pgmg = replace(hair_EST_pgmg, SID %in% Hair_EST_CV_exc$SID, NA))
+  }
+
+#replace problematic 450 CV with NA
+if (remove450CV) {
+  Hair <- Hair %>%
+    mutate(hair_DHEA_pgmg = replace(hair_DHEA_pgmg, SID %in% hairExc_DHEA, NA),
+           hair_EST_pgmg = replace(hair_EST_pgmg, SID %in% hairExc_EST, NA))
+}
+
+#replace confounds with NA
+if (removeConfounds) {
+  Hair <- Hair %>%
+    mutate(hair_DHEA_pgmg = replace(hair_DHEA_pgmg, SID %in% hairExc_Q, NA),
+           hair_TEST_pgmg = replace(hair_TEST_pgmg, SID %in% hairExc_Q, NA),
+           hair_EST_pgmg = replace(hair_EST_pgmg, SID %in% hairExc_Q, NA))
+}
+```
+
+```{r, include = FALSE}
+#re-create longer format and summary datasets for hair with updated values
+Hair_long <- Hair %>% select(SID,contains("pgmg")) %>% gather(., hormone, concentration, c(hair_DHEA_pgmg,hair_TEST_pgmg,hair_EST_pgmg), factor_key=TRUE)
+
+Hair_summary <- Hair_long %>% group_by(SID,hormone) %>% 
+  summarise(Conc = sum(!is.na(concentration)),
+            Missing = sum(is.na(concentration)))
+Hair_summary2 <- Hair_summary %>% group_by(hormone,Missing) %>% 
+  summarise(N = n()) 
+```
+
+####Final dataset post exclusions
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+kable(Hair_summary2, "html", align='c') %>%
+kable_styling(full_width = F, position = "left", font_size = 12)
+```
+
+###IMPORT AND CLEAN SALIVA DATA
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+#import dataframe for each hormone, create SID as 3 digit numeric factor (i.e. "001"), combine all three hormones in one dataframe. 
+Sal_DHEA <- read_xlsx(paste0(in_dir,'/TAG_SALIVA_Master File 4.0.xlsx'), sheet=4)
+Sal_TEST <- read_xlsx(paste0(in_dir,'/TAG_SALIVA_Master File 4.0.xlsx'), sheet=8)
+Sal_EST <- read_xlsx(paste0(in_dir,'/TAG_SALIVA_Master File 4.0.xlsx'), sheet=12)
+
+Sal_DHEA <- Sal_DHEA %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         sal_DHEA = round(as.numeric(Concentration),3)) %>%
+  select(SID,sal_DHEA) %>%
+  filter(!is.na(SID)) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week)) #%>%
+#  mutate(sal_DHEA = if_else(SID=="019",0,
+#                            if_else(SID=="056",0,
+#                                    if_else(SID=="062",0,sal_DHEA))))
+
+Sal_TEST <- Sal_TEST %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         sal_TEST = round(as.numeric(Concentration),3)) %>%
+  select(SID,sal_TEST) %>%
+  filter(!is.na(SID)) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week))
+
+Sal_EST <- Sal_EST %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         sal_EST = round(as.numeric(Concentration),3)) %>%
+  select(SID,sal_EST) %>%
+  filter(!is.na(SID)) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week)) #%>%
+#  mutate(sal_EST = if_else(SID=="058",0,
+#                           if_else(SID=="062",0,sal_EST)))
+
+#import and clean COV data
+Sal_DHEA_CV <- read_xlsx(paste0(in_dir,'/TAG_SALIVA_Master File 4.0.xlsx'), sheet=1)
+Sal_TEST_CV <- read_xlsx(paste0(in_dir,'/TAG_SALIVA_Master File 4.0.xlsx'), sheet=5)
+Sal_EST_CV <- read_xlsx(paste0(in_dir,'/TAG_SALIVA_Master File 4.0.xlsx'), sheet=9)
+
+Sal_DHEA_CV <- Sal_DHEA_CV %>% 
+  filter(!is.na(Name)) %>%
+  select(Name,`CV (%)`) %>%
+  rename(ID = Name,
+         DHEA_CV = `CV (%)`) %>%
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         DHEA_CV = round(as.numeric(DHEA_CV),3)) %>%
+  select(SID,DHEA_CV) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week)) %>%
+  filter(!is.na(SID))
+
+Sal_TEST_CV <- Sal_TEST_CV %>% 
+  filter(!is.na(Name)) %>%
+  select(Name,`CV (%)`) %>%
+  rename(ID = Name,
+         TEST_CV = `CV (%)`) %>%
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         TEST_CV = round(as.numeric(TEST_CV),3)) %>%
+  select(SID,TEST_CV) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week)) %>%
+  filter(!is.na(SID))
+
+Sal_EST_CV <- Sal_EST_CV %>% 
+  filter(!is.na(Name)) %>%
+  select(Name,`CV (%)`) %>%
+  rename(ID = Name,
+         EST_CV = `CV (%)`) %>%
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         EST_CV = round(as.numeric(EST_CV),3)) %>%
+  select(SID,EST_CV) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week)) %>%
+  filter(!is.na(SID))
+
+#combine all saliva data into long format dataset
+Saliva <- Sal_DHEA %>% full_join(.,Sal_TEST) %>% full_join(.,Sal_EST) %>%
+  mutate(ID = paste(SID,week,sep="_"))
+
+Saliva_CV <- Sal_DHEA_CV %>% full_join(.,Sal_TEST_CV) %>% full_join(.,Sal_EST_CV) %>%
+  mutate(ID = paste(SID,week,sep="_"))
+
+#longer format dataset for saliva
+Saliva_long <- gather(Saliva, hormone, concentration, c(sal_DHEA,sal_TEST,sal_EST), factor_key=TRUE)
+
+Saliva_summary <- Saliva_long %>% select(-ID) %>% group_by(SID,hormone) %>% 
+  summarise(Samples = n(),
+            Conc = sum(!is.na(concentration)),
+            Missing = sum(is.na(concentration))) %>% ungroup()
+
+Saliva_summary2 <- Saliva_summary %>% group_by(Samples) %>% 
+  summarise(N = n()/3)
+
+Saliva_summary3 <- Saliva_summary %>% 
+    group_by(hormone,Missing) %>% 
+  summarise(N = n())
+
+Saliva_summary3.2 <- Saliva_summary %>% 
+  mutate(Missing = if_else(Missing == 0,0,1)) %>%
+  group_by(hormone,Missing) %>% 
+  summarise(N = n())
+```
+
+####Samples sent
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+cat('No of Subjects: ') 
+cat(length(unique(Saliva_long$SID)))  
+writeLines("\n")
+cat('No of Samples: ') 
+cat(length((Saliva$SID)))
+writeLines("\n")
+cat('No of Samples per Subject: ') 
+kable(Saliva_summary2, "html", align='c') %>%
+kable_styling(full_width = F, position = "left", font_size = 12)
+```
+
+####Missing concentrations - unable to assay
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+Saliva_long <- Saliva_long %>% 
+  mutate(missing = is.na(concentration)) %>%
+  mutate(missing = if_else(missing == TRUE,1,0))
+
+cat("\nNumber of samples ")
+writeLines("\n")
+cat("\nDHEA: ")
+cat(nrow(Saliva_long %>% filter(hormone == "sal_DHEA" & missing == 1) %>% select(missing)))
+writeLines("\n")
+cat('TEST: \n')
+cat(nrow(Saliva_long %>% filter(hormone == "sal_TEST" & missing == 1) %>% select(missing)))
+writeLines("\n")
+cat('EST: \n')
+cat(nrow(Saliva_long %>% filter(hormone == "sal_EST" & missing == 1) %>% select(missing)))
+
+writeLines("\n")
+cat("Broken down by number of missing samples per subject")
+kable(Saliva_summary3, "html", align='c') %>%
+kable_styling(full_width = F, position = "left", font_size = 12)
+```
+
+####Checking for outliers (of mean of duplicates)
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+hist(subset(Saliva_long, hormone == "sal_DHEA")$concentration, main="", xlab="DHEA")
+abline(v=600,col="red")
+writeLines("\n")
+hist(subset(Saliva_long, hormone == "sal_TEST")$concentration, main="", xlab="TEST")
+abline(v=200,col="red")
+writeLines("\n")
+hist(subset(Saliva_long, hormone == "sal_EST")$concentration, main="", xlab="EST")
+abline(v=3,col="red")
+writeLines("\n")
+
+#calculate number of outliers based on visual inspection cut-offs
+Saliva_long <- Saliva_long %>%
+  mutate(out = if_else(hormone == "sal_DHEA" & concentration > 600, 1, 
+                       if_else(hormone == "sal_TEST" & concentration > 200, 1, 
+                               if_else(hormone == "sal_EST" & concentration > 3, 1,0)))) 
+
+cat("\n*Number of outlier samples*")
+writeLines("\n")
+cat("\nDHEA: ")
+cat(nrow(Saliva_long %>% filter(hormone == "sal_DHEA" & out == 1) %>% select(out)))
+writeLines("\n")
+cat("\nTEST: ")
+cat(nrow(Saliva_long %>% filter(hormone == "sal_TEST" & out == 1) %>% select(out)))
+writeLines("\n")
+cat("\nEST: ")
+cat(nrow(Saliva_long %>% filter(hormone == "sal_EST" & out == 1) %>% select(out)))
+writeLines("\n")
+```
+
+####Check intra-assay CV
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+DHEA_CV<-ggplot(Saliva_CV, aes(x=DHEA_CV)) +
+  geom_histogram(color="black",fill="white") +
+  geom_vline(xintercept=30,linetype="dashed",colour="red")
+DHEA_CV
+DHEA_CV_exc <- Saliva_CV %>% filter(DHEA_CV > 30) %>% select(ID)
+
+TEST_CV<-ggplot(Saliva_CV, aes(x=TEST_CV)) +
+  geom_histogram(color="black",fill="white") +
+  geom_vline(xintercept=30,linetype="dashed",colour="red")
+TEST_CV
+TEST_CV_exc <- Saliva_CV %>% filter(TEST_CV > 30) %>% select(ID)
+
+EST_CV<-ggplot(Saliva_CV, aes(x=EST_CV)) +
+  geom_histogram(color="black",fill="white") +
+  geom_vline(xintercept=30,linetype="dashed",colour="red")
+EST_CV
+EST_CV_exc <- Saliva_CV %>% filter(EST_CV > 30) %>% select(ID)
+
+#calculate number of outliers based on high intra-assayCV
+Saliva_long <- Saliva_long %>%
+  mutate(highCV = if_else(hormone == "sal_DHEA" & ID %in% DHEA_CV_exc$ID, 1,
+                          ifelse(hormone == "sal_TEST" & ID %in% TEST_CV_exc$ID, 1,
+                                 ifelse(hormone == "sal_EST" & ID %in% EST_CV_exc$ID, 1, 0))))
+
+writeLines("\n")
+cat("\n*Number of high CVs*")
+writeLines("\n")
+cat("\nDHEA: ")
+cat(nrow(Saliva_long %>% filter(hormone == "sal_DHEA" & highCV == 1) %>% select(highCV)))
+writeLines("\n")
+cat("\nTEST: ")
+cat(nrow(Saliva_long %>% filter(hormone == "sal_TEST" & highCV == 1) %>% select(highCV)))
+writeLines("\n")
+cat("\nEST: ")
+cat(nrow(Saliva_long %>% filter(hormone == "sal_EST" & highCV == 1) %>% select(highCV)))
+writeLines("\n")
+```
+
+```{r, include=FALSE, message=FALSE}
+#IMPORT SESSION DATES AND CALCULATE INTERVALS BETWEEN SALIVA SAMPLES
+
+#import session 1 and 2 dates
+session_df <- read.csv(paste0(in_dir,'/TAGIDENTIFIERS_DATA_2018-01-26_1905.csv'), header=T)
+
+session_dates <- session_df %>% 
+  filter(!subject_spit_id=="TAG_001P") %>%
+  mutate(SID=gsub("[^0-9\\.]", "", subject_spit_id)) %>%
+  filter(redcap_event_name=="wave_1_scheduling_arm_1") %>%
+  select(SID,sa_date,sb_date) %>%
+  mutate(sa_date=as.Date(sa_date),
+         sb_date=as.Date(sb_date))
+
+#import saliva sample dates
+saliva_df <- read.csv(paste0(in_dir,'/TAGDATADeidentified_DATA_2018-01-26_1904.csv'), header=T)
+
+saliva_dates <- saliva_df %>% 
+  filter(!subject_spit_id=="TAG_001P") %>%
+  mutate(SID=gsub("[^0-9\\.]", "", subject_spit_id)) %>%
+  filter(redcap_event_name=="wave_1_session_b_arm_1") %>%
+  select(SID,s1_doc,s2_doc,s3_doc,s4_doc,s5_doc,s6_doc,s7_doc) %>%
+  mutate(s1_sdate = as.Date(s1_doc, "%Y-%m-%d"),
+         s2_sdate = as.Date(s2_doc, "%Y-%m-%d"),
+         s3_sdate = as.Date(s3_doc, "%Y-%m-%d"),
+         s4_sdate = as.Date(s4_doc, "%Y-%m-%d"),
+         s5_sdate = as.Date(s5_doc, "%Y-%m-%d"),
+         s6_sdate = as.Date(s6_doc, "%Y-%m-%d"),
+         s7_sdate = as.Date(s7_doc, "%Y-%m-%d")) %>%
+  select(-s1_doc,-s2_doc,-s3_doc,-s4_doc,-s5_doc,-s6_doc,-s7_doc)
+
+#combine session and saliva dates
+dates <- session_dates %>% full_join(., saliva_dates) %>%
+  filter(SID %in% paste0(Saliva_long$SID)) %>%
+  mutate(int1 = as.numeric(difftime(s1_sdate, sa_date, units = "days")),
+         int2 = as.numeric(difftime(s2_sdate, s1_sdate, units = "days")),
+         int3 = as.numeric(difftime(s3_sdate, s2_sdate, units = "days")),
+         int4 = as.numeric(difftime(s4_sdate, s3_sdate, units = "days")),
+         int5 = as.numeric(difftime(s5_sdate, s4_sdate, units = "days")),
+         int6 = as.numeric(difftime(s6_sdate, s5_sdate, units = "days")),
+         int7 = as.numeric(difftime(s7_sdate, s6_sdate, units = "days")),
+         totLength = as.numeric(difftime(sb_date, sa_date, units = "days"))) #totLength = time between session 1 and 2
+dates <- dates %>% 
+  rowwise() %>% 
+  mutate(intSum = sum(int1,int2,int3,int4,int5,int6,int7,na.rm=T), #intSum = time between session 1 and final sample
+         intFinal = totLength - intSum) #intFinal = time between final sample and session 2.
+```
+
+```{r, include=FALSE, message=FALSE}
+#PLOT SALIVA INTERVALS AND DETERMINE WHICH SAMPLES TO EXCLUDE
+dates_long <- dates %>% 
+  select(SID,s1_sdate:s7_sdate,sb_date) %>% gather(., week, sample, c(s1_sdate,s2_sdate,s3_sdate,s4_sdate,s5_sdate,s6_sdate,s7_sdate,sb_date), factor_key=TRUE) %>%
+  mutate(sample_bin = ifelse(!is.na(sample), 1,0)) %>%
+  arrange(SID) %>%
+  filter(sample_bin == 1) %>%
+  group_by(SID) %>% mutate(sample_num = row_number()) %>%
+  mutate(interval = as.numeric(sample - lag(sample)))
+
+plot1 <- dates_long[1:200,]
+plot2 <- dates_long[201:400,]
+plot3 <- dates_long[401:600,]
+
+fills <- c("blue","orange","green","red","grey","yellow","purple","black")
+colors <- c("grey","grey","grey","grey","grey","grey","grey","grey",NA)
+
+fig1 <- ggplot(plot1, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig1
+
+fig2 <- ggplot(plot2, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig2
+
+fig3 <- ggplot(plot3, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig3
+
+#BASED ON PLOTS:
+#inclusionary critera:
+#must have at least 3 samples within 40 days preceding session 2. 
+#note: not plotting or using interval between session1 and sample 1 (int1) as it is not of importance to the quesiton of saliva/hair/puberty correlations.
+
+#overall exclusions
+missing_dates = c("028","042","070","071")
+#funky dates
+exclusions = c("029","057","067","091","143","152","080","130","169")
+#exclude first sample alone (i.e. remove interval between 1st and 2nd sample; int2)
+exclusions1 = c("014","027","038","051","068")
+```
+
+####Excluded subjects based on funky dates 
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+plot_exc <- dates_long %>% arrange(SID) %>% filter(SID %in% paste0(c(exclusions,missing_dates))) %>%
+  filter(!SID == "067") 
+
+cat('Excluded N: ') 
+cat(length(unique(plot_exc$SID))+1)
+writeLines("\n")
+fig4 <- ggplot(plot_exc, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig4
+writeLines("\n")
+cat('Did not plot 067 as they were throwing axis off') 
+```
+
+####Included subjects with normal dates
+Inclusionary critera: must have at least 3 samples within 40 days preceding session 2.  
+Note: not plotting or using interval between session1 and sample 1 as it is not of importance to the quesiton of saliva/hair/puberty correlations.  
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=10, fig.width=7}
+#Filter dataframe dataset based on prior exclusions and also those with or more 3 samples 
+
+dates_long$sample[which(dates_long$SID == "062" & dates_long$week == "sb_date")] <- "2016-08-16"
+dates_long <- dates_long %>% arrange(SID) %>% 
+  filter(!SID %in% paste0(missing_dates)) %>% 
+  filter(!SID %in% paste0(exclusions)) %>%
+  mutate(sample=replace(sample,SID %in% paste0(exclusions1) & week == "s1_sdate", NA)) %>% 
+  filter(!is.na(sample)) %>%
+  select(-sample_num,-interval) %>%
+  group_by(SID) %>% mutate(sample_num = row_number()) %>%
+  mutate(interval = as.numeric(sample - lag(sample)))
+
+summaryN <- dates_long %>% 
+  filter(!week == "sb_date") %>%
+  select(-interval) %>% group_by(SID) %>%
+  summarise(n = n()) %>%
+  filter(n >2)
+
+dates_long <- dates_long %>% 
+  filter(SID %in% paste0(summaryN$SID))
+
+fills <- c("blue","orange","green","red","grey","yellow","purple","black")
+colors <- c("grey","grey","grey","grey","grey","grey","grey","grey",NA)
+
+fig <- ggplot(dates_long, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig
+
+#Update saliva dataframe with dates-based exclusions
+Saliva_long <- Saliva_long %>% 
+  mutate(dateExc = if_else(SID %in% summaryN$SID, 0, 1))
+```
+
+```{r, include = FALSE}
+#UPDATE DATAFRAME WITH EXCLUSIONS
+#replace outlier values with NA
+if (removeOut) {
+  Saliva_long <- Saliva_long %>%
+    mutate(concentration = replace(concentration, out == 1, NA))
+  }
+
+#replace intrassay CV > 30 with NA
+if (removeCV) {
+  Saliva_long <- Saliva_long %>%
+    mutate(concentration = replace(concentration, highCV == 1, NA))
+  }
+
+#replace funky dates with NA
+if (removeCV) {
+  Saliva_long <- Saliva_long %>%
+    mutate(concentration = replace(concentration, dateExc == 1, NA))
+  }
+```
+
+```{r, include=FALSE}
+# Create wide format dataset for saliva
+Saliva_wide <- Saliva_long %>% select(SID,week,hormone,concentration) %>%
+  filter(!is.na(concentration)) %>%
+  dcast(., SID ~ hormone + week, value.var="concentration") %>%
+  mutate(sal_DHEA_1 = as.numeric(sal_DHEA_1),
+         sal_DHEA_2 = as.numeric(sal_DHEA_2),
+         sal_DHEA_3 = as.numeric(sal_DHEA_3),
+         sal_DHEA_4 = as.numeric(sal_DHEA_4),
+         sal_DHEA_5 = as.numeric(sal_DHEA_5),
+         sal_DHEA_6 = as.numeric(sal_DHEA_6),
+         sal_DHEA_7 = as.numeric(sal_DHEA_7),
+         sal_TEST_1 = as.numeric(sal_TEST_1),
+         sal_TEST_2 = as.numeric(sal_TEST_2),
+         sal_TEST_3 = as.numeric(sal_TEST_3),
+         sal_TEST_4 = as.numeric(sal_TEST_4),
+         sal_TEST_5 = as.numeric(sal_TEST_5),
+         sal_TEST_6 = as.numeric(sal_TEST_6),
+         sal_TEST_7 = as.numeric(sal_TEST_7),
+         sal_EST_1 = as.numeric(sal_EST_1),
+         sal_EST_2 = as.numeric(sal_EST_2),
+         sal_EST_3 = as.numeric(sal_EST_3),
+         sal_EST_4 = as.numeric(sal_EST_4),
+         sal_EST_5 = as.numeric(sal_EST_5),
+         sal_EST_6 = as.numeric(sal_EST_6),
+         sal_EST_7 = as.numeric(sal_EST_7)) %>%
+  rowwise() %>% 
+  mutate(nDHEA = sum(!is.na(c(sal_DHEA_1,sal_DHEA_2,sal_DHEA_3,sal_DHEA_4,sal_DHEA_5,sal_DHEA_6,sal_DHEA_7))),
+         nTEST = sum(!is.na(c(sal_TEST_1,sal_TEST_2,sal_TEST_3,sal_TEST_4,sal_TEST_5,sal_TEST_6,sal_TEST_7))),
+         nEST = sum(!is.na(c(sal_EST_1,sal_EST_2,sal_EST_3,sal_EST_4,sal_EST_5,sal_EST_6,sal_EST_7)))) %>%
+  mutate(meanDHEA = mean(c(sal_DHEA_1,sal_DHEA_2,sal_DHEA_3,sal_DHEA_4,sal_DHEA_5,sal_DHEA_6,sal_DHEA_7), na.rm=T),
+         meanTEST = mean(c(sal_TEST_1,sal_TEST_2,sal_TEST_3,sal_TEST_4,sal_TEST_5,sal_TEST_6,sal_TEST_7), na.rm=T),
+         meanEST = mean(c(sal_EST_1,sal_EST_2,sal_EST_3,sal_EST_4,sal_EST_5,sal_EST_6,sal_EST_7), na.rm=T)) %>%
+  mutate(meanDHEA = replace(meanDHEA, (nDHEA<3), NA),
+         meanTEST = replace(meanTEST, (nTEST<3), NA),
+         meanEST = replace(meanEST, (nEST<3), NA)) 
+```
+
+####Final dataset post exclusions 
+After accounting for missing concentrations, outliers, funky dates, etc
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+cat("\nNumber of mean (across dates) samples ")
+writeLines("\n")
+cat("\nDHEA: ")
+cat(summary(!is.na((Saliva_wide$meanDHEA)))[3])
+writeLines("\n")
+cat('TEST: \n')
+cat(summary(!is.na((Saliva_wide$meanTEST)))[3])
+writeLines("\n")
+cat('EST: \n')
+cat(summary(!is.na((Saliva_wide$meanEST)))[3])
+```
+
+###IMPORT PDS/PBIP
+```{r, include=FALSE}
+#IMPORT AND CLEAN PDS, PBIP DATA
+#import PDS and PBIP datasets, create SID as 3 digit numeric factor (i.e. "001").
+PDS <- read.csv(paste0(quest_dir,'/PDS_Wave12.csv'), header=T)
+PBIP <- read.csv(paste0(quest_dir,'/PBIP_Wave12.csv'), header=T)
+ExtraMens <- read.xlsx(paste0(quest_dir2,'/Menstruation.xlsx'), sheetIndex=1)
+
+PDS <- PDS %>% mutate(SID=str_replace(tagid,"TAG","")) %>% 
+  filter(wave==1) %>% 
+  select(SID,contains("PDS"),adrenf2,gonadf2) %>%
+  filter(!SID == "034")
+ExtraMens <- ExtraMens %>%
+  select(tagid,menstruation_by_Wave1SB.before.wave.1) %>%
+  rename(Menarche = menstruation_by_Wave1SB.before.wave.1) %>%
+  mutate(SID=gsub("[^0-9\\.]", "", tagid)) %>%
+  filter(!is.na(SID)) %>%
+  mutate(Menarche = ifelse(Menarche=="yes",1,0))
+Menarche = as.list(ExtraMens %>% filter(Menarche==1) %>% select(SID) %>% arrange(SID))
+NoMenarche = as.list(ExtraMens %>% filter(Menarche==0) %>% select(SID) %>% arrange(SID))
+  
+PDS <- PDS %>%
+  mutate(PDS_F6 = ifelse(!is.na(PDS_F6),PDS_F6,
+                      ifelse(is.na(PDS_F6) & SID %in% Menarche$SID, 1,
+                             ifelse(is.na(PDS_F6) & SID %in% NoMenarche$SID, 0, NA)))) %>%
+  mutate(pdss2 = trunc(pdss))
+
+PBIP <- PBIP %>% mutate(SID=str_replace(tagid,"TAG",""),
+                        PBIP_stage=stage) %>%
+  filter(wave==1) %>% 
+  select(SID,contains("PBIP")) %>%
+  filter(!SID == "034")
+
+Qdf <- PDS %>% full_join(.,PBIP) 
+Qdf2 <- Qdf %>% select(-pdss,-gonadf2,-adrenf2,-PDS_F5,-PDS_F7,-PDS_F8,-PDS_F9,-PBIP_stage)
+Qdf2 <- Qdf2[complete.cases(Qdf2), ]
+
+PubModel <- 'puberty =~ PDS_F1 + PDS_F2 + PDS_F3 + PDS_F4 + PDS_F6 + PBIP_1A + PBIP_1B + PBIP_2A + PBIP_2B'
+fit <- cfa(PubModel, data = Qdf2)
+summary(fit, fit.measures = TRUE)
+factor <- as.data.frame(lavPredict(fit))
+Qdf2 <- cbind(Qdf2,factor)
+Qdf <- Qdf %>% left_join(., Qdf2) %>% rename(puberty_factor = puberty)
+```
+
+```{r, include=FALSE}
+#ADD HAIR AND PUBERTY MEASURES TO SALIVA DATA
+#add hair and puberty measures to saliva data, and re-add session dates so they are not limited to saliva dataset.
+df_wide <- Saliva_wide %>% 
+  full_join(., Hair) %>%
+  left_join(., Qdf) %>%
+  left_join(., session_dates)
+```
+
+###PLOT ALL VARIABLES
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+writeLines("\n")
+hist(df_wide$puberty_factor, main="")
+writeLines("\n")
+hist(df_wide$pdss, main="")
+writeLines("\n")
+hist(df_wide$PBIP_stage, main="")
+writeLines("\n")
+hist(df_wide$meanDHEA, main="")
+writeLines("\n")
+hist(df_wide$meanTEST, main="")
+writeLines("\n")
+hist(df_wide$meanEST, main="")
+writeLines("\n")
+hist(df_wide$hair_DHEA_pgmg, main="")
+writeLines("\n")
+hist(df_wide$hair_TEST_pgmg, main="")
+writeLines("\n")
+hist(df_wide$hair_EST_pgmg, main="")
+writeLines("\n")
+
+df_wide <- df_wide %>%
+  mutate(l_meanDHEA = log(meanDHEA + 4),
+         l_meanTEST = log(meanTEST + 4),
+         l_meanEST = log(meanEST + 4),
+         l_hairDHEA_pgmg = log(hair_DHEA_pgmg + 4),
+         l_hairTEST_pgmg = log(hair_TEST_pgmg + 4),
+         l_hairEST_pgmg = log(hair_EST_pgmg + 4))
+```
+
+###CORRELATE DATA
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=7}
+corr_df <- df_wide[-1] %>% select(starts_with("l_"),adrenf2,gonadf2,pdss,PBIP_stage,puberty_factor)
+corr_plot <- cor(corr_df,use="pairwise.complete.obs")
+res1 <- corr.test(corr_df, adjust = "none")
+corr_heatmap_overall <- corrplot(corr_plot, p.mat = res1$p, method = "color", type = "upper",
+                                 sig.level = c(0.001,0.01,0.05), pch.cex = .9,
+                                 insig = "label_sig", pch.col = "white")
+
+kable(corr_plot, "html", align='c', caption = "Correlation Coefficients") %>%
+  kable_styling(full_width = F, position = "left", font_size = 12)
+
+count <- count.pairwise(corr_df)
+kable(count, "html", align='c', caption = "Sample size of pairwise comparisons") %>%
+  kable_styling(full_width = F, position = "left", font_size = 12)
+```  
+
+####PLOT CORRELATIONS
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+corplot_DHEA <- ggplot(df_wide, aes(l_meanDHEA, l_hairDHEA_pgmg)) +
+  geom_point() +
+  #ylim(0,50) + 
+  #xlim(1,5) +
+  geom_smooth(method="lm")
+
+corplot_TEST <- ggplot(df_wide[!is.na(df_wide$pub_group), ], aes(l_meanTEST, l_hairTEST_pgmg, colour=pub_group)) +
+  geom_point() +
+  #ylim(0,50) + 
+  #xlim(1,5) +
+  geom_smooth(method="lm")
+
+corplot_TEST <- ggplot(df_wide, aes(l_meanTEST, l_hairTEST_pgmg)) +
+  geom_point() +
+  #ylim(0,50) + 
+  #xlim(1,5) +
+  geom_smooth(method="lm")
+
+corplot_EST <- ggplot(df_wide, aes(l_meanEST, l_hairEST_pgmg)) +
+  geom_point() +
+  #ylim(0,50) + 
+  #xlim(1,5) +
+  geom_smooth(method="lm")
+
+corplot_DHEA1 <- ggplot(df_wide, aes(pdss, l_hairDHEA_pgmg)) +
+  geom_point() +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(method="lm")
+corplot_TEST1 <- ggplot(df_wide, aes(pdss, l_hairTEST_pgmg)) +
+  geom_point() +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(method="lm")
+corplot_EST1 <- ggplot(df_wide, aes(pdss, l_hairEST_pgmg)) +
+  geom_point() +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(method="lm")
+corplot_DHEA2 <- ggplot(df_wide, aes(pdss, l_meanDHEA)) +
+  geom_point() +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(method="lm")
+corplot_TEST2 <- ggplot(df_wide, aes(pdss, l_meanTEST)) +
+  geom_point() +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(method="lm")
+corplot_EST2 <- ggplot(df_wide, aes(pdss, l_meanEST)) +
+  geom_point() +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(method="lm")
+
+writeLines("\n")
+corplot_DHEA
+cor.test(df_wide$l_hairDHEA_pgmg,df_wide$l_meanDHEA)
+writeLines("\n")
+corplot_TEST
+cor.test(df_wide$l_hairTEST_pgmg,df_wide$l_meanTEST)
+writeLines("\n")
+corplot_EST
+cor.test(df_wide$l_hairEST_pgmg,df_wide$l_meanEST)
+writeLines("\n")
+corplot_DHEA1
+writeLines("\n")
+corplot_TEST1
+writeLines("\n")
+corplot_EST1
+writeLines("\n")
+corplot_DHEA2
+writeLines("\n")
+corplot_TEST2
+writeLines("\n")
+corplot_EST2
+writeLines("\n")
+```
+
+####PLOT CORRELATIONS BY MENARCHE
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=5}
+Menarche <- PDS %>% select(SID,PDS_F6)
+
+df_wide <- df_wide %>%
+  left_join(., Menarche) %>%
+  mutate(menarche = as.factor(PDS_F6)) %>%
+  mutate(pub_cat = if_else(pdss < 3, 0, 1)) %>%
+  mutate(pub_cat = as.factor(pub_cat))
+
+corplot_DHEA3 <- ggplot(df_wide, aes(pdss, l_hairDHEA_pgmg, group = menarche)) +
+  geom_point(aes(colour = menarche)) +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(aes(colour = menarche), method="lm")
+
+corplot_TEST3 <- ggplot(df_wide, aes(pdss, l_hairTEST_pgmg, group = menarche)) +
+  geom_point(aes(colour = menarche)) +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(aes(colour = menarche), method="lm")
+
+corplot_EST3 <- ggplot(df_wide, aes(pdss, l_hairEST_pgmg, group = menarche)) +
+  geom_point(aes(colour = menarche)) +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(aes(colour = menarche), method="lm")
+
+corplot_DHEA4 <- ggplot(df_wide, aes(pdss, l_meanDHEA, group = menarche)) +
+  geom_point(aes(colour = menarche)) +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(aes(colour = menarche), method="lm")
+
+corplot_TEST4 <- ggplot(df_wide, aes(pdss, l_meanTEST, group = menarche)) +
+  geom_point(aes(colour = menarche)) +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(aes(colour = menarche), method="lm")
+
+corplot_EST4 <- ggplot(df_wide, aes(pdss, l_meanEST, group = menarche)) +
+  geom_point(aes(colour = menarche)) +
+  #ylim(0,50) + 
+  xlim(1,5) +
+  geom_smooth(aes(colour = menarche), method="lm")
+
+corplot_DHEA3
+writeLines("\n")
+corplot_DHEA4
+writeLines("\n")
+corplot_TEST3
+writeLines("\n")
+corplot_TEST4
+writeLines("\n")
+corplot_EST3
+writeLines("\n")
+corplot_EST4
+writeLines("\n")
+```
+
+###FACTOR ANALYSIS
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=5}
+
+DF <- df_wide %>% select(starts_with("l_"), PDS_F1, PDS_F2, PDS_F3, PDS_F4, PDS_F6, PBIP_1A, PBIP_2A)
+  
+DF <- DF[complete.cases(DF), ]
+
+res1b = factanal(na.omit(DF), factors = 3, rotation = "varimax")
+
+load = res1b$loadings[,c(1,2)]
+plot(load, type="n") # set up plot
+text(load,labels=names(DF),cex=.7) # add variable names
+```
+
+###PUBERTY predicted by hormones
+```{r}
+df_wide2<-df_wide
+df_wide2$l_hairTEST_pgmg[which(df_wide$l_hairTEST_pgmg > 2.05)] <- NA
+summary(lm(puberty_factor~l_meanDHEA+l_hairDHEA_pgmg,df_wide))
+summary(lm(puberty_factor~l_meanTEST+l_hairTEST_pgmg,df_wide))
+summary(lm(puberty_factor~l_meanEST+l_hairEST_pgmg,df_wide))
