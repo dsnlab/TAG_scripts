@@ -4,11 +4,6 @@
 
 # Load FSL
 module load fsl/5.0.9
-export FSLPARALLEL=slurm
-
-pass=1
-while read subid
-do
 
 # This script will preprocess two diffusion imaging series with left-right & right-left phase encoding directions.
 
@@ -24,7 +19,7 @@ scriptsdir="/projects/dsnlab/shared/tag/TAG_scripts/dMRI"
 
 # Select options
 bedpostx="FALSE"
-masks="TRUE" 		#Note: Set to false if you won't be running tractography.
+masks="FALSE" 		#Note: Set to false if you won't be running tractography.
 
 # Set error log file
 errorlog=""$scriptsdir"/errorlog_preprocdiff.txt"
@@ -140,12 +135,6 @@ fslmaths midline_mask.nii.gz -thr 0.5 midline_mask.nii.gz
 cd "$datadir"/sub-"${subid}"/ses-wave1/anat
 echo segmenting "${subid}" subcortical structures 
 run_first_all -i sub-"${subid}"_ses-wave1_T1w_reoriented.nii.gz -o sub-"${subid}"_ses-wave1
-echo generating "${subid}" left and right amygdala masks
-fslmaths sub-"${subid}"_ses-wave1_all_fast_firstseg.nii.gz -thr 17.5 -uthr 18.5 -bin l_amyg_mask
-fslmaths sub-"${subid}"_ses-wave1_all_fast_firstseg.nii.gz -thr 53.5 -uthr 54.5 -bin r_amyg_mask
-echo generating "${subid}" left and right accumbens masks
-fslmaths sub-"${subid}"_ses-wave1_all_fast_firstseg.nii.gz -thr 25.5 -uthr 26.5 -bin l_nacc_mask
-fslmaths sub-"${subid}"_ses-wave1_all_fast_firstseg.nii.gz -thr 57.5 -uthr 58.5 -bin r_nacc_mask
 
 fi
 
@@ -166,14 +155,21 @@ echo Now ready to fit probabilistic diffusion model on "${subid}".
 
 fi
 
+if [ "${masks}" == "TRUE" ]; then
+
+echo generating "${subid}" left and right amygdala masks
+fslmaths sub-"${subid}"_ses-wave1_all_fast_firstseg.nii.gz -thr 17.5 -uthr 18.5 -bin l_amyg_mask
+fslmaths sub-"${subid}"_ses-wave1_all_fast_firstseg.nii.gz -thr 53.5 -uthr 54.5 -bin r_amyg_mask
+echo generating "${subid}" left and right accumbens masks
+fslmaths sub-"${subid}"_ses-wave1_all_fast_firstseg.nii.gz -thr 25.5 -uthr 26.5 -bin l_nacc_mask
+fslmaths sub-"${subid}"_ses-wave1_all_fast_firstseg.nii.gz -thr 57.5 -uthr 58.5 -bin r_nacc_mask
+
+fi
+
 else
 # Making a note of missing files in error log
 echo "ERROR: no files; nothing to preprocess"
 echo "$datadir"/sub-"${subid}"/ses-wave1/dwi: MISSING DIFFUSION SEQUENCES >> $errorlog
 fi
-
-
-    pass=`expr $pass + 1`
-done < $1
 
 
