@@ -59,25 +59,25 @@ df_long <- df %>%
   arrange(sid) %>% 
   spread(v2, value) %>%
   arrange(run,trial,desc(task)) %>%
-  mutate(name = ifelse(task == "statement" & is.na(condition), 5,
-                     ifelse(task == "disc" & condition == 1, 6,
-                          ifelse(task == "disc" & condition == 2, 7,
-                              ifelse(task == "disc" & condition == 3, 8,
-                                     ifelse(task == "disc" & condition == 4, 9,
-                                            ifelse(task == "disc" & condition == 5, 10,
-                                                   ifelse(task == "disc" & condition == 6, 11,
-                                                          ifelse(task == "disc" & condition == 7, 12,
-                                                                 ifelse(task == "disc" & condition == 8, 13,
-                                                                        ifelse(task == "disc" & condition == 9, 14,
-                                                                               ifelse(task == "disc" & condition == 10, 15,
-                                                                                      ifelse(task == "disc" & condition == 11, 16,
-                                                                                             ifelse(task == "disc" & condition == 12, 17,
-                                                                                                    ifelse(task == "disc" & is.na(condition), 18, condition))))))))))))))) %>%
+  mutate(name = ifelse(task == "disc" & condition == 1, 5,
+                       ifelse(task == "disc" & condition == 2, 6,
+                              ifelse(task == "disc" & condition == 3, 7,
+                                     ifelse(task == "disc" & condition == 4, 8,
+                                            ifelse(task == "disc" & condition == 5, 9,
+                                                   ifelse(task == "disc" & condition == 6, 10,
+                                                          ifelse(task == "disc" & condition == 7, 11,
+                                                                 ifelse(task == "disc" & condition == 8, 12,
+                                                                        ifelse(task == "disc" & condition == 9, 13,
+                                                                               ifelse(task == "disc" & condition == 10, 14,
+                                                                                      ifelse(task == "disc" & condition == 11, 15,
+                                                                                             ifelse(task == "disc" & condition == 12, 16,
+                                                                                                    ifelse(task == "statement" & is.na(condition), 17,
+                                                                                                           ifelse(task == "disc" & is.na(condition), 18, condition))))))))))))))) %>%
   mutate(duration = 0) %>%
   select(sid,run,name,onset,duration)
 
-df_long1 <- df_long %>% filter(run==1)
-df_long2 <- df_long %>% filter(run==2)
+#df_long1 <- df_long %>% filter(run==1)
+#df_long2 <- df_long %>% filter(run==2)
 #write.csv(df_long1,file=paste0(out_dir,id,'_run1_summary.csv'),row.names=F) 
 #write.csv(df_long2,file=paste0(out_dir,id,'_run2_summary.csv'),row.names=F) 
 
@@ -98,9 +98,12 @@ check_ids <- check_ids %>% select(sid,run1,run2) %>% filter(!is.na(run1))
 #check for subjects with missing events
 summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(run,name) %>% summarize(N = n())
 
-summary_acrossRun <- test <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(name) %>% summarize(N = n())
+summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(name) %>% summarize(N = n())
 
-unique(test$sid) #115 subjects
+#number of missing conditions in subjects (filtering out those without any missing conditions)
+summary_bySubj <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(sid) %>% summarize(N = (12 - n())) %>% filter(!N==0) 
+
+comp_IDS <- unique(multiconds$sid) #127 subjects
 
 #deal with collapsing across runs, or seperate input files for each run
 #need to deal with switch in disclosure side for half of sample
