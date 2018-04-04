@@ -1,5 +1,5 @@
 #'
-#' # DSD Data
+# DSD Data
 #'
 #install.packages(c('dplyr','tidyr','ggplot2'), Ncpus = 6)
 library(dplyr)
@@ -33,28 +33,30 @@ dataHeader <- c('trial', 'condition', 'left.target', 'right.target', 'left.coin'
 # %       13. task.payout
 # %       14. task.input.statement
 
+rawDataDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/output'
+outDataDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/'
 
-rawDataDir <- '/home/research/dsnlab/Studies/TAG/behavioral/raw/output/'
-outDataDir <- '/home/research/dsnlab/Studies/TAG/behavioral/processed/DSD/'
+dsdFiles = list.files(path=rawDataDir,pattern="tag.*dsd.*output.txt",full.names=T)
 
-filesDF <- data.frame(file=list.files(rawDataDir, pattern="tag.*dsd.*output.txt"),
-                      stringsAsFactors=F)
+longDF <- lapply(X=dsdFiles, FUN=function(file) {
+  sid <- sub(".*task/output/","",file) %>% substring(.,4,6) %>% as.numeric(.)
+  run <- sub(".*run","",file) %>% substring(.,1,1) %>% as.numeric(.)
+  DF.raw <- read.csv(file=paste0(file),
+                     header=F, col.names=dataHeader,
+                     stringsAsFactors=F)
+  DF.raw <- DF.raw %>%
+    mutate(sid = sid,
+           run = run) %>%
+    select(sid, run, everything()) %>%
+    mutate(disclosed=as.numeric(target.choice==2),
+           share.value=as.numeric(right.coin)-as.numeric(left.coin),
+           affective=condition %in% 4:6)
+  
+})
 
-longDF <- filesDF %>%
-	extract(file, c('sid', 'run'), 'tag([0-9][0-9][0-9]).*run([12])', remove=F) %>%
-	group_by(sid, run) %>%
-	do({
-	  aDF.raw <- read.csv(file=paste0(rawDataDir,.$file[[1]]),
-	                      header=F, col.names=dataHeader,
-	                      stringsAsFactors=F)
-	  aDF <- aDF.raw %>%
-	    mutate(disclosed=as.numeric(target.choice==2),
-	           share.value=right.coin-left.coin,
-	           affective=condition %in% 4:6)
-		aDF
-	})	
+longDF <- rbindlist(longDF)
 
-write.csv(longDF, paste0(outDataDir,'dsd_trials_long.csv'))
+write.csv(longDF,paste0(outDataDir,'dsd_trials_long_test.csv'),row.names=F)
 
 allSubs <- ggplot(longDF, aes(x=share.value, y=disclosed, group=affective))+
 	geom_point(aes(color=affective),position=position_jitter(h=.1, w=.2))+
@@ -64,7 +66,7 @@ allSubs <- ggplot(longDF, aes(x=share.value, y=disclosed, group=affective))+
 	facet_wrap(~sid)+
 	scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
 	theme(strip.background=element_rect(fill='#eeeeee'),
-	      panel.margin=unit(0, 'pt'),
+	      panel.spacing=unit(0, 'pt'),
 	      panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1))
 ggsave(allSubs, file=paste0(outDataDir, 'PSE-all_pid.png'),
        width=10, height=15, dpi=72)
@@ -80,7 +82,7 @@ allSubs2 <- longDF %>%
   facet_wrap(~sid)+
   scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
   theme(strip.background=element_rect(fill='#eeeeee'),
-        panel.margin=unit(0, 'pt'),
+        panel.spacing=unit(0, 'pt'),
         panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1),
         text=element_text(size=12, face='bold'))
 ggsave(allSubs2, file=paste0(outDataDir, 'PSE-all_pid_endoresed.png'),
