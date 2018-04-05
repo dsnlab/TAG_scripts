@@ -1,16 +1,29 @@
-#'
-# DSD Data
-#'
-#install.packages(c('dplyr','tidyr','ggplot2'), Ncpus = 6)
+---
+title: "DSD Data"
+author: "Nandi"
+date: "4 April 2018"
+output: html_document
+---
+This script imports DSD output files, and codes disclosure and share value based on disclosure side.
+It outputs a long format file with DSD behavior across all waves and runs.
+
+#Install packages & set directories
+```{r}
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-#library(cowplot)
 jftheme <- theme_minimal()+
-	theme(axis.line=element_line(size=0),
+  theme(axis.line=element_line(size=0),
 	      strip.background=element_rect(fill='white'))
 theme_set(jftheme)
 
+inputDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/info/'
+rawDataDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/output/'
+outDataDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/'
+```
+
+#Import and clean data
+```{r}
 dataHeader <- c('trial', 'condition', 'left.target', 'right.target', 'left.coin', 'right.coin',
                 'disc.onset', 'target.choice','target.rt.seconds',
                 'statement.onset', 'statement.choice', 'statement.rt.seconds',
@@ -32,10 +45,6 @@ dataHeader <- c('trial', 'condition', 'left.target', 'right.target', 'left.coin'
 # %       12. discoRT - reaction time
 # %       13. task.payout
 # %       14. task.input.statement
-
-inputDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/info/'
-rawDataDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/output/'
-outDataDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/'
 
 discoSide <- read.csv(paste0(inputDir,'discoside.csv'),header=F,sep=",")
 discoSide <- discoSide %>% rename(sid=V1, side=V2)
@@ -78,7 +87,10 @@ longDF <- lapply(X=dsdFiles$dsdFiles, FUN=function(file) {
 longDF <- rbindlist(longDF)
 
 write.csv(longDF,paste0(outDataDir,'dsd_trials_long.csv'),row.names=F)
+```
 
+#Individual plots
+```{r}
 allSubs <- ggplot(longDF, aes(x=share.value, y=disclosed, group=affective))+
 	geom_point(aes(color=affective),position=position_jitter(h=.1, w=.2))+
 	geom_line(aes(color=affective), stat='smooth', method='glm', 
@@ -108,3 +120,5 @@ allSubs2 <- longDF %>%
         text=element_text(size=12, face='bold'))
 ggsave(allSubs2, file=paste0(outDataDir, 'PSE-all_pid_endoresed.png'),
        width=10, height=15, dpi=72)
+
+```
