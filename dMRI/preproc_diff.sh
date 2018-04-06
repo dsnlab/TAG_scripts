@@ -9,7 +9,7 @@ module load fsl/5.0.9
 
 # It extracts b0 volumes from each sequence, estimates the susceptibility induced off-resonance field, corrects for eddy current-induced distortion & movement, and estimates diffusion parameters & models crossing fibers at each voxel.
 
-# This script uses FSL tools topup, eddy, dtifit, and bedpostx.
+# This script uses FSL tools topup, eddy, and dtifit.
 
 # This script calls "acqparams.txt" and "index.txt".  The former specifies the phase encoding directions and total readout time; the latter tells the motion correction software which line in acqparams.txt applies to a given volume.  These are the same for each TAG subject and don't need to be respecified.
 
@@ -18,8 +18,7 @@ datadir="/projects/dsnlab/shared/tag/bids_data"
 scriptsdir="/projects/dsnlab/shared/tag/TAG_scripts/dMRI"
 
 # Select options
-bedpostx="FALSE"
-masks="FALSE" 		#Note: Set to false if you won't be running tractography.
+masks="FALSE" 		#Note: Set to false for now.  Still working out a bug...
 
 # Set error log file
 errorlog=""$scriptsdir"/errorlog_preprocdiff.txt"
@@ -138,22 +137,6 @@ run_first_all -i sub-"${subid}"_ses-wave1_T1w_reoriented.nii.gz -o sub-"${subid}
 
 fi
 
-
-if [ "${bedpostx}" == "TRUE" ]; then
-
-# Fitting a probabilistic diffusion model on motion-corrected data
-# Note: This last command takes ~15hrs to run
-echo running "${subid}" bedpostx
-bedpostx "$datadir"/sub-"${subid}"/ses-wave1/dwi --nf=2 --fudge=1 --bi=1000
-
-echo "${subid}" preprocessing completed. Next step - tractography.
-# Congratulations!  You are now ready to perform tractography.
-
-else 
-
-echo Now ready to fit probabilistic diffusion model on "${subid}".
-
-fi
 
 if [ "${masks}" == "TRUE" ]; then
 
