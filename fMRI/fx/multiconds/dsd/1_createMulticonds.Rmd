@@ -1,0 +1,111 @@
+---
+title: "TAG_DSD_multiconds"
+author: "Nandi"
+date: "27 February 2018"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+#Load packages and set directories
+```{r, include=FALSE}
+packages <- c("nlme", "ggplot2", "tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+in_dir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/'
+out_dir <- '/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/fMRI/fx/multiconds/DSD/ses-wave1/Summary/'
+```
+
+#Read data
+```{r}
+out_df <- read.csv(paste0(in_dir,'dsd_trials_long.csv'))
+out_df <- out_df %>% filter(wave==1)
+ids <- as.vector(unique(out_df$sid))
+```
+
+
+```{r}
+multiconds <- lapply(X=ids, df=out_df, FUN=function(id, df) {
+  
+  df <- df %>% filter(sid==id)
+  
+  if(nrow(df %>% filter(run==1)) == 41 & nrow(df %>% filter(run==2)) == 41) {
+  
+    df <- df %>% mutate(statement.condition = ifelse(affective == TRUE & statement.choice == 1, 1,
+                                          ifelse(affective == TRUE & statement.choice == 2, 2,
+                                                  ifelse(affective == FALSE & statement.choice == 1, 3,
+                                                          ifelse(affective == FALSE & statement.choice == 2, 4, NA)))),
+                      disc.condition = ifelse(affective == TRUE & disclosed == 1 & share.value < 0, 1,
+                                          ifelse(affective == TRUE & disclosed == 1 & share.value > 0, 2,
+                                                 ifelse(affective == TRUE & disclosed == 1 & share.value == 0, 3,
+                                                        ifelse(affective == TRUE & disclosed == 0 & share.value < 0, 4,
+                                                               ifelse(affective == TRUE & disclosed == 0 & share.value > 0, 5,
+                                                                      ifelse(affective == TRUE & disclosed == 0 & share.value == 0, 6, 
+                                                                             ifelse(affective == FALSE & disclosed == 1 & share.value < 0, 7,
+                                                                                    ifelse(affective == FALSE & disclosed == 1 & share.value > 0, 8,
+                                                                                           ifelse(affective == FALSE & disclosed == 1 & share.value == 0, 9,
+                                                                                                  ifelse(affective == FALSE & disclosed == 0 & share.value < 0, 10,
+                                                                                                         ifelse(affective == FALSE & disclosed == 0 & share.value > 0, 11,
+                                                                                                                ifelse(affective == FALSE & disclosed == 0 & share.value == 0, 12, NA))))))))))))) %>%
+    select(sid,run,trial,statement.condition,statement.onset,disc.condition,disc.onset)
+
+df_long <- df %>% 
+  gather(v, value, statement.condition:disc.onset) %>% 
+  separate(v, c("task", "v2")) %>% 
+  arrange(sid) %>% 
+  spread(v2, value) %>%
+  arrange(run,trial,desc(task)) %>%
+  mutate(name = ifelse(task == "disc" & condition == 1, 5,
+                       ifelse(task == "disc" & condition == 2, 6,
+                              ifelse(task == "disc" & condition == 3, 7,
+                                     ifelse(task == "disc" & condition == 4, 8,
+                                            ifelse(task == "disc" & condition == 5, 9,
+                                                   ifelse(task == "disc" & condition == 6, 10,
+                                                          ifelse(task == "disc" & condition == 7, 11,
+                                                                 ifelse(task == "disc" & condition == 8, 12,
+                                                                        ifelse(task == "disc" & condition == 9, 13,
+                                                                               ifelse(task == "disc" & condition == 10, 14,
+                                                                                      ifelse(task == "disc" & condition == 11, 15,
+                                                                                             ifelse(task == "disc" & condition == 12, 16,
+                                                                                                    ifelse(task == "statement" & is.na(condition), 17,
+                                                                                                           ifelse(task == "disc" & is.na(condition), 18, condition))))))))))))))) %>%
+  mutate(duration = 0) %>%
+  select(sid,run,name,onset,duration)
+
+#df_long1 <- df_long %>% filter(run==1)
+#df_long2 <- df_long %>% filter(run==2)
+#write.csv(df_long1,file=paste0(out_dir,id,'_run1_summary.csv'),row.names=F) 
+#write.csv(df_long2,file=paste0(out_dir,id,'_run2_summary.csv'),row.names=F) 
+
+} else {
+  
+  sid=id
+  run1 <- nrow(df %>% filter(run==1))
+  run2 <- nrow(df %>% filter(run==2))
+  check <- cbind(sid, run1, run2)
+  check <- as.data.table(check)
+
+}})
+
+check_ids <- rbindlist(multiconds, fill=T)
+multiconds <- check_ids %>% select(sid,run,name,onset,duration) %>% filter(!is.na(name))
+check_ids <- check_ids %>% select(sid,run1,run2) %>% filter(!is.na(run1))
+
+#check for subjects with missing events
+summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(run,name) %>% summarize(N = n())
+
+summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(name) %>% summarize(N = n())
+
+#number of missing conditions in subjects (filtering out those without any missing conditions)
+summary_bySubj <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(sid) %>% summarize(N = (12 - n())) %>% filter(!N==0) 
+
+comp_IDS <- unique(multiconds$sid) #143 subjects
+
+#deal with collapsing across runs, or seperate input files for each run
+
+                                                        
