@@ -28,7 +28,7 @@ in_dir <- '~/Downloads/' #to be updated once Saliva Overview Doc is finished.
 #Remove outliers?
 removeOut="TRUE"
 #Remove high CV?
-removeCV="TRUE"
+removeCV="FALSE"
 #Remove high 450 CV?
 remove450CV="FALSE"
 #Remove hair confounds?
@@ -44,6 +44,7 @@ Sal_TEST <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=8
 Sal_EST <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=12)
 
 Sal_DHEA <- Sal_DHEA %>% 
+  mutate(Concentration = ifelse(Concentration =='?????',1,Concentration)) %>%
   mutate(SID = as.factor(round(as.numeric(ID),2)),
          sal_DHEA = round(as.numeric(Concentration),3)) %>%
   select(SID,sal_DHEA) %>%
@@ -55,6 +56,7 @@ Sal_DHEA <- Sal_DHEA %>%
          week = as.factor(week))
 
 Sal_TEST <- Sal_TEST %>% 
+  mutate(Concentration = ifelse(Concentration =='?????',1,Concentration)) %>%
   mutate(SID = as.factor(round(as.numeric(ID),2)),
          sal_TEST = round(as.numeric(Concentration),3)) %>%
   select(SID,sal_TEST) %>%
@@ -66,6 +68,7 @@ Sal_TEST <- Sal_TEST %>%
          week = as.factor(week))
 
 Sal_EST <- Sal_EST %>% 
+  mutate(Concentration = ifelse(Concentration =='?????',0.1,Concentration)) %>%
   mutate(SID = as.factor(round(as.numeric(ID),2)),
          sal_EST = round(as.numeric(Concentration),3)) %>%
   select(SID,sal_EST) %>%
@@ -563,3 +566,44 @@ cat(summary(!is.na((Saliva_wide$meanEST)))[3])
 
 ```{r,echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 #write final output for analyses
+```
+
+###Calcualte Inter-assay CV
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+Sal_DHEA_interCV <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=1)
+Sal_TEST_interCV <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=5)
+Sal_EST_interCV <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=9)
+
+Sal_DHEA_interCV <- Sal_DHEA_interCV %>% 
+  rename(wellID = `Well ID`) %>%
+  filter(grepl('Ctrl', wellID)) %>%
+  select(wellID, Mean) %>%
+  mutate(wellID = as.factor(wellID),
+         Mean=as.numeric(Mean)) %>%
+  group_by(wellID) %>%
+  summarize(meanOf_Means = mean(Mean),
+            sdOf_Means = sd(Mean)) %>%
+  mutate(CV = 100*(sdOf_Means/meanOf_Means))
+ 
+Sal_TEST_interCV <- Sal_TEST_interCV %>% 
+  rename(wellID = `Well ID`) %>%
+  filter(grepl('CTL', wellID)) %>%
+  select(wellID, Mean) %>%
+  mutate(wellID = as.factor(wellID),
+         Mean=as.numeric(Mean)) %>%
+  group_by(wellID) %>%
+  summarize(meanOf_Means = mean(Mean),
+            sdOf_Means = sd(Mean)) %>%
+  mutate(CV = 100*(sdOf_Means/meanOf_Means))
+
+Sal_EST_interCV <- Sal_EST_interCV %>% 
+  rename(wellID = `Well ID`) %>%
+  filter(grepl('Ctr', wellID)) %>%
+  select(wellID, Mean) %>%
+  mutate(wellID = as.factor(wellID),
+         Mean=as.numeric(Mean)) %>%
+  group_by(wellID) %>%
+  summarize(meanOf_Means = mean(Mean,na.rm=T),
+            sdOf_Means = sd(Mean,na.rm=T)) %>%
+  mutate(CV = 100*(sdOf_Means/meanOf_Means))
+```

@@ -5,10 +5,6 @@ date: "27 February 2018"
 output: html_document
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
 #Load packages and set directories
 ```{r, include=FALSE}
 packages <- c("nlme", "ggplot2", "tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan")
@@ -28,7 +24,7 @@ out_df <- out_df %>% filter(wave==1)
 ids <- as.vector(unique(out_df$sid))
 ```
 
-
+#Format one (4 statement and 12 disclosure conditions):
 ```{r}
 multiconds <- lapply(X=ids, df=out_df, FUN=function(id, df) {
   
@@ -93,13 +89,19 @@ df_long <- df %>%
 }})
 
 check_ids <- rbindlist(multiconds, fill=T)
-multiconds <- check_ids %>% select(sid,run,name,onset,duration) %>% filter(!is.na(name))
+multiconds <- check_ids %>% select(sid,run,name,onset,duration) %>% filter(!is.na(name)) %>%
+  mutate(name=as.factor(name),run=as.factor(run))
 check_ids <- check_ids %>% select(sid,run1,run2) %>% filter(!is.na(run1))
 
 #check for subjects with missing events
-summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(run,name) %>% summarize(N = n())
+summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(run,name) %>% summarize(N = n(),missing=151-n())
 
-summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(name) %>% summarize(N = n())
+levels(summary_byRun$name) <- c("Neutral_True","Neutral_False","Affect_True","Affect_False","Affect_Share_Loss","Affect_Share_Gain","Affect_Share_Nodiff","Affect_Private_Loss","Affect_Private_Gain","Affect_Private_Nodiff","Neutral_Share_Loss","Neutral_Share_Gain","Neutral_Share_Nodiff","Neutral_Private_Loss","Neutral_Private_Gain","Neutral_Private_Nodiff","Statement_Missing")
+levels(summary_byRun$run) <- c("Run1","Run2")
+
+summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(name) %>% summarize(N = n(),missing=151-n())
+
+levels(summary_acrossRun$name) <- c("Neutral_True","Neutral_False","Affect_True","Affect_False","Affect_Share_Loss","Affect_Share_Gain","Affect_Share_Nodiff","Affect_Private_Loss","Affect_Private_Gain","Affect_Private_Nodiff","Neutral_Share_Loss","Neutral_Share_Gain","Neutral_Share_Nodiff","Neutral_Private_Loss","Neutral_Private_Gain","Neutral_Private_Nodiff","Statement_Missing")
 
 #number of missing conditions in subjects (filtering out those without any missing conditions)
 summary_bySubj <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(sid) %>% summarize(N = (12 - n())) %>% filter(!N==0) 
@@ -108,4 +110,148 @@ comp_IDS <- unique(multiconds$sid) #143 subjects
 
 #deal with collapsing across runs, or seperate input files for each run
 
-                                                        
+missing <- ggplot(summary_byRun, aes(x = name, y = missing)) + geom_bar(stat = "identity") + facet_wrap(~run, ncol=1) + 
+  theme(axis.line = element_line(colour = "black"),
+        #panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x=element_blank())
+
+missing2 <- ggplot(summary_acrossRun, aes(x = name, y = missing)) + geom_bar(stat = "identity") +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x=element_blank())
+
+ggsave(filename='/Volumes/StorEDGE/WORK/DSN/TAG/DSD/missing_12conds.png', plot=missing, width = 6, height = 4.5)
+ggsave(filename='/Volumes/StorEDGE/WORK/DSN/TAG/DSD/missing_12conds_acrossRuns.png', plot=missing2, width = 6, height = 4.5)
+
+multiconds2 <- multiconds %>% filter(!name %in% c(1,2,3,4,17,18)) %>% 
+  group_by(sid,run,name) %>%
+  summarise(N=n()) %>%
+  mutate(N=ifelse(name %in% c(5,6,8,9,11,12,14,15), 100*(N/7),
+                  ifelse(name %in% c(7,10), 100*(N/7),
+                         ifelse(name %in% c(13,16), 100*(N/6),NA)))) %>%
+  ungroup() %>%
+  mutate(sid=as.factor(sid),
+         name=as.factor(name),
+         run=as.factor(run)) %>%
+  arrange(run,name,N)
+
+indPlot <- ggplot(multiconds2, aes(x = sid, y = N, fill = name)) + geom_bar(stat = "identity") + facet_wrap(~run, ncol=1)
+
+percDisc <- ggplot(multiconds2, aes(N)) + 
+  geom_histogram(breaks=seq(0, 100, by = 20), 
+                 col="grey") + 
+  facet_grid( run ~ name) +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+```
+
+#format two (2 statement and 4 disclosure conditions, with share.value as a pmod):
+```{r}
+multiconds <- lapply(X=ids, df=out_df, FUN=function(id, df) {
+  
+  df <- df %>% filter(sid==id)
+  
+  if(nrow(df %>% filter(run==1)) == 41 & nrow(df %>% filter(run==2)) == 41) {
+  
+    df <- df %>% mutate(statement.condition = ifelse(affective == FALSE, 1,
+                                                     ifelse(affective == TRUE, 2, NA)),
+                        disc.condition = ifelse(affective == FALSE & disclosed == FALSE, 1,
+                                                ifelse(affective == FALSE & disclosed == TRUE, 2,
+                                                       ifelse(affective == TRUE & disclosed == FALSE, 3,
+                                                              ifelse(affective == TRUE & disclosed == TRUE, 4, NA))))) %>%
+      select(sid,run,trial,statement.condition,statement.onset,disc.condition,disc.onset,share.value)
+
+df_long <- df %>% 
+  gather(v, value, statement.condition:disc.onset) %>% 
+  separate(v, c("task", "v2")) %>% 
+  arrange(sid) %>% 
+  spread(v2, value) %>%
+  arrange(run,trial,desc(task)) %>%
+  mutate(name = ifelse(task == "disc" & condition == 1, 3,
+                       ifelse(task == "disc" & condition == 2, 4,
+                              ifelse(task == "disc" & condition == 3, 5,
+                                     ifelse(task == "disc" & condition == 4, 6, condition))))) %>%
+  mutate(duration = 0) %>%
+  mutate(pmod = ifelse(task=="statement",NA,share.value)) %>%
+  select(sid,run,name,onset,duration,pmod) %>%
+
+#df_long1 <- df_long %>% filter(run==1)
+#df_long2 <- df_long %>% filter(run==2)
+#write.csv(df_long1,file=paste0(out_dir,id,'_run1_summary.csv'),row.names=F) 
+#write.csv(df_long2,file=paste0(out_dir,id,'_run2_summary.csv'),row.names=F) 
+
+} else {
+  
+  sid=id
+  run1 <- nrow(df %>% filter(run==1))
+  run2 <- nrow(df %>% filter(run==2))
+  check <- cbind(sid, run1, run2)
+  check <- as.data.table(check)
+
+}})
+
+check_ids <- rbindlist(multiconds, fill=T)
+multiconds <- check_ids %>% select(sid,run,name,onset,duration,pmod) %>% filter(!is.na(name))
+check_ids <- check_ids %>% select(sid,run1,run2) %>% filter(!is.na(run1))
+
+#complete subject list
+comp_IDS <- unique(multiconds$sid) #151 subjects
+
+#check for subjects with missing events
+summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(run,name) %>% summarize(N = n())
+
+summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(name) %>% summarize(N = n())
+
+#number of missing conditions in subjects (filtering out those without any missing conditions)
+summary_byRun_bySubj <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid,run) %>% summarize(N = (4 - n())) %>% filter(!N==0) 
+
+summary_acrossRun_bySubj <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid) %>% summarize(N = (4 - n())) %>% filter(!N==0) 
+
+#distribution of trials across neutral vs. affective conditions by each share.value
+summary_affect_byShareValue <- out_df %>%
+  filter(sid==3 & wave ==1 & run ==1) %>%
+  group_by(affective, share.value) %>%
+  summarise(N=n())
+
+multiconds2 <- multiconds %>% filter(!name==1) %>% filter(!name==2) %>% 
+  group_by(sid,run,name) %>%
+  summarise(N=n()) %>%
+  mutate(N=ifelse(name %in% c(3,4), 100*(N/20),
+                  ifelse(name %in% c(5,6), 100*(N/21),NA))) %>%
+  ungroup() %>%
+  mutate(sid=as.factor(sid),
+         name=as.factor(name),
+         run=as.factor(run)) %>%
+  arrange(run,name,N)
+
+levels(multiconds2$name) <- c("Neutral_Private", "Neutral_Share"
+                              ,"Affect_Private", "Affect_Share")
+levels(multiconds2$run) <- c("Run1","Run2")
+
+indPlot <- ggplot(multiconds2, aes(x = sid, y = N, fill = name)) + geom_bar(stat = "identity") + facet_wrap(~run, ncol=1)
+
+percDisc <- ggplot(multiconds2, aes(N)) + 
+  geom_histogram(breaks=seq(0, 100, by = 20), 
+                 col="grey") + 
+  facet_grid( run ~ name) +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+ggsave(filename='/Volumes/StorEDGE/WORK/DSN/TAG/DSD/indPlot.png', plot=indPlot, width = 9, height = 4.5)
+ggsave(filename='/Volumes/StorEDGE/WORK/DSN/TAG/DSD/perDisclosure.png', plot=percDisc, width = 9, height = 3.5)
+```

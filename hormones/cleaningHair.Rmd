@@ -309,3 +309,44 @@ kable_styling(full_width = F, position = "left", font_size = 12)
 
 ```{r,echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 #write final output for analyses
+
+```
+
+###Calcualte Inter-assay CV
+```{r,echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+Hair_DHEA_interCV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=3)
+Hair_TEST_interCV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=6)
+Hair_EST_interCV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=9)
+
+Hair_DHEA_interCV <- Hair_DHEA_interCV %>% 
+  rename(wellID = `Well ID`) %>%
+  filter(grepl('Ctrl', wellID)) %>%
+  select(wellID, Mean) %>%
+  mutate(wellID = as.factor(wellID),
+         Mean=as.numeric(Mean)) %>%
+  group_by(wellID) %>%
+  summarize(meanOf_Means = mean(Mean),
+            sdOf_Means = sd(Mean)) %>%
+  mutate(CV = 100*(sdOf_Means/meanOf_Means))
+ 
+Hair_TEST_interCV <- Hair_TEST_interCV %>% 
+  rename(wellID = `Well ID`) %>%
+  filter(grepl('CTL', wellID)) %>%
+  select(wellID, Mean) %>%
+  mutate(wellID = as.factor(wellID),
+         Mean=as.numeric(Mean)) %>%
+  group_by(wellID) %>%
+  summarize(meanOf_Means = mean(Mean),
+            sdOf_Means = sd(Mean)) %>%
+  mutate(CV = 100*(sdOf_Means/meanOf_Means))
+
+Hair_EST_interCV <- Hair_EST_interCV %>% 
+  rename(wellID = `Well ID`) %>%
+  filter(grepl('Ctr', wellID)) %>%
+  select(wellID, Mean) %>%
+  mutate(wellID = as.factor(wellID),
+         Mean=as.numeric(Mean)) %>%
+  group_by(wellID) %>%
+  summarize(meanOf_Means = mean(Mean,na.rm=T),
+            sdOf_Means = sd(Mean,na.rm=T)) %>%
+  mutate(CV = 100*(sdOf_Means/meanOf_Means))

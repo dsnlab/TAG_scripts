@@ -31,11 +31,13 @@ overview <- overview %>%
 
 ###IMPORT MRI COMPLETION LISTS FROM REDCAP
 ```{r, include=FALSE}
-redcapData <- read.csv(paste0(cas_dir,'/behavior/Questionnaires/Confidential/MRI_wave1.csv'),header=T)
+redcapData <- read.csv(paste0(cas_dir,'/behavior/Questionnaires/Confidential/redcap_MRIoverview_W1.csv'),header=T)
 redcapData <- redcapData %>%
   mutate(SID=gsub("[^0-9\\.]", "", subject_spit_id)) %>%
-  select(-subject_spit_id) %>%
-  select(SID,check_mri_completed,mri_incomplete)
+  mutate(SID=ifelse(subject_spit_id=="TAG_001P", "000",
+                                SID)) %>%
+  select(subject_spit_id, SID,everything()) %>%
+  select(SID,check_mri_completed,mri_incomplete) 
 ```
 
 ###COMBINE OVERVIEW AND MRI COMPELTION LISTS
@@ -59,6 +61,7 @@ clean_nii <- as.data.frame(clean_nii) %>%
   filter(!grepl("fieldmap_2mm_01",rowname)) %>% 
   filter(!grepl("fieldmap_2mm_02",rowname)) %>% 
   mutate(rowname = sub('.*clean_nii', '', rowname)) %>%
+  filter(!grepl("archive",rowname)) %>% 
   separate(rowname,c("junk","SID","wave","scan","file"),sep="/") %>%
   select(-junk) %>%
   mutate(file = ifelse(grepl("mprage_p2",file),"mprage",
@@ -148,17 +151,18 @@ overview <- overview %>% full_join(.,MRI_wave1_size3) %>%
   arrange(Withdrawn_W1,desc(check_mri_completed),desc(mprage_num)) %>%
   mutate(partial_comp = ifelse((!mprage_num==0) & (!svc1_num==0) & (!svc2_num==0) & (!rest1_num==0) & (!rest2_num==0) & (!dsd1_num==0) & (!dsd2_num==0) & (!fmap_num==0) & (!diffRL_num==0) & (!diffLR_num==0), 0, 1)) %>%
   arrange(partial_comp)
+  
 ```
 
 ###IMPORT DERIVATIVES FOLDER TO CHECK PPC (FOR FREESURFER & FMRIPREP ALONE)
 ###CAN EASILY BE EXPANDED TO OTHER SEQUENCES
 ```{r,include=FALSE}
-freesurfer <- list.dirs(paste0(cas_dir,'TAG_BIDS/derivatives/freesurfer6'), full.names=FALSE, recursive = FALSE)
+freesurfer <- list.dirs(paste0(cas_dir,'bids_data/derivatives/freesurfer'), full.names=FALSE, recursive = FALSE)
 freesurfer <- as.data.frame(freesurfer) %>% mutate(SID=as.numeric(sub('.*sub-TAG','',freesurfer))) %>% filter(!is.na(SID)) %>% mutate(SID = as.factor(SID)) %>%
   mutate(SID = str_pad(SID, 3, pad = "0")) %>% mutate(freesurfer_id = SID) %>%
   select(-freesurfer)
 
-fmriprep <- list.dirs(paste0(cas_dir,'TAG_BIDS/derivatives/fmriprep'), full.names=FALSE, recursive = FALSE)
+fmriprep <- list.dirs(paste0(cas_dir,'bids_data/derivatives/fmriprep'), full.names=FALSE, recursive = FALSE)
 fmriprep <- as.data.frame(fmriprep) %>% mutate(SID=as.numeric(sub('.*sub-TAG','',fmriprep))) %>% filter(!is.na(SID)) %>% mutate(SID = as.factor(SID)) %>%
   mutate(SID = str_pad(SID, 3, pad = "0")) %>% mutate(fmriprep_id = SID) %>%
   select(-fmriprep)
@@ -166,7 +170,9 @@ fmriprep <- as.data.frame(fmriprep) %>% mutate(SID=as.numeric(sub('.*sub-TAG',''
 
 ###CHECK PPC FOR EVERYONE IN OVERVIEW DOC
 ```{r,include=FALSE}
-overview <- overview %>% full_join(.,freesurfer) %>% full_join(.,fmriprep)
+overview <- overview %>% full_join(.,freesurfer) %>% full_join(.,fmriprep) %>% 
+  mutate_at(.vars = 4:27, funs(ifelse(SID == 258, NA, .))) %>%
+  arrange(Withdrawn_W1, W1S2_Completed, desc(check_mri_completed), freesurfer_id)
 ```
 
 ###EXTRA
