@@ -56,7 +56,7 @@ Sal_DHEA <- Sal_DHEA %>%
          week = as.factor(week))
 
 Sal_TEST <- Sal_TEST %>% 
-  mutate(Concentration = ifelse(Concentration =='?????',1,Concentration)) %>%
+  mutate(Concentration = ifelse(Concentration =='?????',4,Concentration)) %>%
   mutate(SID = as.factor(round(as.numeric(ID),2)),
          sal_TEST = round(as.numeric(Concentration),3)) %>%
   select(SID,sal_TEST) %>%

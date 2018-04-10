@@ -74,6 +74,7 @@ clean_nii <- as.data.frame(clean_nii) %>%
                                                                  ifelse(grepl("SVC_2",file),"svc2",
                                                                         ifelse(grepl("DSD_1",file),"dsd1",
                                                                                ifelse(grepl("DSD_2",file),"dsd2",NA))))))))))) %>%
+  mutate(wave = ifelse(SID=="073",2,wave)) %>% #manually changing wave for ppl who did not do wave 1, but did wave 2.
   mutate(wave = as.factor(sub('wave','',wave)),
          SID = as.factor(sub('TAG','',SID))) %>%
   group_by(SID,wave,file) %>%
@@ -110,22 +111,22 @@ MRI_wave1_size3 <- clean_nii %>% filter(wave==1) %>%
   select(SID, file_by_variable, value) %>%
   spread(key=file_by_variable, value=value) %>%
   mutate(dsd1_size=ifelse((is.na(size_dsd1_2) & is.na(size_dsd1_3)), size_dsd1_1, 
-                      ifelse((!is.na(size_dsd1_2) & is.na(size_dsd1_3)), paste0(size_dsd1_1,",",size_dsd1_2),
-                             ifelse((!is.na(size_dsd1_2) & !is.na(size_dsd1_3)), paste0(size_dsd1_1,",",size_dsd1_2,",",size_dsd1_3),size_dsd1_1)))) %>%
+                      ifelse((!is.na(size_dsd1_2) & is.na(size_dsd1_3)), paste0(size_dsd1_1,";",size_dsd1_2),
+                             ifelse((!is.na(size_dsd1_2) & !is.na(size_dsd1_3)), paste0(size_dsd1_1,";",size_dsd1_2,";",size_dsd1_3),size_dsd1_1)))) %>%
   mutate(dsd2_size=ifelse((is.na(size_dsd2_2)), size_dsd2_1, 
-                      ifelse((!is.na(size_dsd2_2)), paste0(size_dsd2_1,",",size_dsd2_2),size_dsd2_1))) %>%
+                      ifelse((!is.na(size_dsd2_2)), paste0(size_dsd2_1,";",size_dsd2_2),size_dsd2_1))) %>%
   mutate(svc1_size=ifelse((is.na(size_svc1_2)), size_svc1_1, 
-                      ifelse((!is.na(size_svc1_2)), paste0(size_svc1_1,",",size_svc1_2),size_svc1_1))) %>%
+                      ifelse((!is.na(size_svc1_2)), paste0(size_svc1_1,";",size_svc1_2),size_svc1_1))) %>%
    mutate(svc2_size=ifelse((is.na(size_svc2_2)), size_svc2_1, 
-                      ifelse((!is.na(size_svc2_2)), paste0(size_svc2_1,",",size_svc2_2),size_svc2_1))) %>% 
+                      ifelse((!is.na(size_svc2_2)), paste0(size_svc2_1,";",size_svc2_2),size_svc2_1))) %>% 
   mutate(rest1_size=size_rest1_1) %>% 
   mutate(rest2_size=ifelse((is.na(size_rest2_2)), size_rest2_1, 
-                      ifelse((!is.na(size_rest2_2)), paste0(size_rest2_1,",",size_rest2_2),size_rest2_1))) %>% 
+                      ifelse((!is.na(size_rest2_2)), paste0(size_rest2_1,";",size_rest2_2),size_rest2_1))) %>% 
   mutate(fmap_size = size_fmap_1) %>%
   mutate(mprage_size=ifelse((is.na(size_mprage_2)), size_mprage_1, 
-                      ifelse((!is.na(size_mprage_2)), paste0(size_mprage_1,",",size_mprage_2),size_mprage_1))) %>%
+                      ifelse((!is.na(size_mprage_2)), paste0(size_mprage_1,";",size_mprage_2),size_mprage_1))) %>%
   mutate(diffRL_size=ifelse((is.na(size_diffRL_2)), size_diffRL_1, 
-                      ifelse((!is.na(size_diffRL_2)), paste0(size_diffRL_1,",",size_diffRL_2),size_diffRL_1))) %>%
+                      ifelse((!is.na(size_diffRL_2)), paste0(size_diffRL_1,";",size_diffRL_2),size_diffRL_1))) %>%
   mutate(diffLR_size = size_diffLR_1) %>%
   select(SID,mprage_size,diffRL_size,diffLR_size,rest1_size,rest2_size,fmap_size,svc1_size,svc2_size,dsd1_size,dsd2_size)
 
@@ -172,7 +173,20 @@ fmriprep <- as.data.frame(fmriprep) %>% mutate(SID=as.numeric(sub('.*sub-TAG',''
 ```{r,include=FALSE}
 overview <- overview %>% full_join(.,freesurfer) %>% full_join(.,fmriprep) %>% 
   mutate_at(.vars = 4:27, funs(ifelse(SID == 258, NA, .))) %>%
-  arrange(Withdrawn_W1, W1S2_Completed, desc(check_mri_completed), freesurfer_id)
+  mutate(check_mri_completed = ifelse(is.na(check_mri_completed),0,check_mri_completed)) %>%
+  select(SID,Withdrawn_W1, everything()) %>%
+  arrange(Withdrawn_W1, W1S2_Completed, check_mri_completed, SID) %>%
+  mutate(freesurfer = ifelse(Withdrawn_W1==1,NA,
+                             ifelse(W1S2_Completed==0,NA,
+                                    ifelse(check_mri_completed==0,NA,
+                                           ifelse(is.na(freesurfer_id),0,1)))),
+         fmriprep = ifelse(Withdrawn_W1==1,NA,
+                             ifelse(W1S2_Completed==0,NA,
+                                    ifelse(check_mri_completed==0,NA,
+                                           ifelse(is.na(fmriprep_id),0,1))))) %>%
+  select(-partial_comp, -freesurfer_id, -fmriprep_id)
+
+write.csv(overview,file=paste0(cas_dir,'behavior/MRI/wave1/MRI_W1overview.csv'),row.names=F,quote=T)
 ```
 
 ###EXTRA

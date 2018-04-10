@@ -159,7 +159,7 @@ percDisc <- ggplot(multiconds2, aes(N)) +
 
 #format two (2 statement and 4 disclosure conditions, with share.value as a pmod):
 ```{r}
-multiconds <- lapply(X=ids, df=out_df, FUN=function(id, df) {
+multicondsDF <- lapply(X=ids, df=out_df, FUN=function(id, df) {
   
   df <- df %>% filter(sid==id)
   
@@ -185,12 +185,7 @@ df_long <- df %>%
                                      ifelse(task == "disc" & condition == 4, 6, condition))))) %>%
   mutate(duration = 0) %>%
   mutate(pmod = ifelse(task=="statement",NA,share.value)) %>%
-  select(sid,run,name,onset,duration,pmod) %>%
-
-#df_long1 <- df_long %>% filter(run==1)
-#df_long2 <- df_long %>% filter(run==2)
-#write.csv(df_long1,file=paste0(out_dir,id,'_run1_summary.csv'),row.names=F) 
-#write.csv(df_long2,file=paste0(out_dir,id,'_run2_summary.csv'),row.names=F) 
+  select(sid,run,name,onset,duration,pmod)
 
 } else {
   
@@ -198,13 +193,22 @@ df_long <- df %>%
   run1 <- nrow(df %>% filter(run==1))
   run2 <- nrow(df %>% filter(run==2))
   check <- cbind(sid, run1, run2)
-  check <- as.data.table(check)
+  check <- as.data.table(check) }
+})
 
-}})
+multicondsDF <- rbindlist(multicondsDF, fill=T)
+multiconds <- multicondsDF %>% select(sid,run,name,onset,duration,pmod) %>% filter(!is.na(name))
 
-check_ids <- rbindlist(multiconds, fill=T)
-multiconds <- check_ids %>% select(sid,run,name,onset,duration,pmod) %>% filter(!is.na(name))
-check_ids <- check_ids %>% select(sid,run1,run2) %>% filter(!is.na(run1))
+#IDs to check and run manually
+check_ids <- multicondsDF %>% select(sid,run1,run2) %>% filter(!is.na(run1))
+
+
+#df_long1 <- df_long %>% filter(run==1)
+#df_long2 <- df_long %>% filter(run==2)
+#write.csv(df_long1,file=paste0(out_dir,id,'_run1_summary.csv'),row.names=F) 
+#write.csv(df_long2,file=paste0(out_dir,id,'_run2_summary.csv'),row.names=F) 
+
+
 
 #complete subject list
 comp_IDS <- unique(multiconds$sid) #151 subjects
@@ -225,7 +229,7 @@ summary_affect_byShareValue <- out_df %>%
   group_by(affective, share.value) %>%
   summarise(N=n())
 
-multiconds2 <- multiconds %>% filter(!name==1) %>% filter(!name==2) %>% 
+multicondsPlot <- multiconds %>% filter(!name==1) %>% filter(!name==2) %>% 
   group_by(sid,run,name) %>%
   summarise(N=n()) %>%
   mutate(N=ifelse(name %in% c(3,4), 100*(N/20),
@@ -236,13 +240,13 @@ multiconds2 <- multiconds %>% filter(!name==1) %>% filter(!name==2) %>%
          run=as.factor(run)) %>%
   arrange(run,name,N)
 
-levels(multiconds2$name) <- c("Neutral_Private", "Neutral_Share"
+levels(multicondsPlot$name) <- c("Neutral_Private", "Neutral_Share"
                               ,"Affect_Private", "Affect_Share")
-levels(multiconds2$run) <- c("Run1","Run2")
+levels(multicondsPlot$run) <- c("Run1","Run2")
 
-indPlot <- ggplot(multiconds2, aes(x = sid, y = N, fill = name)) + geom_bar(stat = "identity") + facet_wrap(~run, ncol=1)
+indPlot <- ggplot(multicondsPlot, aes(x = sid, y = N, fill = name)) + geom_bar(stat = "identity") + facet_wrap(~run, ncol=1)
 
-percDisc <- ggplot(multiconds2, aes(N)) + 
+percDisc <- ggplot(multicondsPlot, aes(N)) + 
   geom_histogram(breaks=seq(0, 100, by = 20), 
                  col="grey") + 
   facet_grid( run ~ name) +
