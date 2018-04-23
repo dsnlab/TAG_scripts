@@ -208,12 +208,12 @@ kable(count, "html", align='c', caption = "Sample size of pairwise comparisons")
 ####PLOT HORMONES & PUBERTY CORRELATIONS
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
 corplot_hDHEA_sal <- ggplot(df_wide, aes(salivaDHEA, hairDHEA),label=sprintf("%0.2f", round(a, digits = 2))) +
-  geom_point() +
-  geom_smooth(method="lm") +
+  geom_point(color="seagreen") +
+  geom_smooth(method="lm",color="seagreen") +
   ylab("Hair DHEA (pgmg)")+
   xlab("Saliva DHEA (pgml)")+
-  #scale_y_continuous(limits = c(1.5, 4), breaks = seq(1.5,4,by=1),labels = scaleFUN)+
-  #scale_x_continuous(limits = c(2.8, 6.2), breaks = seq(3,6,by=1),labels = scaleFUN)+
+  scale_y_continuous(limits = c(1.5, 4), breaks = seq(1.5,4,by=1),labels = scaleFUN)+
+  scale_x_continuous(limits = c(2.8, 6.2), breaks = seq(3,6,by=1),labels = scaleFUN)+
   theme_bw() +
   theme_minimal(base_size = 12, base_family = "Arial") +
   theme(axis.line = element_line(colour = "black"),
@@ -223,12 +223,12 @@ corplot_hDHEA_sal <- ggplot(df_wide, aes(salivaDHEA, hairDHEA),label=sprintf("%0
         panel.background = element_blank(),
         legend.position="none")
 corplot_hTEST_sal <- ggplot(df_wide, aes(salivaTEST, hairTEST)) +
-  geom_point() +
-  geom_smooth(method="lm") +
+  geom_point(color="blue") +
+  geom_smooth(method="lm",color="blue") +
   ylab("Hair TEST (pgmg)")+
   xlab("Saliva TEST (pgml)")+
-  #scale_y_continuous(limits = c(1.5, 2.1), breaks = seq(1.5,2.5,by=0.2),labels = scaleFUN)+
-  #scale_x_continuous(limits = c(2.8, 5.2), breaks = seq(3,5,by=1),labels = scaleFUN)+
+  scale_y_continuous(limits = c(1.5, 2.1), breaks = seq(1.5,2.5,by=0.2),labels = scaleFUN)+
+  scale_x_continuous(limits = c(2.8, 5.2), breaks = seq(3,5,by=1),labels = scaleFUN)+
   theme_bw() +
   theme_minimal(base_size = 12, base_family = "Arial") +
   theme(axis.line = element_line(colour = "black"),
@@ -238,12 +238,12 @@ corplot_hTEST_sal <- ggplot(df_wide, aes(salivaTEST, hairTEST)) +
         panel.background = element_blank(),
         legend.position="none")
 corplot_hEST_sal <- ggplot(df_wide, aes(salivaEST, hairEST)) +
-  geom_point() +
-  geom_smooth(method="lm")+
+  geom_point(color="deeppink") +
+  geom_smooth(method="lm",color="deeppink")+
   ylab("Hair EST (pgug)")+
   xlab("Saliva EST (pgml)")+
-  #scale_y_continuous(limits = c(3.3, 4.5), breaks = seq(3.3,4.5,by=0.4),labels = scaleFUN)+
-  #scale_x_continuous(limits = c(1.45, 1.95), breaks = seq(1.5,1.9,by=0.2),labels = scaleFUN)+
+  scale_y_continuous(limits = c(3.3, 4.5), breaks = seq(3.3,4.5,by=0.4),labels = scaleFUN)+
+  scale_x_continuous(limits = c(1.45, 1.95), breaks = seq(1.5,1.9,by=0.2),labels = scaleFUN)+
   theme_bw() +
   theme_minimal(base_size = 12, base_family = "Arial") +
   theme(axis.line = element_line(colour = "black"),
@@ -254,12 +254,12 @@ corplot_hEST_sal <- ggplot(df_wide, aes(salivaEST, hairEST)) +
         legend.position="none")
 
 corplot_hDHEA_pds <- ggplot(df_wide, aes(PDS, hairDHEA)) +
-  geom_point() + 
+  geom_point(color="seagreen") + 
   xlim(1,5) +
-  geom_smooth(method="lm") +
+  geom_smooth(method="lm",color="seagreen") +
   ylab("Hair DHEA (pgmg)")+
   xlab("PDS")+
-  #scale_y_continuous(limits = c(1.5, 4), breaks = seq(1.5,4,by=1),labels = scaleFUN)+
+  scale_y_continuous(limits = c(1.5, 4), breaks = seq(1.5,4,by=1),labels = scaleFUN)+
   theme_bw() +
   theme_minimal(base_size = 12, base_family = "Arial") +
   theme(axis.line = element_line(colour = "black"),
@@ -269,12 +269,12 @@ corplot_hDHEA_pds <- ggplot(df_wide, aes(PDS, hairDHEA)) +
         panel.background = element_blank(),
         legend.position="none")
 corplot_hTEST_pds <- ggplot(df_wide, aes(PDS, hairTEST)) +
-  geom_point() +
+  geom_point(color="blue") +
   xlim(1,5) +
-  geom_smooth(method="lm")+
+  geom_smooth(method="lm",color="blue")+
   ylab("Hair TEST (pgmg)")+
   xlab("PDS")+
-  #scale_y_continuous(limits = c(1.5, 2.1), breaks = seq(1.5,2.5,by=0.2),labels = scaleFUN)+
+  scale_y_continuous(limits = c(1.5, 2.1), breaks = seq(1.5,2.5,by=0.2),labels = scaleFUN)+
   theme_bw() +
   theme_minimal(base_size = 12, base_family = "Arial") +
   theme(axis.line = element_line(colour = "black"),
@@ -284,12 +284,12 @@ corplot_hTEST_pds <- ggplot(df_wide, aes(PDS, hairTEST)) +
         panel.background = element_blank(),
         legend.position="none")
 corplot_hEST_pds <- ggplot(df_wide, aes(PDS, hairEST)) +
-  geom_point() +
+  geom_point(color="deeppink") +
   xlim(1,5) +
-  geom_smooth(method="lm") +
+  geom_smooth(method="lm",color="deeppink") +
   ylab("Hair EST (pgug)")+
   xlab("PDS")+
-  #scale_y_continuous(limits = c(3.3, 4.5), breaks = seq(3.3,4.5,by=0.4),labels = scaleFUN)+
+  scale_y_continuous(limits = c(3.3, 4.5), breaks = seq(3.3,4.5,by=0.4),labels = scaleFUN)+
   theme_bw() +
   theme_minimal(base_size = 12, base_family = "Arial") +
   theme(axis.line = element_line(colour = "black"),
@@ -300,12 +300,12 @@ corplot_hEST_pds <- ggplot(df_wide, aes(PDS, hairEST)) +
         legend.position="none")
 
 corplot_sDHEA_pds <- ggplot(df_wide, aes(PDS, salivaDHEA)) +
-  geom_point() +
+  geom_point(color="seagreen") +
   xlim(1,5) +
-  geom_smooth(method="lm") +
+  geom_smooth(method="lm",color="seagreen") +
   ylab("Saliva DHEA (pgmg)")+
   xlab("PDS")+
-  #scale_y_continuous(limits = c(2.8, 6.2), breaks = seq(3,6,by=1),labels = scaleFUN)+
+  scale_y_continuous(limits = c(2.8, 6.2), breaks = seq(3,6,by=1),labels = scaleFUN)+
   theme_bw() +
   theme_minimal(base_size = 12, base_family = "Arial") +
   theme(axis.line = element_line(colour = "black"),
@@ -315,12 +315,12 @@ corplot_sDHEA_pds <- ggplot(df_wide, aes(PDS, salivaDHEA)) +
         panel.background = element_blank(),
         legend.position="none")
 corplot_sTEST_pds <- ggplot(df_wide, aes(PDS, salivaTEST)) +
-  geom_point() +
+  geom_point(color="blue") +
   xlim(1,5) +
-  geom_smooth(method="lm") + 
+  geom_smooth(method="lm",color="blue") + 
   ylab("Saliva TEST (pgml)")+
   xlab("PDS")+
-  #scale_y_continuous(limits = c(2.8, 5.2), breaks = seq(3,5,by=1),labels = scaleFUN)+
+  scale_y_continuous(limits = c(2.8, 5.2), breaks = seq(3,5,by=1),labels = scaleFUN)+
   theme_bw() +
   theme_minimal(base_size = 12, base_family = "Arial") +
   theme(axis.line = element_line(colour = "black"),
@@ -330,12 +330,12 @@ corplot_sTEST_pds <- ggplot(df_wide, aes(PDS, salivaTEST)) +
         panel.background = element_blank(),
         legend.position="none")
 corplot_sEST_pds <- ggplot(df_wide, aes(PDS, salivaEST)) +
-  geom_point() +
+  geom_point(color="deeppink") +
   xlim(1,5) +
-  geom_smooth(method="lm") +
+  geom_smooth(method="lm",color="deeppink") +
   ylab("Saliva EST (pgml)")+
   xlab("PDS")+
-  #scale_y_continuous(limits = c(1.45, 1.95), breaks = seq(1.5,1.9,by=0.2),labels = scaleFUN)+
+  scale_y_continuous(limits = c(1.45, 1.95), breaks = seq(1.5,1.9,by=0.2),labels = scaleFUN)+
   theme_bw() +
   theme_minimal(base_size = 12, base_family = "Arial") +
   theme(axis.line = element_line(colour = "black"),
