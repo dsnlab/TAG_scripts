@@ -1,0 +1,90 @@
+# TAG study calculate age at each session
+# Last updated MLB 11 Apr 2018 & NV 1 May 2018
+
+```{r}
+# Load packages
+install.packages("readr")
+install.packages("tidyr")
+install.packages("lubridate")
+install.packages("dplyr")
+install.packages("xlsx")
+library(readr)
+library(tidyr)
+library(lubridate)
+library(dplyr)
+library(xlsx)
+```
+
+```{r}
+# Set directory & import data
+# WD is on server \\casfiles2\psych-cog
+setwd("B:/dsnlab/TAG/behavior/Demographics/Age")
+
+# For MAC
+setwd("/Volumes/psych-cog/dsnlab/TAG/behavior/Demographics/Age")
+
+# Import the CSV file
+tag_age_session <- read_csv('DOB_W1W2_SessionDates.csv')
+tag_age_session <- tag_age_session %>% filter(!is.na(TAG_ID)) %>% filter(!TAG_ID=="TAG000")
+View(tag_age_session)
+```
+
+```{r}
+# Tidy into long format
+tag_age_session_gathered <- gather(tag_age_session, wave_session, 
+                                   date, -TAG_ID, -DOB)
+View(tag_age_session_gathered)
+
+tag_age_session_gathered$wave <- ifelse(tag_age_session_gathered$wave_session 
+                                        == "W1S1_Date" | 
+                                          tag_age_session_gathered$wave_session
+                                        =="W1S2_Date", 1, 2)
+tag_age_session_gathered$session <- ifelse(tag_age_session_gathered$wave_session 
+                                        == "W1S1_Date" | 
+                                          tag_age_session_gathered$wave_session
+                                        =="W2S1_Date", 1, 2)
+tag_age_session_gathered <- tag_age_session_gathered[ -c(3) ]
+```
+
+```{r}
+# Calculate age at each session
+tag_age_session_gathered$DOB <- mdy(na.pass(tag_age_session_gathered$DOB))
+tag_age_session_gathered$date <- mdy(na.pass(tag_age_session_gathered$date))
+
+tag_age_session_gathered$age <- interval(start = 
+                                            tag_age_session_gathered$DOB, 
+                                            end = 
+                                            tag_age_session_gathered$date) / 
+                                            duration(num = 1, units = "years")
+
+View(tag_age_session_gathered)
+```
+
+```{r}
+# Summary age at each session 
+summary_age <- tag_age_session_gathered %>% mutate(TAG_ID = as.factor(TAG_ID)) %>%
+  group_by(wave, session) %>% summarize(Mean = mean(age,na.rm=T), SD = sd(age,na.rm=T), 
+                                        Min = min(age,na.rm=T), Max = max(age,na.rm=T), 
+                                        N = sum(!is.na(age)))
+```
+
+```{r}
+# Create summary for those who are not withdrawn at wave 1
+# Import overview doc to check for exclusions 
+overview <- read.xlsx('/Volumes/psych-cog/dsnlab/TAG/behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx',1)
+overview <- overview[,c(1:9)]
+overview <- overview %>% 
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  arrange(Withdrawn_W1)
+
+# Merge overview and age info
+tag_age_session_gathered <- tag_age_session_gathered %>% left_join(., overview) 
+non_withdrawnW1 <- tag_age_session_gathered %>% filter(Withdrawn_W1 == 0)
+
+# Create summary of non withdrawn participants
+summary_age_nonwithdrawn <- non_withdrawnW1 %>% mutate(TAG_ID = as.factor(TAG_ID)) %>%
+  group_by(wave, session) %>% summarize(Mean = mean(age,na.rm=T), SD = sd(age,na.rm=T), 
+                                        Min = min(age,na.rm=T), Max = max(age,na.rm=T), 
+                                        N = sum(!is.na(age)))
+```
+
