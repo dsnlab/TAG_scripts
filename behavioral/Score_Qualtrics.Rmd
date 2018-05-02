@@ -22,7 +22,7 @@ if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
 }
 lapply(packages, library, character.only = TRUE)
 install_github('jflournoy/qualtrics')
-library(qualtrics)
+library(scorequaltrics)
 rm(packages)
 ```
 
@@ -31,7 +31,7 @@ Extract qualtrics data from website
 credsFile<-file.path(workdir,"Questionnaires/Confidential/credentials.yaml.DEFAULT")
 creds<-creds_from_file(credsFile)
 
-survey_info<-qualtrics::get_surveys(creds) %>% 
+survey_info<-scorequaltrics::get_surveys(creds) %>% 
   filter(!grepl("NV", SurveyName)) %>% 
   dplyr::select(SurveyID, SurveyName)
 
@@ -43,7 +43,7 @@ get_survey_data<-function(surveysDF,pid_col){
     group_by(SurveyID) %>%
     do(
       survey_name=.$SurveyName[[1]],
-      survey_data=qualtrics::get_survey_responses(
+      survey_data=scorequaltrics::get_survey_responses(
         creds,
         surveyid=.$SurveyID[[1]])
     )

@@ -37,7 +37,7 @@ redcapData <- redcapData %>%
   mutate(SID=ifelse(subject_spit_id=="TAG_001P", "000",
                                 SID)) %>%
   select(subject_spit_id, SID,everything()) %>%
-  select(SID,check_mri_completed,mri_incomplete) 
+  select(SID,check_mri_completed,mri_incomplete,mri_notes) 
 ```
 
 ###COMBINE OVERVIEW AND MRI COMPELTION LISTS
@@ -152,7 +152,6 @@ overview <- overview %>% full_join(.,MRI_wave1_size3) %>%
   arrange(Withdrawn_W1,desc(check_mri_completed),desc(mprage_num)) %>%
   mutate(partial_comp = ifelse((!mprage_num==0) & (!svc1_num==0) & (!svc2_num==0) & (!rest1_num==0) & (!rest2_num==0) & (!dsd1_num==0) & (!dsd2_num==0) & (!fmap_num==0) & (!diffRL_num==0) & (!diffLR_num==0), 0, 1)) %>%
   arrange(partial_comp)
-  
 ```
 
 ###IMPORT DERIVATIVES FOLDER TO CHECK PPC (FOR FREESURFER & FMRIPREP ALONE)
@@ -172,7 +171,7 @@ fmriprep <- as.data.frame(fmriprep) %>% mutate(SID=as.numeric(sub('.*sub-TAG',''
 ###CHECK PPC FOR EVERYONE IN OVERVIEW DOC
 ```{r,include=FALSE}
 overview <- overview %>% full_join(.,freesurfer) %>% full_join(.,fmriprep) %>% 
-  mutate_at(.vars = 4:27, funs(ifelse(SID == 258, NA, .))) %>%
+  mutate_at(.vars = 6:28, funs(ifelse(SID == 258, NA, .))) %>%
   mutate(check_mri_completed = ifelse(is.na(check_mri_completed),0,check_mri_completed)) %>%
   select(SID,Withdrawn_W1, everything()) %>%
   arrange(Withdrawn_W1, W1S2_Completed, check_mri_completed, SID) %>%
@@ -185,7 +184,9 @@ overview <- overview %>% full_join(.,freesurfer) %>% full_join(.,fmriprep) %>%
                                     ifelse(check_mri_completed==0,NA,
                                            ifelse(is.na(fmriprep_id),0,1))))) %>%
   select(-partial_comp, -freesurfer_id, -fmriprep_id) %>%
-  mutate_at(.vars = c("mprage_num","mprage_size","svc1_num","svc1_size","svc2_num","svc2_size","rest1_num","rest1_size","rest2_num","rest2_size","dsd1_num","dsd1_size","dsd2_num","dsd2_size","fmap_num","fmap_size","diffRL_num","diffRL_size","diffLR_num","diffLR_size"), funs(ifelse(check_mri_completed == 0, NA, .))) #If mri was not completed at wave 1, change all MRI fields are NA (sometimes not NA if subject skipped wave 1, but did wave 2 - because wave 2 would be coded as wave 1 on bids_data in these situations). 
+  mutate_at(.vars = c("mprage_num","mprage_size","svc1_num","svc1_size","svc2_num","svc2_size","rest1_num","rest1_size","rest2_num","rest2_size","dsd1_num","dsd1_size","dsd2_num","dsd2_size","fmap_num","fmap_size","diffRL_num","diffRL_size","diffLR_num","diffLR_size"), funs(ifelse(check_mri_completed == 0, NA, .))) %>%
+  select(-mri_notes,everything())
+  #If mri was not completed at wave 1, change all MRI fields are NA (sometimes not NA if subject skipped wave 1, but did wave 2 - because wave 2 would be coded as wave 1 on bids_data in these situations).  
 
 write.csv(overview,file=paste0(cas_dir,'behavior/MRI/wave1/MRI_W1overview.csv'),row.names=F,quote=T)
 ```
