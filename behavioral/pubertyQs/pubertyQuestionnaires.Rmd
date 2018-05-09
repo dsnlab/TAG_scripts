@@ -370,3 +370,131 @@ count <- count.pairwise(corr_df)
 kable(count, "html", align='c', caption = "Sample size of pairwise comparisons") %>%
   kable_styling(full_width = F, position = "left", font_size = 12)
 ```
+
+###CORRELATION PLOTS 
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=7}
+PDSplot <- Qdf %>% select(SID, pdss, adrenf2, gonadf2, PBIP_stage, pdss_p, adrenf2_p, gonadf2_p) %>%
+  gather(-SID, -pdss, key = "var", value = "value") %>% 
+  ggplot(aes(x = trunc(value), y = trunc(pdss))) +
+    geom_point(size=0.5,position=position_jitter(w=0.15,h=0.15)) +
+    geom_smooth(method=lm) +
+    facet_wrap(~ var, scales = "free") +
+    ylab("PDS")+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+
+ADRENplot <- Qdf %>% select(SID, pdss, adrenf2, gonadf2, PBIP_stage, pdss_p, adrenf2_p, gonadf2_p) %>%
+  gather(-SID, -adrenf2, key = "var", value = "value") %>% 
+  ggplot(aes(x = trunc(value), y = trunc(adrenf2))) +
+    geom_point(size=0.5,position=position_jitter(w=0.15,h=0.15)) +
+    geom_smooth(method=lm) +
+    facet_wrap(~ var, scales = "free") +
+    ylab("Adren")+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+
+GONADplot <- Qdf %>% select(SID, pdss, adrenf2, gonadf2, PBIP_stage, pdss_p, adrenf2_p, gonadf2_p) %>%
+  gather(-SID, -gonadf2, key = "var", value = "value") %>% 
+  ggplot(aes(x = trunc(value), y = trunc(gonadf2))) +
+    geom_point(size=0.5,position=position_jitter(w=0.15,h=0.15)) +
+    geom_smooth(method=lm) +
+    facet_wrap(~ var, scales = "free") +
+    ylab("Gonad")+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+
+PBIPplot <- Qdf %>% select(SID, pdss, adrenf2, gonadf2, PBIP_stage, pdss_p, adrenf2_p, gonadf2_p) %>%
+  gather(-SID, -PBIP_stage, key = "var", value = "value") %>% 
+  ggplot(aes(x = trunc(value), y = trunc(PBIP_stage))) +
+    geom_point(size=0.5,position=position_jitter(w=0.15,h=0.15)) +
+    geom_smooth(method=lm) +
+    facet_wrap(~ var, scales = "free") +
+    ylab("PBIP")+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+
+PDSPplot <- Qdf %>% select(SID, pdss, adrenf2, gonadf2, PBIP_stage, pdss_p, adrenf2_p, gonadf2_p) %>%
+  gather(-SID, -pdss_p, key = "var", value = "value") %>% 
+  ggplot(aes(x = trunc(value), y = trunc(pdss_p))) +
+    geom_point(size=0.5,position=position_jitter(w=0.15,h=0.15)) +
+    geom_smooth(method=lm) +
+    facet_wrap(~ var, scales = "free") +
+    ylab("PDS P")+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+
+ADRENPplot <- Qdf %>% select(SID, pdss, adrenf2, gonadf2, PBIP_stage, pdss_p, adrenf2_p, gonadf2_p) %>%
+  gather(-SID, -adrenf2_p, key = "var", value = "value") %>% 
+  ggplot(aes(x = trunc(value), y = trunc(adrenf2_p))) +
+    geom_point(size=0.5,position=position_jitter(w=0.15,h=0.15)) +
+    geom_smooth(method=lm) +
+    facet_wrap(~ var, scales = "free") +
+    ylab("Adren P")+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+
+GONADPplot <- Qdf %>% select(SID, pdss, adrenf2, gonadf2, PBIP_stage, pdss_p, adrenf2_p, gonadf2_p) %>%
+  gather(-SID, -gonadf2_p, key = "var", value = "value") %>% 
+  ggplot(aes(x = trunc(value), y = trunc(gonadf2_p))) +
+    geom_point(size=0.5,position=position_jitter(w=0.15,h=0.15)) +
+    geom_smooth(method=lm) +
+    facet_wrap(~ var, scales = "free") +
+    ylab("Gonad P")+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+
+PDSplot
+ADRENplot
+GONADplot
+PBIPplot
+PDSPplot
+ADRENPplot
+GONADPplot
+```
+
+```{r}
+PubModel <- 'puberty =~ PDS_F1 + PDS_F2 + PDS_F3 + PDS_F4 + PDS_F6 + PBIP_1A + PBIP_2A'
+fit <- cfa(PubModel, data = Qdf)
+summary(fit, fit.measures = TRUE)

@@ -221,7 +221,7 @@ Saliva_summary <- Saliva_assayed %>%
 
 ####Samples sent
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
- Saliva_long <- Saliva_long %>% 
+Saliva_long <- Saliva_long %>% 
   mutate(missing = if_else(concentration == "missing",1,0))
 
 cat('No of Subjects: ') 
@@ -260,13 +260,13 @@ Saliva_long <- Saliva_long %>%
   mutate(concentration = as.numeric(concentration))
 
 hist(subset(Saliva_long, hormone == "sal_DHEA")$concentration, main="", xlab="DHEA")
-abline(v=600,col="red")
+#abline(v=600,col="red")
 writeLines("\n")
 hist(subset(Saliva_long, hormone == "sal_TEST")$concentration, main="", xlab="TEST")
-abline(v=200,col="red")
+#abline(v=200,col="red")
 writeLines("\n")
 hist(subset(Saliva_long, hormone == "sal_EST")$concentration, main="", xlab="EST")
-abline(v=3,col="red")
+#abline(v=3,col="red")
 writeLines("\n")
 
 #calculate number of outliers based on visual inspection cut-offs
@@ -292,19 +292,19 @@ writeLines("\n")
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
 DHEA_CV<-ggplot(Saliva_CV, aes(x=DHEA_CV)) +
   geom_histogram(color="black",fill="white") +
-  geom_vline(xintercept=30,linetype="dashed",colour="red")
+  #geom_vline(xintercept=30,linetype="dashed",colour="red")
 DHEA_CV
 DHEA_CV_exc <- Saliva_CV %>% filter(DHEA_CV > 30) %>% select(ID)
 
 TEST_CV<-ggplot(Saliva_CV, aes(x=TEST_CV)) +
   geom_histogram(color="black",fill="white") +
-  geom_vline(xintercept=30,linetype="dashed",colour="red")
+  #geom_vline(xintercept=30,linetype="dashed",colour="red")
 TEST_CV
 TEST_CV_exc <- Saliva_CV %>% filter(TEST_CV > 30) %>% select(ID)
 
 EST_CV<-ggplot(Saliva_CV, aes(x=EST_CV)) +
   geom_histogram(color="black",fill="white") +
-  geom_vline(xintercept=30,linetype="dashed",colour="red")
+  #geom_vline(xintercept=30,linetype="dashed",colour="red")
 EST_CV
 EST_CV_exc <- Saliva_CV %>% filter(EST_CV > 30) %>% select(ID)
 
