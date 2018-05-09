@@ -19,12 +19,14 @@ cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
 ###IMPORT TAG OVERVIEW DOC FROM CAS
 ```{r, include = F}
 overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
-overview <- overview[,c(1,3,8)]
+overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
 overview <- overview %>% 
   rename(SID = TAG_ID) %>%
   replace_na(list(Withdrawn_W1 = 0)) %>%
-  arrange(Withdrawn_W1) %>% 
-  mutate(SID=gsub("[^0-9\\.]", "", SID))
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>%
+  arrange(Exclusionary_Withdrawl) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
+  filter(Exclusionary_Withdrawl == 0)
 ```
 
 ###IMPORT RACE_ETHNICITY DOC FROM CAS
@@ -35,6 +37,8 @@ race_eth <- race_eth %>%
   filter(!is.na(SID)) %>%
   filter(!SID=="TAG000") %>%
   mutate(SID=gsub("[^0-9\\.]", "", SID))
+
+race_eth <- overview %>% left_join(.,race_eth)
 
 race <- race_eth %>%
   group_by() %>%
