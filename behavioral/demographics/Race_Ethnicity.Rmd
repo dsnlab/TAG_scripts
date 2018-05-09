@@ -1,0 +1,61 @@
+---
+title: "Ethnicity_race"
+author: "Nandi"
+date: "2 May 2018"
+output: html_document
+---
+
+###LOAD PACKAGES AND SET DIRECTORIES
+```{r, include=FALSE}
+packages <- c("dplyr", "zoo", "xlsx", "tidyr", "tibble")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
+```
+
+###IMPORT TAG OVERVIEW DOC FROM CAS
+```{r, include = F}
+overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- overview[,c(1,3,8)]
+overview <- overview %>% 
+  rename(SID = TAG_ID) %>%
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  arrange(Withdrawn_W1) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID))
+```
+
+###IMPORT RACE_ETHNICITY DOC FROM CAS
+```{r, include = F}
+race_eth <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Race_Ethnicity/Wave_1_Ethnicity.xlsx'),1)
+race_eth <- race_eth %>% 
+  rename(SID = TAGID) %>%
+  filter(!is.na(SID)) %>%
+  filter(!SID=="TAG000") %>%
+  mutate(SID=gsub("[^0-9\\.]", "", SID))
+
+race <- race_eth %>%
+  group_by() %>%
+  summarize(nW1_AmericanIndian_AlaskanNative = sum(W1_AmericanIndian.AlaskanNative),
+            nW1_Asian = sum(W1_Asian),
+            nW1_NativeHawaiian_PacificIslander = sum(W1_NativeHawaiian.PacificIslander),
+            nW1_Black_AfricanAmerican = sum(W1_Black.AfricanAmerican),
+            nW1_White = sum(W1_White),
+            nW1_MoreThanOneRace = sum(W1_MoreThanOneRace),
+            nW1_Unknown_NotReported = sum(W1_Unknown.NotReported),
+            pW1_AmericanIndian_AlaskanNative = 100*(sum(W1_AmericanIndian.AlaskanNative)/n()),
+            pW1_Asian = 100*(sum(W1_Asian)/n()),
+            pW1_NativeHawaiian_PacificIslander = 100*(sum(W1_NativeHawaiian.PacificIslander)/n()),
+            pW1_Black_AfricanAmerican = 100*(sum(W1_Black.AfricanAmerican)/n()),
+            pW1_White = 100*(sum(W1_White)/n()),
+            pW1_MoreThanOneRace = 100*(sum(W1_MoreThanOneRace)/n()),
+            pW1_Unknown_NotReported = 100*(sum(W1_Unknown.NotReported)/n()))
+
+eth <- race_eth %>%
+  group_by() %>%
+  summarize(nHispanic = sum(W1_Ethn),
+            pHispanic = 100*(sum(W1_Ethn)/n()))
+```
+

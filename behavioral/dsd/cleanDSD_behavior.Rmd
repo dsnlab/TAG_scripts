@@ -74,10 +74,12 @@ longDF <- lapply(X=dsdFiles$dsdFiles, FUN=function(file) {
            left.coin=as.numeric(left.coin),
            affective=condition %in% 4:6) %>%
     rowwise() %>%
-    mutate(disclosed=ifelse(side==1,(target.choice==2),
-                            ifelse(side==2, (target.choice==1), NA)),
-           share.value=ifelse(side==1, (right.coin-left.coin),
-                              ifelse(side==2, (left.coin-right.coin), NA))) %>%
+    mutate(disclosed=ifelse(target.choice==0,NA,
+                            ifelse(side==1,(target.choice==2),
+                                   ifelse(side==2,(target.choice==1),NA))), 
+           share.value=ifelse(target.choice==0,NA,
+                              ifelse(side==1, (right.coin-left.coin),
+                                     ifelse(side==2, (left.coin-right.coin), NA)))) %>%
     mutate(disclosed = as.numeric(disclosed),
            share.value = as.numeric(share.value))
   

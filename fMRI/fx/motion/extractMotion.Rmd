@@ -22,23 +22,21 @@ cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
 
 #Set Wave
 wave=1
+
+setwd(cas_dir)
 ```
 
 ###IMPORT MRI OVERVIEW DOC FROM CAS
 ```{r, include = F}
-MRIoverview <- read.csv(paste0(cas_dir,'behavior/MRI/Wave1/MRI_W',wave,'overview.csv'),header=T)
-MRIoverview <- MRIoverview %>% 
-  rename(SID = TAG_ID) %>%
-  mutate(SID=as.factor(gsub("[^0-9\\.]", "", SID)))
+MRIoverview <- read.csv(paste0('behavior/MRI/Wave1/MRI_W',wave,'overview.csv'),header=T)
 
 #List of everyone who has completed fmriprep according to overview document
-###To be updated once MRI onverview document is completed
+###To be updated once MRI overview document is completed
 MRIoverview <- MRIoverview %>% filter(fmriprep==1) %>% select(SID)
 ```
 
 ###IMPORT FMRIPREP MOTION CONFOUNDS
 ```{r, include=FALSE}
-setwd(paste0(cas_dir,'bids_data/derivatives/fmriprep/'))
 motionFiles = list.files(path='bids_data/derivatives/fmriprep/',pattern='bold_confounds.tsv', recursive = TRUE, full.names=T)
 
 motion <- lapply(X=motionFiles, FUN=function(file) {
@@ -51,7 +49,7 @@ motion <- lapply(X=motionFiles, FUN=function(file) {
     mutate(FramewiseDisplacement=replace(FramewiseDisplacement, FramewiseDisplacement=='n/a', 0)) %>%
     mutate(FramewiseDisplacement = as.numeric(FramewiseDisplacement)) 
     
-  write.table(motionData, file=paste0(cas_dir,'nonbids_data/fmri/fx/motion/wave',wave,'/motion_',SID,'_',task,run,'.txt'), sep='\t', row.name=F, quote=F, col.names=F)
+  #write.table(motionData, file=paste0(cas_dir,'nonbids_data/fmri/fx/motion/wave',wave,'/TAG',SID,'_',task,run,'.txt'), sep='\t', row.name=F, quote=F, col.names=F)
   
   out <- as.data.frame(cbind(SID,task,run))
   })
@@ -64,8 +62,10 @@ motion <- motion %>% mutate(task = paste0(task, "_", run)) %>%
   select(-run) %>%
   group_by(SID,task) %>%
   summarize(n=n()) %>%
-  spread(key=task,value=n)
+  spread(key=task,value=n) %>%
+  ungroup() %>%
+  mutate(SID = as.numeric(as.character(SID)))
 
 #check that all subjects have motion data
-MRIoverview <- MRIoverview %>% full_join(.,motion)
+MRIoverview2 <- MRIoverview %>% full_join(.,motion)
 ```

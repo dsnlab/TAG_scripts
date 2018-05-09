@@ -7,13 +7,14 @@ output: html_document
 
 #Load packages and set directories
 ```{r, include=FALSE}
-packages <- c("nlme", "ggplot2", "tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan")
+packages <- c("nlme", "ggplot2", "tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan",    "stringi")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 lapply(packages, library, character.only = TRUE)
 
 in_dir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/'
+file_dir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/subjects/'
 out_dir <- '/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/fMRI/fx/multiconds/DSD/ses-wave1/Summary/'
 ```
 
@@ -22,6 +23,22 @@ out_dir <- '/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/fMRI/fx/multicond
 out_df <- read.csv(paste0(in_dir,'dsd_trials_long.csv'))
 out_df <- out_df %>% filter(wave==1)
 ids <- as.vector(unique(out_df$sid))
+```
+
+#Save subject-specific files for behavioral analyses in Matlab
+```{r}
+files <- lapply(X=ids, df=out_df, FUN=function(id, df) {
+  
+  df <- df %>% filter(sid==id) %>% select(-statement) %>%
+    mutate(affective = ifelse(affective==TRUE,1,
+                              ifelse(affective==FALSE,0, NA))) %>%
+    mutate(disclosed = ifelse(disclosed==TRUE,1,
+                              ifelse(disclosed==FALSE,0, NA)))
+    fid = stri_pad_left(id, 3, 0)
+    
+  write.table(df,file=paste0(file_dir,'tag',fid,'.csv'),sep=",",row.names=F,col.names=F,na = "") 
+   })
+  
 ```
 
 #Format one (4 statement and 12 disclosure conditions):
@@ -202,13 +219,10 @@ multiconds <- multicondsDF %>% select(sid,run,name,onset,duration,pmod) %>% filt
 #IDs to check and run manually
 check_ids <- multicondsDF %>% select(sid,run1,run2) %>% filter(!is.na(run1))
 
-
 #df_long1 <- df_long %>% filter(run==1)
 #df_long2 <- df_long %>% filter(run==2)
 #write.csv(df_long1,file=paste0(out_dir,id,'_run1_summary.csv'),row.names=F) 
 #write.csv(df_long2,file=paste0(out_dir,id,'_run2_summary.csv'),row.names=F) 
-
-
 
 #complete subject list
 comp_IDS <- unique(multiconds$sid) #151 subjects
