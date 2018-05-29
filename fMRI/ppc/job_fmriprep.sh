@@ -32,7 +32,7 @@ cd $bids_dir
 echo -e "\nStarting on: $task"
 echo -e "\n"
 
-singularity run --bind "${group_dir}":"${group_dir}" $image $bids_dir $derivatives participant --participant_label $subid -t $task -w $working_dir --output-space {template,fsaverage5,fsnative} --nthreads 1 --mem-mb 100000 --fs-license-file /projects/dsnlab/shared/tag/TAG_scripts/sMRI/license.txt
+singularity run --bind "${group_dir}":"${group_dir}" $image $bids_dir $derivatives participant --participant_label $subid -t $task -w $working_dir --nthreads 1 --mem-mb 100000 --fs-license-file /projects/dsnlab/shared/tag/TAG_scripts/sMRI/license.txt
 
 echo -e "\n"
 echo -e "\ndone"

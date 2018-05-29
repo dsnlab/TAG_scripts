@@ -139,17 +139,17 @@ if [ "${convertrest}" == "TRUE" ]; then
     			fileSTRING="sub-"$subid"_ses-"$sessid"_task-rest_run-0"$runnum"_bold.nii.gz"
     			PED=$(ls | grep "$fileSTRING" $afnifile | sed -n 's/^.*nii.gz,[[:space:]]*//p')
     			if [[ "$PED" == ?$x? ]]; then
-    				PhaseEncodingDirection_x="j"
+    				PhaseEncodingDirection_x="j-"
     			elif [[ "$PED" == ?$y? ]]; then
-    				PhaseEncodingDirection_x="-j"
+    				PhaseEncodingDirection_x="j"
     			elif [[ "$PED" == $x?? ]]; then
-    				PhaseEncodingDirection_x="i"
+    				PhaseEncodingDirection_x="i-"
 			elif [[ "$PED" == $y?? ]]; then
-    				PhaseEncodingDirection_x="-i"
+    				PhaseEncodingDirection_x="i"
     			elif [[ "$PED" == ??$x ]]; then
-    				PhaseEncodingDirection_x="k"
+    				PhaseEncodingDirection_x="k-"
 			elif [[ "$PED" == ??$y ]]; then
-    				PhaseEncodingDirection_x="-k"
+    				PhaseEncodingDirection_x="k"
     			fi
 
 			if [ "$RepetitionTime" == "$RepetitionTime_x" ] && [ "$EchoTime" == "$EchoTime_x" ] && [ "$FlipAngle" == "$FlipAngle_x" ] && [ "$EffectiveEchoSpacing" == "$EffectiveEchoSpacing_x" ] && [ "$PhaseEncodingDirection" == "$PhaseEncodingDirection_x" ] && [ "$MultibandAccelerationFactor" == "$MultibandAccelerationFactor_x" ]; then
@@ -218,17 +218,17 @@ if [ "${converttask}" == "TRUE" ]; then
     		PED=$(ls | grep "$fileSTRING" $afnifile | sed -n 's/^.*nii.gz,[[:space:]]*//p')
 
 		if [[ "$PED" == ?$x? ]]; then
-    			PhaseEncodingDirection_x="j"
+    			PhaseEncodingDirection_x="j-"
     		elif [[ "$PED" == ?$y? ]]; then
-    			PhaseEncodingDirection_x="-j"
+    			PhaseEncodingDirection_x="j"
     		elif [[ "$PED" == $x?? ]]; then
-    			PhaseEncodingDirection_x="i"
+    			PhaseEncodingDirection_x="i-"
 		elif [[ "$PED" == $y?? ]]; then
-    			PhaseEncodingDirection_x="-i"
+    			PhaseEncodingDirection_x="i"
     		elif [[ "$PED" == ??$x ]]; then
-    			PhaseEncodingDirection_x="k"
+    			PhaseEncodingDirection_x="k-"
 		elif [[ "$PED" == ??$y ]]; then
-    			PhaseEncodingDirection_x="-k"
+    			PhaseEncodingDirection_x="k"
     		fi
 
     		if [[ "$file" =~ "${task}" ]]; then

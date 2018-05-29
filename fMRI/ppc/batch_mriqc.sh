@@ -14,7 +14,7 @@ container=BIDS/SingularityContainers/poldracklab_mriqc_latest-2017-10-19-8992ca9
 study="tag"
 
 # Set subject list
-SUBJLIST=`cat subject_list.txt`
+SUBJLIST=`cat subject_list4.txt`
 
 # 
 for SUBJ in $SUBJLIST; do
