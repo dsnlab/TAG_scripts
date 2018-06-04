@@ -17,8 +17,21 @@ lapply(packages, library, character.only = TRUE)
 cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
 saliva_dir <- paste0(cas_dir,'behavior/Saliva/Wave1')
 options(digits=3)
+```
 
-in_dir <- '~/Downloads/' #to be updated once Saliva Overview Doc is finished.
+###IMPORT TAG OVERVIEW DOC FROM CAS
+```{r, include = F}
+overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
+
+#removing everyone who withdrew at W1 (exclusionary withdrawals)
+overview <- overview %>% 
+  rename(SID = TAG_ID) %>%
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>% 
+  arrange(Exclusionary_Withdrawl) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
+  filter(Exclusionary_Withdrawl==0)
 ```
 
 ###IMPORT SESSION DATES AND CALCULATE INTERVALS BETWEEN SALIVA SAMPLES
@@ -31,7 +44,8 @@ session_dates <- session_df %>%
   select(SID,W1S1_Date,W1S2_Date) %>%
   mutate(sa_date=as.Date(W1S1_Date),
          sb_date=as.Date(W1S2_Date)) %>%
-  filter(!is.na(SID))
+  filter(!is.na(SID)) %>%
+  filter(SID %in% overview$SID)
 
 #import saliva sample dates
 saliva_df <- read.csv(paste0(saliva_dir,'/W1_at_home_saliva_overview.csv'))
@@ -40,14 +54,15 @@ saliva_dates <- saliva_df %>%
   mutate(SID=gsub("[^0-9\\.]", "", subject_spit_id)) %>%
   filter(!SID=="") %>%
   select(SID,s1_doc,s2_doc,s3_doc,s4_doc,s5_doc,s6_doc,s7_doc) %>%
-  mutate(s1_sdate = as.Date(s1_doc, "%d/%m/%Y"),
-         s2_sdate = as.Date(s2_doc, "%d/%m/%Y"),
-         s3_sdate = as.Date(s3_doc, "%d/%m/%Y"),
-         s4_sdate = as.Date(s4_doc, "%d/%m/%Y"),
-         s5_sdate = as.Date(s5_doc, "%d/%m/%Y"),
-         s6_sdate = as.Date(s6_doc, "%d/%m/%Y"),
-         s7_sdate = as.Date(s7_doc, "%d/%m/%Y")) %>%
-  select(-s1_doc,-s2_doc,-s3_doc,-s4_doc,-s5_doc,-s6_doc,-s7_doc)
+  mutate(s1_sdate = as.Date(s1_doc, "%m/%d/%y"),
+         s2_sdate = as.Date(s2_doc, "%m/%d/%y"),
+         s3_sdate = as.Date(s3_doc, "%m/%d/%y"),
+         s4_sdate = as.Date(s4_doc, "%m/%d/%y"),
+         s5_sdate = as.Date(s5_doc, "%m/%d/%y"),
+         s6_sdate = as.Date(s6_doc, "%m/%d/%y"),
+         s7_sdate = as.Date(s7_doc, "%m/%d/%y")) %>%
+  select(-s1_doc,-s2_doc,-s3_doc,-s4_doc,-s5_doc,-s6_doc,-s7_doc) %>%
+  filter(SID %in% overview$SID)
 
 #combine session and saliva dates
 dates <- session_dates %>% full_join(., saliva_dates) %>%
@@ -67,7 +82,7 @@ dates <- dates %>%
 ```
 
 ###PLOT SALIVA INTERVALS AND DETERMINE WHICH SAMPLES TO EXCLUDE
-```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=7}
+```{r, include=FALSE}
 dates_long <- dates %>% 
   select(SID,s1_sdate:s7_sdate,sb_date) %>% gather(., week, sample, c(s1_sdate,s2_sdate,s3_sdate,s4_sdate,s5_sdate,s6_sdate,s7_sdate,sb_date), factor_key=TRUE) %>%
   mutate(sample_bin = ifelse(!is.na(sample), 1,0)) %>%
@@ -117,7 +132,6 @@ fig4 <- ggplot(plot4, aes(SID, interval), group=week) +
 fig4
 
 #exclusions
-funky_dates = c("045","067","266")
 missing_dates = c("028","070","071")
 ```
 
@@ -125,7 +139,6 @@ missing_dates = c("028","070","071")
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=10, fig.width=7}
 dates_long <- dates_long %>% arrange(SID) %>% 
   filter(!SID %in% paste0(missing_dates)) %>% 
-  filter(!SID %in% paste0(funky_dates)) %>%
   filter(!is.na(sample)) %>%
   select(-sample_num,-interval) %>%
   group_by(SID) %>% mutate(sample_num = row_number()) %>%
@@ -164,3 +177,28 @@ barplot_samples <- ggplot(summaryN, aes(N)) +
           panel.background = element_blank(),
           legend.position="none")
 barplot_samples
+```
+
+###CHECK WEEKDAYS OF SAMPLES
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=7}
+
+dates_long <- dates_long %>% mutate(day = weekdays(sample))
+
+week_days <- dates_long %>% 
+  mutate(day = as.factor(day)) %>%
+  group_by(day) %>%
+  summarise(N = n())
+   
+barplot_days <- ggplot(week_days, aes(x=day, y=N)) +
+    geom_bar(stat = "identity") + 
+    #scale_x_continuous(limits = c(0, 8), breaks = seq(0,8,by=1))+
+    scale_y_continuous(limits = c(0, 600), breaks = seq(0,600,by=100))+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+barplot_days

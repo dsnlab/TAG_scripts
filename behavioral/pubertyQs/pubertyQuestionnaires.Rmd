@@ -7,7 +7,7 @@ output: html_document
 
 ###LOAD PACKAGES AND SET DIRECTORIES
 ```{r, include=FALSE}
-packages <- c("nlme", "ggplot2","tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan","xlsx")
+packages <- c("nlme", "ggplot2","tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan","xlsx","VIM")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
@@ -22,30 +22,31 @@ options(digits=3)
 
 ###IMPORT TAG OVERVIEW DOC FROM CAS
 ```{r, include = F}
-overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- read.xlsx(paste0(cas_dir,'behavior/Overview/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
 overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
 
-#removing everyone who withdrew at W1 (both self and exclusionary withdrawals)
+#removing everyone who withdrew at W1 (exclusionary withdrawals)
 overview <- overview %>% 
   rename(SID = TAG_ID) %>%
   replace_na(list(Withdrawn_W1 = 0)) %>%
-  arrange(Withdrawn_W1) %>% 
-  mutate(SID=gsub("[^0-9\\.]", "", SID))
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>% 
+  arrange(Exclusionary_Withdrawl) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
+  filter(Exclusionary_Withdrawl==0) %>%
+  filter(Withdrawn_W1==0)
 ```
 
 ###IMPORT AGE
 ```{r, include=FALSE}
-#IMPORT AND CLEAN PDS, PBIP DATA
-#import PDS and PBIP datasets, create SID as 3 digit numeric factor (i.e. "001").
+#IMPORT AGE
+#import AGE, create SID as 3 digit numeric factor (i.e. "001").
 Age <- read.xlsx(paste0(age_dir,'/DOB_W1W2_SessionDates.xlsx'), sheetIndex=1)
 Age <- Age %>% mutate(SID=str_replace(TAG_ID,"TAG","")) %>% 
   filter(!is.na(SID)) %>%
   select(-TAG_ID) %>%
   mutate(ageS1 = round((W1S1_Date - DOB)/365,3),
          ageS2 = round((W1S2_Date - DOB)/365,3)) %>%
-  left_join(.,overview) %>%
-  filter(Exclusionary_Withdrawl==0 | is.na(Exclusionary_Withdrawl)) %>%
-  filter(!SID=="000")
+  right_join(.,overview)
 ```
 
 ###IMPORT PDS
@@ -59,7 +60,7 @@ ExtraMens <- read.xlsx(paste0(menarche_dir,'/Menstruation.xlsx'), sheetIndex=1)
 
 PDS <- PDS %>% mutate(SID=str_replace(tagid,"TAG","")) %>% 
   filter(!grepl("W2",survey_name)) %>% 
-  select(SID,contains("PDS"),adrenf2,gonadf2) %>%
+  #select(SID,contains("PDS"),adrenf2,gonadf2) %>%
   filter(!SID == "034")
 ExtraMens <- ExtraMens %>%
   select(tagid,menstruation_by_Wave1SB.before.wave.1) %>%
@@ -187,9 +188,16 @@ PDS_parent <- PDS_parent %>%
 
 ###COMBINE PDS & PBIP & PDS_p
 ```{r, include=FALSE}
-Qdf <- PDS %>% full_join(.,PBIP) %>% full_join(.,PDS_parent)
+Qdf <- overview %>% left_join(.,PDS) %>% left_join(.,PBIP) %>% left_join(.,PDS_parent) 
 
 Qdf_items <- Qdf %>% select(-pdss,-pdss2,-gonadf2,-adrenf2,-PDS_F5,-PDS_F7,-PDS_F8,-PDS_F9,-PBIP_stage,-PBIP_1B,-PBIP_2B, -adrenf2_p, -gonadf2_p, -pdss_p)
+```
+
+###CHECK MISSING DATA
+```{r, include=FALSE}
+Qdf_items <- Qdf_items %>% select(PDS_F1, PDS_F2, PDS_F3, PDS_F4, PDS_F6,PBIP_1A,PBIP_2A,PDS_F1_p,PDS_F2_p,PDS_F3_p,PDS_F4_p,PDS_F6_p) 
+
+aggr_plot <- aggr(Qdf_items, col=c('navyblue','red'), numbers=TRUE, labels=names(Qdf_items), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
 ```
 
 ###DISTRIBUTIONS
@@ -494,7 +502,54 @@ ADRENPplot
 GONADPplot
 ```
 
+###RUNNING SOME CFAS 
 ```{r}
-PubModel <- 'puberty =~ PDS_F1 + PDS_F2 + PDS_F3 + PDS_F4 + PDS_F6 + PBIP_1A + PBIP_2A'
-fit <- cfa(PubModel, data = Qdf)
-summary(fit, fit.measures = TRUE)
+PubModel_Qs <- 'PDS =~ petbf + petcf + petdf + petef
+                PBIP =~ PBIP_1A + PBIP_2A
+                petbf ~~ petcf + petdf + petef
+                petcf ~~ petdf + petef
+                petdf ~~ petef
+                PBIP_1A ~~ PBIP_2A'
+fit_Qs <- cfa(PubModel_Qs, data = Qdf, missing="fiml")
+summary(fit_Qs, standardized=TRUE, fit.measures = TRUE, rsquare=TRUE)
+
+PubModel_Qs <- 'PDS =~ petbf + petcf + petdf + petef
+                PBIP =~ PBIP_1A + PBIP_2A
+                petbf ~~ petcf + petdf + petef
+                petcf ~~ petdf + petef
+                petdf ~~ petef
+                PBIP_1A ~~ PBIP_2A'
+fit_Qs <- cfa(PubModel_Qs, data = Qdf, missing="fiml")
+summary(fit_Qs, standardized=TRUE, fit.measures = TRUE, rsquare=TRUE)
+
+PubModel_1fact <- 'puberty =~ petbf + petcf + petdf + petef + PBIP_1A + PBIP_2A'
+fit_1fact <- cfa(PubModel_1fact, data = Qdf, missing="fiml")
+summary(fit_1fact, standardized=TRUE, fit.measures = TRUE)
+
+PubModel_2fact <- 'adrenal =~ petbf + petcf + PBIP_1A
+                   gonadal =~ petdf + petef + PBIP_2A'
+fit_2fact <- cfa(PubModel_2fact, data = Qdf, missing="fiml")
+summary(fit_2fact, standardized=TRUE, fit.measures = TRUE, rsquare=TRUE)
+
+PubModel_3fact <- 'adrenal =~ petbf + petcf + PBIP_1A
+                   gonadal =~ petdf + petef + PBIP_2A
+                   puberty =~ petbf + petcf + PBIP_1A + petdf + petef + PBIP_2A
+                   puberty ~~ 0*adrenal
+                   puberty ~~ 0*gonadal'
+fit_3fact <- cfa(PubModel_3fact, data = Qdf, missing="fiml")
+summary(fit_3fact, standardized=TRUE, fit.measures = TRUE, rsquare=TRUE)
+
+
+PubModel_BIG <- 'adrenal =~ petbf + petcf + PBIP_1A
+                 gonadal =~ petdf + petef + PBIP_2A
+                 PDS =~ petbf + petcf + petdf + petef
+                 PBIP =~ PBIP_1A + PBIP_2A
+                 PDS ~~ 0*adrenal + 0*gonadal
+                 PBIP ~~ 0*adrenal + 0*gonadal'
+fit_BIG <- cfa(PubModel_BIG, data = Qdf, missing="fiml")
+summary(fit_BIG, standardized=TRUE, fit.measures = TRUE, rsquare=TRUE)
+
+
+lrtest(fit_Qs,fit_1fact)
+
+semPaths(fit_1fact)

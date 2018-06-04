@@ -19,9 +19,11 @@ library(xlsx)
 # Set directory & import data
 # WD is on server \\casfiles2\psych-cog
 setwd("B:/dsnlab/TAG/behavior/Demographics/Age")
+cas_dir <- ("B:/dsnlab/TAG/")
 
 # For MAC
 setwd("/Volumes/psych-cog/dsnlab/TAG/behavior/Demographics/Age")
+cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
 
 # Import the CSV file
 tag_age_session <- read_csv('DOB_W1W2_SessionDates.csv')
@@ -71,15 +73,18 @@ summary_age <- tag_age_session_gathered %>% mutate(TAG_ID = as.factor(TAG_ID)) %
 ```{r}
 # Create summary for those who are not withdrawn at wave 1
 # Import overview doc to check for exclusions 
-overview <- read.xlsx('/Volumes/psych-cog/dsnlab/TAG/behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx',1)
-overview <- overview[,c(1:9)]
+overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
 overview <- overview %>% 
   replace_na(list(Withdrawn_W1 = 0)) %>%
-  arrange(Withdrawn_W1)
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>%
+  filter(Exclusionary_Withdrawl == 0) %>%
+  filter(!TAG_ID=="TAG000")
 
 # Merge overview and age info
+tag_age_session_gathered <- tag_age_session_gathered %>% mutate(TAG_ID = as.factor(TAG_ID)) 
 tag_age_session_gathered <- tag_age_session_gathered %>% left_join(., overview) 
-non_withdrawnW1 <- tag_age_session_gathered %>% filter(Withdrawn_W1 == 0)
+non_withdrawnW1 <- tag_age_session_gathered %>% filter(Exclusionary_Withdrawl == 0)
 
 # Create summary of non withdrawn participants
 summary_age_nonwithdrawn <- non_withdrawnW1 %>% mutate(TAG_ID = as.factor(TAG_ID)) %>%

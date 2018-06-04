@@ -24,9 +24,11 @@ overview <- overview %>%
   rename(SID = TAG_ID) %>%
   replace_na(list(Withdrawn_W1 = 0)) %>%
   replace_na(list(Exclusionary_Withdrawl = 0)) %>%
+  arrange(Withdrawn_W1) %>%
   arrange(Exclusionary_Withdrawl) %>% 
   mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
-  filter(Exclusionary_Withdrawl == 0)
+  filter(Exclusionary_Withdrawl == 0) %>%
+  filter(!SID=="000")
 ```
 
 ###IMPORT RACE_ETHNICITY DOC FROM CAS

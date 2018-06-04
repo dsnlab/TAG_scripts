@@ -1,0 +1,101 @@
+---
+title: "DSD_taskInput"
+author: "Nandi"
+date: "14 May 2018"
+output: html_document
+---
+
+```{r, include=FALSE}
+#LOAD PACKAGES AND SET DIRECTORIES
+
+packages <- c("ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
+input_dir <- '/Volumes/StorEDGE/WORK/DSN/TAG/TAG-fMRI-task/task/input/'
+```
+
+#IMPORT ALL INPUT FILES INTO ONE LONG FORMAT DF
+```{r}
+dataHeader <- c('trial', 'condition', 'left.target', 'right.target', 'left.coin', 'right.coin','choiceJitter', 'discoJitter','statement')
+
+dsdFiles = list.files(path=input_dir,pattern="tag.*wave_1_dsd.*input.txt",full.names=T,recursive=T)
+dsdFiles <- as.data.frame(dsdFiles) %>% 
+  mutate(file = sub(".*tag", "", dsdFiles)) %>% 
+  mutate(sid = as.numeric(substring(file,1,3))) %>%
+  filter(sid < 350)
+
+longDF <- lapply(X=dsdFiles$dsdFiles, FUN=function(file) {
+  SID <- sub(".*tag","",file) %>% substring(.,1,3) %>% as.numeric(.)
+  wave <- sub(".*wave_","",file) %>% substring(.,1,1) %>% as.numeric(.)
+  run <- sub(".*run","",file) %>% substring(.,1,1) %>% as.numeric(.)
+  DF.raw <- read.csv(file=paste0(file),
+                     header=F, col.names=dataHeader,
+                     stringsAsFactors=F) 
+  DF.raw <- DF.raw %>% select(choiceJitter, discoJitter) 
+  DF.raw <- as.data.frame(DF.raw) %>% mutate(SID = SID, wave = wave, run = run)
+})
+
+longDF <- rbindlist(longDF)
+longDF <- longDF %>% mutate(trialLength = discoJitter + 7.5,
+                            ITI = choiceJitter + 1,
+                            choice_discJitter = discoJitter)
+
+check <- longDF %>% group_by(SID) %>% summarize(N=n()) #each ID has 82 trials, as expected
+```
+
+#FILTER LONG FORMAT DF TO 183 PARTICIPANT SAMPLE (i.e. without exclusionary withdrawals)
+```{r}
+overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
+overview <- overview %>% 
+  rename(SID = TAG_ID) %>%
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>%
+  arrange(Withdrawn_W1) %>%
+  arrange(Exclusionary_Withdrawl) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
+  mutate(SID=as.numeric(SID)) %>%
+  filter(Exclusionary_Withdrawl == 0) %>%
+  filter(!SID=="0")
+
+longDF <- longDF %>% filter(SID %in% overview$SID) #limit longDF to IDS in overview
+check2 <- longDF %>% group_by(SID) %>% summarize(N=n()) #check IDs remaining in longDF
+
+#figure out one missing ID in longDF (n=182, whereas overview n=183)
+longList <- unique(longDF$SID)
+overviewList <- unique(overview$SID)
+intersect(longList,overviewList)
+missing <- as.character(setdiff(overviewList,longList)) #missing TAG249 - doesn't matter as they withdrew at W1.
+```
+
+#CALCULATE SUMMARIES
+```{r}
+mean(longDF$trialLength)
+min(longDF$trialLength) 
+max(longDF$trialLength)
+mean(longDF$choice_discJitter)
+min(longDF$choice_discJitter) 
+max(longDF$choice_discJitter)
+mean(longDF$ITI)
+min(longDF$ITI) 
+max(longDF$ITI)
+
+#check summaries for each input file
+summaryDF <- longDF %>% group_by(SID) %>% 
+  summarize(meanTL = mean(trialLength),
+            minTL = min(trialLength),
+            maxTL = max(trialLength),
+            meanJIT = mean(choice_discJitter),
+            minJIT = min(choice_discJitter),
+            maxJIT = max(choice_discJitter),
+            meanITI = mean(ITI),
+            minITI = min(ITI),
+            maxITI = max(ITI)) 
+summary(summaryDF)
+```
+
+

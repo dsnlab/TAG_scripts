@@ -1,0 +1,56 @@
+---
+title: "DSD_fMRI_disclosureSide"
+author: "Nandi"
+date: "14 May 2018"
+output: html_document
+---
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r, include=FALSE}
+#LOAD PACKAGES AND SET DIRECTORIES
+
+packages <- c("ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
+```
+
+###IMPORT MRI OVERVIEW DOC FROM CAS
+```{r, include = F}
+overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
+overview <- overview %>% 
+  rename(SID = TAG_ID) %>%
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>%
+  arrange(Withdrawn_W1) %>%
+  arrange(Exclusionary_Withdrawl) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
+  mutate(SID=as.numeric(SID)) %>%
+  filter(Exclusionary_Withdrawl == 0) %>%
+  filter(!SID=="0")
+```
+
+###IMPORT DSD DISCLOSURE SIDE
+```{r, include = F}
+discoSide <- read.csv(paste0(cas_dir,'behavior/task/info/discoside.csv'),header=F,sep=",")
+discoSide <- discoSide %>% rename(SID=V1, side=V2)
+
+overview <- overview %>% left_join(., discoSide)
+summary(as.factor(overview$side))
+```
+
+#EXTRA - NOT COMPLETED
+```{r}
+%>% 
+  mutate(dsdCompleted = ifelse(dsd1_num>0 & dsd2_num>0, 1, 0)) %>%
+  arrange(dsdCompleted) %>%
+  mutate(dsdCompleted = ifelse(SID=="173",1,dsdCompleted))
+discoSideSummary <- mri_overview %>% filter(!is.na(dsdCompleted))
+summary(as.factor(discoSideSummary$side))

@@ -8,7 +8,7 @@ output: html_document
 ```{r, include=FALSE}
 #LOAD PACKAGES AND SET DIRECTORIES
 
-packages <- c("ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan")
+packages <- c("ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
@@ -17,6 +17,21 @@ lapply(packages, library, character.only = TRUE)
 cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
 hair_dir <- paste0(cas_dir,'behavior/Hair/Wave1')
 options(digits=3)
+```
+
+###IMPORT TAG OVERVIEW DOC FROM CAS
+```{r, include = F}
+overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
+
+#removing everyone who withdrew at W1 (exclusionary withdrawals)
+overview <- overview %>% 
+  rename(SID = TAG_ID) %>%
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>% 
+  arrange(Exclusionary_Withdrawl) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
+  filter(Exclusionary_Withdrawl==0)
 ```
 
 ```{r, include=FALSE}
@@ -32,10 +47,11 @@ remove450CV="FALSE"
 removeConfounds="FALSE"
 ```
 
-###IMPORT AND CLEAN HAIR DATA
+###IMPORT "FINAL" HAIR CONCENTRATIONS
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 ###IMPORT & CLEAN CONCENTRATIONS 
 #import dataframe for each hormone, create SID as 3 digit numeric factor (i.e. "001"), combine all three hormones in one dataframe.
+
 Hair_DHEA <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=2)
 Hair_TEST <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=5)
 Hair_EST <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=8)
@@ -80,21 +96,32 @@ Hair_EST <- Hair_EST %>%
   mutate(SID = str_pad(SID, 3, pad = "0"))
 
 Hair <- Hair_DHEA %>% full_join(.,Hair_TEST) %>% full_join(.,Hair_EST) %>%
-  mutate(SID = as.factor(SID)) %>% arrange(SID)
+  mutate(SID = as.factor(SID)) %>% arrange(SID) %>%
+  filter(SID %in% overview$SID)
+```
 
-###IMPORT & CLEAN COV
+###IMPORT HAIR CVs
+```{r, include=FALSE}
 Hair_DHEA_CV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=1)
 Hair_TEST_CV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=4)
 Hair_EST_CV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=7)
 
+Hair_DHEA_CV$four50 <- Hair_DHEA_CV$`450`
+Hair_TEST_CV$four50 <- Hair_TEST_CV$`450`
+Hair_EST_CV$four50 <- Hair_EST_CV$`450`
+
 Hair_DHEA_CV <- Hair_DHEA_CV %>% 
-  filter(!is.na(Name)) %>%
-  select(Name,`CV (%)`) %>%
   rename(ID = Name,
          DHEA_CV = `CV (%)`) %>%
-  mutate(SID = as.factor(round(as.numeric(ID),2)),
-         DHEA_CV = round(as.numeric(DHEA_CV),3)) %>%
-  select(SID,DHEA_CV) %>%
+  mutate(second450 = lead(four50)) %>%
+  filter(!is.na(ID)) %>%
+  rowwise() %>%
+  mutate(Mean450 = mean(c(four50,second450),na.rm=T),
+         sd450 = sd(c(four50,second450),na.rm=T)) %>%
+  mutate(DHEA_450CV = 100*(sd450/Mean450),
+         DHEA_CV = round(as.numeric(DHEA_CV),3),
+         SID = as.factor(round(as.numeric(ID),2))) %>%
+  select(SID,DHEA_CV,DHEA_450CV) %>%
   filter(!SID == "0.1") %>%
   separate(SID, into =c("SID","week")) %>%
   mutate(SID = str_pad(SID, 3, pad = "0")) %>%
@@ -103,15 +130,18 @@ Hair_DHEA_CV <- Hair_DHEA_CV %>%
   filter(!is.na(SID)) %>%
   arrange(SID) 
   
-
 Hair_TEST_CV <- Hair_TEST_CV %>% 
-  filter(!is.na(Name)) %>%
-  select(Name,`CV (%)`) %>%
   rename(ID = Name,
          TEST_CV = `CV (%)`) %>%
-  mutate(SID = as.factor(round(as.numeric(ID),2)),
-         TEST_CV = round(as.numeric(TEST_CV),3)) %>%
-  select(SID,TEST_CV) %>%
+  mutate(second450 = lead(four50)) %>%
+  filter(!is.na(ID)) %>%
+  rowwise() %>%
+  mutate(Mean450 = mean(c(four50,second450),na.rm=T),
+         sd450 = sd(c(four50,second450),na.rm=T)) %>%
+  mutate(TEST_450CV = 100*(sd450/Mean450),
+         TEST_CV = round(as.numeric(TEST_CV),3),
+         SID = as.factor(round(as.numeric(ID),2))) %>%
+  select(SID,TEST_CV,TEST_450CV) %>%
   filter(!SID == "0.1") %>%
   separate(SID, into =c("SID","week")) %>%
   mutate(SID = str_pad(SID, 3, pad = "0")) %>%
@@ -121,13 +151,17 @@ Hair_TEST_CV <- Hair_TEST_CV %>%
   arrange(SID)
   
 Hair_EST_CV <- Hair_EST_CV %>% 
-  filter(!is.na(Name)) %>%
-  select(Name,`CV (%)`) %>%
   rename(ID = Name,
          EST_CV = `CV (%)`) %>%
-  mutate(SID = as.factor(round(as.numeric(ID),2)),
-         EST_CV = round(as.numeric(EST_CV),3)) %>%
-  select(SID,EST_CV) %>%
+  mutate(second450 = lead(four50)) %>%
+  filter(!is.na(ID)) %>%
+  rowwise() %>%
+  mutate(Mean450 = mean(c(four50,second450),na.rm=T),
+         sd450 = sd(c(four50,second450),na.rm=T)) %>%
+  mutate(EST_450CV = 100*(sd450/Mean450),
+         EST_CV = round(as.numeric(EST_CV),3),
+         SID = as.factor(round(as.numeric(ID),2))) %>%
+  select(SID,EST_CV,EST_450CV) %>%
   filter(!SID == "0.1") %>%
   separate(SID, into =c("SID","week")) %>%
   mutate(SID = str_pad(SID, 3, pad = "0")) %>%
@@ -136,12 +170,67 @@ Hair_EST_CV <- Hair_EST_CV %>%
   filter(!is.na(SID)) %>%
   arrange(SID)
 
-Hair_CV <- Hair_DHEA_CV %>% full_join(.,Hair_TEST_CV) %>% full_join(.,Hair_EST_CV) %>% arrange(SID)
+Hair_CV <- Hair_DHEA_CV %>% full_join(.,Hair_TEST_CV) %>% 
+  full_join(.,Hair_EST_CV) %>% arrange(SID) %>% 
+  filter(SID %in% overview$SID)
 ```
 
-###SUMMARIES
-```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+###NO HAIR REPLICATES TO IMPORT
+
+###DISTRIBUTIONS OF CONCENTRATIONS
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
 Hair_long <- Hair %>% select(SID,contains("pg")) %>% gather(., hormone, concentration, c(hair_DHEA_pgmg,hair_TEST_pgmg,hair_EST_pgug), factor_key=TRUE)
+
+#Hair_long <- Hair_long %>% 
+#  mutate(missing = if_else(concentration == "missing",1,0))
+
+Hair_long <- Hair_long %>%
+  mutate(concentration = as.numeric(concentration))
+
+Hair_plot <- Hair_long %>% 
+  ggplot(aes(x = concentration)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ hormone, scales="free")
+
+Hair_plot
+```
+
+###DISTRIBUTIONS OF ICV
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
+CVplot <- Hair_CV %>% select(SID, DHEA_CV, TEST_CV, EST_CV) %>%
+  gather(-SID, key = "var", value = "value") %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ var,scales="free")
+
+CVplot
+
+#if we want to see how many kids have CV > 20...
+DHEA_CV_exc <- Hair_CV %>% filter(DHEA_CV > 20) %>% select(SID)
+TEST_CV_exc <- Hair_CV %>% filter(TEST_CV > 20) %>% select(SID)
+EST_CV_exc <- Hair_CV %>% filter(EST_CV > 20) %>% select(SID)
+```
+
+###DISTRIBUTIONS OF 450 ICV
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
+
+CV_450_plot <- Hair_CV %>% select(SID, DHEA_450CV, TEST_450CV, EST_450CV) %>%
+  gather(-SID, key = "var", value = "value") %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ var,scales="free")
+
+CV_450_plot
+
+#if we want to see how many kids have CV > 30...
+DHEA_450CV_exc <- Hair_CV %>% filter(DHEA_450CV > 20) %>% select(SID)
+TEST_450CV_exc <- Hair_CV %>% filter(TEST_450CV > 20) %>% select(SID)
+EST_450CV_exc <- Hair_CV %>% filter(EST_450CV > 20) %>% select(SID)
+```
+
+
+```{r, include=FALSE}
+###EXTRA
 
 Hair_missing <- Hair_long %>% 
   mutate(missing = ifelse(is.na(concentration),1,0)) %>%
@@ -174,8 +263,10 @@ Hair <- Hair %>% mutate(hair_DHEA_pgmg = as.numeric(hair_DHEA_pgmg),
                         hair_EST_pgug = as.numeric(hair_EST_pgug))
 ```
 
+
+```{r, include=FALSE}
 ####Checking for outliers (of mean of duplicates)
-```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+
 hist(Hair$hair_DHEA_pgmg, main="", xlab="DHEA")
 abline(v=100,col="red")
 writeLines("\n")
@@ -208,8 +299,10 @@ cat(summary(as.factor(Hair$hair_ESTout))[2])
 writeLines("\n")
 ```
 
+
+```{r, include=FALSE}
 ####Check intra-assay CV
-```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+
 DHEA_CV<-ggplot(Hair_DHEA_CV, aes(x=DHEA_CV)) +
   geom_histogram(color="black",fill="white") +
   geom_vline(xintercept=30,linetype="dashed",colour="red")
@@ -242,7 +335,6 @@ cat(length(Hair_EST_CV_exc$SID))
 writeLines("\n")
 ```
 
-
 ```{r, include = FALSE}
 ###THINGS WE NEED TO DECIDE ON...
 #High 450 CVs
@@ -257,7 +349,6 @@ Hair <- Hair %>%
          hair_DHEA_450 = if_else(SID %in% hairExc_DHEA, 1, 0),
          hair_EST_450 = if_else(SID %in% hairExc_EST, 1, 0))
 ```
-
 
 ```{r, include=FALSE}
 #UPDATE DATAFRAMES WITH EXCLUSIONS
@@ -293,8 +384,8 @@ if (removeConfounds) {
 }
 ```
 
+```{r, include=FALSE}
 ####Final dataset post exclusions
-```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
 #re-create longer format and summary datasets for hair with updated values
 Hair_long <- Hair %>% select(SID,contains("pg")) %>% gather(., hormone, concentration, c(hair_DHEA_pgmg,hair_TEST_pgmg,hair_EST_pgug), factor_key=TRUE)
 
@@ -312,8 +403,10 @@ kable_styling(full_width = F, position = "left", font_size = 12)
 
 ```
 
-###Calcualte Inter-assay CV
+
 ```{r,echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+###Calcualte Inter-assay CV
+
 Hair_DHEA_interCV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=3)
 Hair_TEST_interCV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=6)
 Hair_EST_interCV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=9)
