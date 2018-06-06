@@ -15,7 +15,7 @@ lapply(packages, library, character.only = TRUE)
 
 in_dir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/'
 file_dir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/subjects/'
-out_dir <- '/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/fMRI/fx/multiconds/DSD/ses-wave1/Summary/'
+out_dir <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fmri/fx/multiconds/dsd/wave1/Summary/'
 ```
 
 #Read data
@@ -25,24 +25,7 @@ out_df <- out_df %>% filter(wave==1)
 ids <- as.vector(unique(out_df$sid))
 ```
 
-#Save subject-specific files for behavioral analyses in Matlab
-```{r}
-files <- lapply(X=ids, df=out_df, FUN=function(id, df) {
-  
-  df <- df %>% filter(sid==id) %>% select(-statement) %>%
-    mutate(affective = ifelse(affective==TRUE,1,
-                              ifelse(affective==FALSE,0, NA))) %>%
-    mutate(disclosed = ifelse(disclosed==TRUE,1,
-                              ifelse(disclosed==FALSE,0, NA))) %>%
-    mutate()
-    fid = stri_pad_left(id, 3, 0)
-    
-  write.table(df,file=paste0(file_dir,'tag',fid,'.csv'),sep=",",row.names=F,col.names=F,na = "") 
-   })
-  
-```
-
-#Format one (4 statement and 12 disclosure conditions):
+#Format one - now deprecated (4 statement and 12 disclosure conditions):
 ```{r}
 multiconds <- lapply(X=ids, df=out_df, FUN=function(id, df) {
   
@@ -112,17 +95,17 @@ multiconds <- check_ids %>% select(sid,run,name,onset,duration) %>% filter(!is.n
 check_ids <- check_ids %>% select(sid,run1,run2) %>% filter(!is.na(run1))
 
 #check for subjects with missing events
-summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(run,name) %>% summarize(N = n(),missing=151-n())
+summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarise(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(run,name) %>% summarise(N = n(),missing=151-n())
 
 levels(summary_byRun$name) <- c("Neutral_True","Neutral_False","Affect_True","Affect_False","Affect_Share_Loss","Affect_Share_Gain","Affect_Share_Nodiff","Affect_Private_Loss","Affect_Private_Gain","Affect_Private_Nodiff","Neutral_Share_Loss","Neutral_Share_Gain","Neutral_Share_Nodiff","Neutral_Private_Loss","Neutral_Private_Gain","Neutral_Private_Nodiff","Statement_Missing")
 levels(summary_byRun$run) <- c("Run1","Run2")
 
-summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(name) %>% summarize(N = n(),missing=151-n())
+summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarise(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(name) %>% summarise(N = n(),missing=151-n())
 
 levels(summary_acrossRun$name) <- c("Neutral_True","Neutral_False","Affect_True","Affect_False","Affect_Share_Loss","Affect_Share_Gain","Affect_Share_Nodiff","Affect_Private_Loss","Affect_Private_Gain","Affect_Private_Nodiff","Neutral_Share_Loss","Neutral_Share_Gain","Neutral_Share_Nodiff","Neutral_Private_Loss","Neutral_Private_Gain","Neutral_Private_Nodiff","Statement_Missing")
 
 #number of missing conditions in subjects (filtering out those without any missing conditions)
-summary_bySubj <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(sid) %>% summarize(N = (12 - n())) %>% filter(!N==0) 
+summary_bySubj <- multiconds %>% group_by(sid,name) %>% summarise(N = n()) %>% filter(name %in% c(5,6,7,8,9,10,11,12,13,14,15,16)) %>% group_by(sid) %>% summarise(N = (12 - n())) %>% filter(!N==0) 
 
 comp_IDS <- unique(multiconds$sid) 
 
@@ -201,9 +184,18 @@ df_long <- df %>%
                        ifelse(task == "disc" & condition == 2, 4,
                               ifelse(task == "disc" & condition == 3, 5,
                                      ifelse(task == "disc" & condition == 4, 6, condition))))) %>%
-  mutate(duration = 0) %>%
+  mutate(name = ifelse(is.na(name), 7, name)) %>%
+  group_by(run) %>%
+  mutate(duration = lead(onset) - onset) %>%
   mutate(pmod = ifelse(task=="statement",NA,share.value)) %>%
-  select(sid,run,name,onset,duration,pmod)
+  mutate(pmod = ifelse(pmod < 0, -1,
+                       ifelse(pmod > 0, 1,
+                              ifelse(pmod == 0, 0, NA)))) %>%
+  select(sid,run,name,onset,duration,pmod) %>%
+  mutate(duration = ifelse(is.na(duration),4,duration))
+
+fid = stri_pad_left(id, 3, 0)
+write.csv(df_long,file=paste0(out_dir,'tag_',fid,'_summary.csv'),row.names=F,na = "",) 
 
 } else {
   
@@ -215,28 +207,23 @@ df_long <- df %>%
 })
 
 multicondsDF <- rbindlist(multicondsDF, fill=T)
-multiconds <- multicondsDF %>% select(sid,run,name,onset,duration,pmod) %>% filter(!is.na(name))
+multiconds <- multicondsDF %>% select(sid,run,name,onset,duration,pmod)
 
 #IDs to check and run manually
 check_ids <- multicondsDF %>% select(sid,run1,run2) %>% filter(!is.na(run1))
-
-#df_long1 <- df_long %>% filter(run==1)
-#df_long2 <- df_long %>% filter(run==2)
-#write.csv(df_long1,file=paste0(out_dir,id,'_run1_summary.csv'),row.names=F) 
-#write.csv(df_long2,file=paste0(out_dir,id,'_run2_summary.csv'),row.names=F) 
 
 #complete subject list
 comp_IDS <- unique(multiconds$sid) 
 
 #check for subjects with missing events
-summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(run,name) %>% summarize(N = n())
+summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(run,name) %>% summarise(N = n())
 
-summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(name) %>% summarize(N = n())
+summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(name) %>% summarise(N = n())
 
 #number of missing conditions in subjects (filtering out those without any missing conditions)
-summary_byRun_bySubj <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid,run) %>% summarize(N = (4 - n())) %>% filter(!N==0) 
+summary_byRun_bySubj <- multiconds %>% group_by(sid,run,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid,run) %>% summarise(N = (4 - n())) %>% filter(!N==0) 
 
-summary_acrossRun_bySubj <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid) %>% summarize(N = (4 - n())) %>% filter(!N==0) 
+summary_acrossRun_bySubj <- multiconds %>% group_by(sid,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid) %>% summarise(N = (4 - n())) %>% filter(!N==0) 
 
 #distribution of trials across neutral vs. affective conditions by each share.value
 summary_affect_byShareValue <- out_df %>%
@@ -246,43 +233,37 @@ summary_affect_byShareValue <- out_df %>%
 
 #check for subjects who do not have missing events by each share.value (with 3 levels)
 summary_acrossRun_byShareValue <- multiconds %>% 
-  mutate(share.value = ifelse(pmod < 0, -1,
-                       ifelse(pmod > 0, 1,
-                              ifelse(pmod == 0, 0, NA)))) %>%
+  mutate(share.value = pmod) %>%
   mutate(name=as.factor(name)) %>%
-  group_by(sid,run,name,share.value) %>% summarize(N = n()) %>% 
+  group_by(sid,run,name,share.value) %>% summarise(N = n()) %>% 
   filter(name %in% c(4,6)) %>% 
   group_by(name,share.value) %>%
-  summarize(N = 100*(n()/312))
+  summarise(N = 100*(n()/312))
 
 #check for subjects with more than 4 events for each share.value
 summary_acrossRun_byShareValue_over3 <- multiconds %>% 
-  mutate(share.value = ifelse(pmod < 0, -1,
-                       ifelse(pmod > 0, 1,
-                              ifelse(pmod == 0, 0, NA)))) %>%
+  mutate(share.value = pmod) %>%
   mutate(name=as.factor(name)) %>%
-  group_by(sid,name,share.value) %>% summarize(N = n()) %>% 
+  group_by(sid,name,share.value) %>% summarise(N = n()) %>% 
   filter(name %in% c(4,6)) %>% 
   filter(N > 3) %>%
   group_by(name,share.value) %>%
-  summarize(N = 100*(n()/156))
+  summarise(N = 100*(n()/156))
 
 #of subjects with missing events across the share.values, most seem to have at least trials for two of the share.values: 
 summary_acrossRun_byShareValue_v2 <- multiconds %>% 
-  mutate(share.value = ifelse(pmod < 0, -1,
-                       ifelse(pmod > 0, 1,
-                              ifelse(pmod == 0, 0, NA)))) %>%
+  mutate(share.value = pmod) %>%
   mutate(name=as.factor(name)) %>%
-  group_by(sid,name,share.value) %>% summarize(N = n()) %>% 
+  group_by(sid,name,share.value) %>% summarise(N = n()) %>% 
   filter(name %in% c(4,6)) %>% 
   group_by(sid,name) %>%
-  summarize(N =n()) %>%
+  summarise(N =n()) %>%
   filter(N < 3) %>%
   group_by(name,N) %>%
-  summarize(num = n()) 
+  summarise(num = n()) 
 
 #plots
-multicondsPlot <- multiconds %>% filter(!name==1) %>% filter(!name==2) %>% 
+multicondsPlot <- multiconds %>% filter(!name==1) %>% filter(!name==2) %>%filter(!name==7) %>%
   group_by(sid,run,name) %>%
   summarise(N=n()) %>%
   mutate(N=ifelse(name %in% c(3,4), 100*(N/20),
@@ -311,10 +292,10 @@ percDisc <- ggplot(multicondsPlot, aes(N)) +
 
 levels(summary_acrossRun_byShareValue$name) <- c("Neutral_Statement","Affect_Statement",
                                                  "Neutral_Private", "Neutral_Share",
-                                                 "Affect_Private", "Affect_Share")
+                                                 "Affect_Private", "Affect_Share", "Missing")
 levels(summary_acrossRun_byShareValue_over3$name) <- c("Neutral_Statement","Affect_Statement",
                                                        "Neutral_Private", "Neutral_Share",
-                                                       "Affect_Private", "Affect_Share")
+                                                       "Affect_Private", "Affect_Share","Missing")
 
 shareValuePlot_1 <- ggplot(summary_acrossRun_byShareValue, aes(x=share.value, y=N)) + 
   geom_bar(stat = "identity") + facet_wrap(~name, ncol=2)
@@ -326,7 +307,6 @@ ggsave(filename='/Volumes/StorEDGE/WORK/DSN/TAG/DSD/perDisclosure.png', plot=per
 ggsave(filename='/Volumes/StorEDGE/WORK/DSN/TAG/DSD/shareValuePlot_1.png', plot=shareValuePlot_1, width = 5, height = 3.5)
 ggsave(filename='/Volumes/StorEDGE/WORK/DSN/TAG/DSD/shareValuePlot_2.png', plot=shareValuePlot_2, width = 5, height = 3.5)
 ```
-
 
 ```{r}
 #import dsd overview doc
@@ -340,18 +320,18 @@ compIDS <- dsd_overview %>% filter(is.na(technical_missing) & is.na(participant_
 multiconds <- multiconds %>% filter(sid %in% compIDS$SID)
 
 #check for subjects with missing events
-summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(run,name) %>% summarize(N = n()) %>%
+summary_byRun <- multiconds %>% group_by(sid,run,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(run,name) %>% summarise(N = n()) %>%
   mutate(missingN = nrow(compIDS) - N) %>%
   mutate(missingPerc = 100*(missingN/nrow(compIDS)))
 
-summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(name) %>% summarize(N = n()) %>%
+summary_acrossRun <- multiconds %>% group_by(sid,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(name) %>% summarise(N = n()) %>%
     mutate(missingN = nrow(compIDS) - N) %>%
   mutate(missingPerc = 100*(missingN/nrow(compIDS)))
 
 #number of missing conditions in subjects (filtering out those without any missing conditions)
-summary_byRun_bySubj <- multiconds %>% group_by(sid,run,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid,run) %>% summarize(N = (4 - n())) %>% filter(!N==0) 
+summary_byRun_bySubj <- multiconds %>% group_by(sid,run,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid,run) %>% summarise(N = (4 - n())) %>% filter(!N==0) 
 
-summary_acrossRun_bySubj <- multiconds %>% group_by(sid,name) %>% summarize(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid) %>% summarize(N = (4 - n())) %>% filter(!N==0) 
+summary_acrossRun_bySubj <- multiconds %>% group_by(sid,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6)) %>% group_by(sid) %>% summarise(N = (4 - n())) %>% filter(!N==0) 
 
 #distribution of trials across neutral vs. affective conditions by each share.value
 summary_affect_byShareValue <- out_df %>%
@@ -359,7 +339,7 @@ summary_affect_byShareValue <- out_df %>%
   group_by(affective, share.value) %>%
   summarise(N=n())
 
-multicondsPlot <- multiconds %>% filter(!name==1) %>% filter(!name==2) %>% 
+multicondsPlot <- multiconds %>% filter(!name==1) %>% filter(!name==2) %>% filter(!name==7) %>% 
   group_by(sid,run,name) %>%
   summarise(N=n()) %>%
   mutate(N=ifelse(name %in% c(3,4), 100*(N/20),

@@ -8,15 +8,16 @@ output: html_document
 ```{r, include=FALSE}
 #LOAD PACKAGES AND SET DIRECTORIES
 
-packages <- c("ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx","jomo","mice","Hmisc")
+packages <- c("Amelia", "lme4" , "merTools", "ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx","jomo","mice","Hmisc")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 lapply(packages, library, character.only = TRUE)
 
+options(digits=10)
+
 cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
 saliva_dir <- paste0(cas_dir,'behavior/Saliva/Wave1')
-options(digits=3)
 ```
 
 ###IMPORT TAG OVERVIEW DOC FROM CAS
@@ -277,6 +278,8 @@ TEST_450CV_exc <- Saliva_CV %>% filter(TEST_450CV > 20) %>% select(ID)
 EST_450CV_exc <- Saliva_CV %>% filter(EST_450CV > 20) %>% select(ID)
 ```
 
+###THE REST OF THE SCRIPT EXAMINES HOW TO BEST CONTROL FOR EXTRANEOUS FACTORS AND CREATE A MEAN (BASAL) SALIVA CONCENTRATION
+
 ###CHECK ASSOCIATIONS WITH CONTROL VARIABLES
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
 
@@ -292,18 +295,79 @@ control_long <- gather(control_df, weeks, measurement, -SID) %>%
   spread(variable,measurement) %>%
   mutate(week=gsub("[^0-9\\.]", "", week))
 
-Saliva_control_long <- Saliva_long %>% left_join(., control_long) %>%
+#combine Saliva and Control variables
+Saliva_control_long <- Saliva_long %>% left_join(., control_long) 
+
+#make blank cells NAs:
+Saliva_control_long <- apply(Saliva_control_long, 2, function(x) gsub("^$|^ $", NA, x))
+
+#make variables into appropriate factors
+Saliva_control_long <- as.data.frame(Saliva_control_long) %>%
   mutate(sick_y_n = as.factor(sick_y_n),
          medicines_y_n = as.factor(medicines_y_n),
          start_time=as.POSIXct(start_time,format="%H:%M"),
          wake_up_time=as.POSIXct(wake_up_time,format="%H:%M"),
-         time_to_collect=as.numeric(time_to_collect))
+         time_to_collect=as.numeric(as.character(time_to_collect)),
+         concentration=as.numeric(as.character(concentration)))
 
+Saliva_control_long2 <- Saliva_control_long %>%
+  mutate(start_time = as.numeric(start_time)) %>%
+  mutate(start_time = start_time - 1528190000) %>%
+  mutate(wake_up_time = as.numeric(wake_up_time)) %>%
+  mutate(wake_up_time = wake_up_time - 1528190000)
+
+#check effect of control variables using LMER (long dataset)
+DHEA <- Saliva_control_long2 %>% filter(hormone=="sal_DHEA") %>%
+  filter(complete.cases(concentration,start_time,sick_y_n,medicines_y_n,wake_up_time,time_to_collect))                 
+                                       
+DHEA_null <- lmer(concentration ~ 1 + (1 | SID), data=DHEA, REML = F)
+DHEA_start_time <- lmer(concentration ~ start_time + (1 | SID), data=DHEA, REML = F)
+DHEA_wake_up_time <- lmer(concentration ~ wake_up_time + (1 | SID), data=DHEA, REML = F)
+DHEA_time_to_collect <- lmer(concentration ~ time_to_collect + (1 | SID), data=DHEA, REML = F)
+DHEA_sick_y_n <- lmer(concentration ~ sick_y_n + (1 | SID), data=DHEA, REML = F)
+DHEA_medicines_y_n <- lmer(concentration ~ medicines_y_n + (1 | SID), data=DHEA, REML = F)
+anova(DHEA_null,DHEA_start_time)
+anova(DHEA_null,DHEA_wake_up_time)
+anova(DHEA_null,DHEA_time_to_collect)
+anova(DHEA_null,DHEA_sick_y_n)
+anova(DHEA_null,DHEA_medicines_y_n)
+
+TEST <- Saliva_control_long2 %>% filter(hormone=="sal_TEST") %>%
+  filter(complete.cases(concentration,start_time,sick_y_n,medicines_y_n,wake_up_time,time_to_collect))                 
+                                       
+TEST_null <- lmer(concentration ~ 1 + (1 | SID), data=TEST, REML = F)
+TEST_start_time <- lmer(concentration ~ start_time + (1 | SID), data=TEST, REML = F)
+TEST_wake_up_time <- lmer(concentration ~ wake_up_time + (1 | SID), data=TEST, REML = F)
+TEST_time_to_collect <- lmer(concentration ~ time_to_collect + (1 | SID), data=TEST, REML = F)
+TEST_sick_y_n <- lmer(concentration ~ sick_y_n + (1 | SID), data=TEST, REML = F)
+TEST_medicines_y_n <- lmer(concentration ~ medicines_y_n + (1 | SID), data=TEST, REML = F)
+anova(TEST_null,TEST_start_time) #trending
+anova(TEST_null,TEST_wake_up_time)
+anova(TEST_null,TEST_time_to_collect)
+anova(TEST_null,TEST_sick_y_n)
+anova(TEST_null,TEST_medicines_y_n)
+
+EST <- Saliva_control_long2 %>% filter(hormone=="sal_EST") %>%
+  filter(complete.cases(concentration,start_time,sick_y_n,medicines_y_n,wake_up_time,time_to_collect))                 
+                                       
+EST_null <- lmer(concentration ~ 1 + (1 | SID), data=EST, REML = F)
+EST_start_time <- lmer(concentration ~ start_time + (1 | SID), data=EST, REML = F)
+EST_wake_up_time <- lmer(concentration ~ wake_up_time + (1 | SID), data=EST, REML = F)
+EST_time_to_collect <- lmer(concentration ~ time_to_collect + (1 | SID), data=EST, REML = F)
+EST_sick_y_n <- lmer(concentration ~ sick_y_n + (1 | SID), data=EST, REML = F)
+EST_medicines_y_n <- lmer(concentration ~ medicines_y_n + (1 | SID), data=EST, REML = F)
+anova(EST_null,EST_start_time)
+anova(EST_null,EST_wake_up_time)
+anova(EST_null,EST_time_to_collect)
+anova(EST_null,EST_sick_y_n)
+anova(EST_null,EST_medicines_y_n) #sig
+
+#Now checking effect of control variables using LM (not accounting for ID grouping)
 summary(lm(concentration ~ start_time, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_DHEA")))
 summary(lm(concentration ~ start_time, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_TEST")))
-summary(lm(concentration ~ start_time, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_EST")))
+summary(lm(concentration ~ start_time, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_EST"))) #sig effect
 
-summary(lm(concentration ~ wake_up_time, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_DHEA")))
+summary(lm(concentration ~ wake_up_time, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_DHEA"))) #trending
 summary(lm(concentration ~ wake_up_time, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_TEST")))
 summary(lm(concentration ~ wake_up_time, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_EST")))
 
@@ -313,7 +377,7 @@ summary(lm(concentration ~ sick_y_n, data = subset(Saliva_control_long,Saliva_co
 
 summary(lm(concentration ~ medicines_y_n, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_DHEA")))
 summary(lm(concentration ~ medicines_y_n, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_TEST")))
-summary(lm(concentration ~ medicines_y_n, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_EST")))
+summary(lm(concentration ~ medicines_y_n, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_EST"))) #sig effect
                    
 summary(lm(concentration ~ time_to_collect, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_DHEA")))
 summary(lm(concentration ~ time_to_collect, data = subset(Saliva_control_long,Saliva_control_long$hormone=="sal_TEST")))
@@ -323,35 +387,116 @@ summary(lm(concentration ~ time_to_collect, data = subset(Saliva_control_long,Sa
 Start_time <- Saliva_control_long %>% filter(hormone=="sal_EST") %>% select(SID,week,start_time) %>% arrange(start_time)
 Start_time <- as.POSIXlt(Start_time$start_time)$hour
 hist(Start_time, breaks=seq(0, 23), main="Start time (hour)")
+
+#consistencies across LM and LMER = EST * medicines.
 ```
 
-###CALCULATE RESIDUALS
+###CALCULATE RESIDUALS WITH LMER
 ```{r}
+#Testing out extraction of random effects using merTools after multiple imputation with Amelia 
+ranef.merModList <- function(object, ...){
+levels <- getME(object[[1]], "n_rfacs")
+re <- vector(length = levels, mode = "list")
+for(i in seq_along(1:levels)){
+# <- Reduce(`+`, lapply(object, ranef)[i]) / length(object)
+re[i]  <- lapply(Reduce(`+`, lapply(object, ranef)[1]), function(x) x/length(object))
+}
+names(re) <- names(ranef(object[[1]]))
+return(re)
+}
+
+#testing on DHEA:
 DHEA <- Saliva_control_long %>% filter(hormone=="sal_DHEA") %>% 
-  mutate(SID=as.factor(SID)) %>%
+  mutate(SID=as.factor(SID),
+         week=as.numeric(week)) %>%
   select(SID,week,concentration,medicines_y_n,sick_y_n,time_to_collect,start_time,wake_up_time) %>%
   mutate(timediff = difftime(start_time,wake_up_time)/60) %>%
   mutate(timediff = as.numeric(timediff)) %>%
-  mutate(wake_up_time = as.numeric(wake_up_time)) %>%
-  select(-start_time)
+  mutate(start_time = as.numeric(start_time)) %>%
+  mutate(start_time = start_time - 1528190000) %>%
+  #mutate(start_time = start_time/10000000) %>%
+  select(-wake_up_time)
 
-#try Hmisc
-impute_arg <- aregImpute(~ wake_up_time + timediff + medicines_y_n + sick_y_n, data = DHEA, n.impute = 5)
+#imputation with Amelia
+aout <- amelia(DHEA, idvars = "SID", 
+            ords = c("medicines_y_n","sick_y_n"),
+            ts="week",
+            m = 5)
 
-#try MICE
-DHEA2 <- DHEA %>% 
-  mutate(sick_y_n = ifelse(sick_y_n == 0, 0,
-                           ifelse(sick_y_n ==1,1, NA)),
-         medicines_y_n = ifelse(medicines_y_n == 0, 0,
-                                ifelse(medicines_y_n ==1,1, NA)))
-DHEA2$hour = as.POSIXlt(DHEA2$wake_up_time)$hour
-DHEA2 <- DHEA2 %>% select(-start_time,-wake_up_time)
+aout_list <- as.list(aout$imputations) 
 
-impDHEA <- mice(DHEA2,m=5,maxit=50,meth='pmm',seed=500)
+fml <- "concentration ~ start_time + medicines_y_n + sick_y_n + time_to_collect + timediff + (1 | SID)"
+mod <- lmerModList(fml, data = aout_list)
 
-modelFit1 <- with(impDHEA,lm(concentration~ medicines_y_n+sick_y_n+time_to_collect))
+DHEA_ranef <- as.data.frame(ranef.merModList(mod))
+DHEA_ranef <- DHEA_ranef %>% add_rownames(., var="SID") %>%
+  rename(raneff = X.Intercept.)
+
+#testing on TEST:
+TEST <- Saliva_control_long %>% filter(hormone=="sal_TEST") %>% 
+  mutate(SID=as.factor(SID),
+         week=as.numeric(week)) %>%
+  select(SID,week,concentration,medicines_y_n,sick_y_n,time_to_collect,start_time,wake_up_time) %>%
+  mutate(timediff = difftime(start_time,wake_up_time)/60) %>%
+  mutate(timediff = as.numeric(timediff)) %>%
+  mutate(start_time = as.numeric(start_time)) %>%
+  mutate(start_time = start_time - 1528190000) %>%
+  #mutate(start_time = start_time/10000000) %>%
+  select(-wake_up_time)
+
+#imputation with Amelia
+aout <- amelia(TEST, idvars = "SID", 
+            ords = c("medicines_y_n","sick_y_n"),
+            ts="week",
+            m = 5)
+
+aout_list <- as.list(aout$imputations) 
+
+fml <- "concentration ~ start_time + medicines_y_n + sick_y_n + time_to_collect + timediff + (1 | SID)"
+mod <- lmerModList(fml, data = aout_list)
+
+TEST_ranef <- as.data.frame(ranef.merModList(mod))
+TEST_ranef <- TEST_ranef %>% add_rownames(., var="SID") %>%
+  rename(raneff = X.Intercept.)
+
+#testing on EST:
+EST <- Saliva_control_long %>% filter(hormone=="sal_EST") %>% 
+  mutate(SID=as.factor(SID),
+         week=as.numeric(week)) %>%
+  select(SID,week,concentration,medicines_y_n,sick_y_n,time_to_collect,start_time,wake_up_time) %>%
+  mutate(timediff = difftime(start_time,wake_up_time)/60) %>%
+  mutate(timediff = as.numeric(timediff)) %>%
+  mutate(start_time = as.numeric(start_time)) %>%
+  mutate(start_time = start_time - 1528190000) %>%
+  select(-wake_up_time)
+
+#imputation with Amelia
+aout <- amelia(EST, idvars = "SID", 
+            ords = c("medicines_y_n","sick_y_n"),
+            ts="week",
+            m = 5)
+
+aout_list <- as.list(aout$imputations) 
+
+fml <- "concentration ~ start_time + medicines_y_n + sick_y_n + time_to_collect + timediff + (1 | SID)"
+mod <- lmerModList(fml, data = aout_list)
+
+EST_ranef <- as.data.frame(ranef.merModList(mod))
+EST_ranef <- EST_ranef %>% add_rownames(., var="SID") %>%
+  rename(raneff = X.Intercept.)
+```
+
+###CALCULATE RESIDUALS FOR CROSS-SEC DATAFRAME AND THEN AVERAGE
+```{r}
+#using MICE to impute and run pooled analyses
+
+#DHEA
+impDHEA <- mice(DHEA,m=5,maxit=50,meth='pmm',seed=500)
+
+modelFit1 <- with(impDHEA,lm(concentration~ start_time + medicines_y_n + sick_y_n + time_to_collect + timediff))
 summary(pool(modelFit1))
 
+#extract residuals for each imputation
 DHEA$resid1 <- modelFit1$analyses[[1]]$residuals
 DHEA$resid2 <- modelFit1$analyses[[2]]$residuals
 DHEA$resid3 <- modelFit1$analyses[[3]]$residuals
@@ -362,12 +507,73 @@ DHEA <- DHEA %>%
   rowwise %>%
   mutate(resid = mean(c(resid1,resid2,resid3,resid4,resid5)))
 
+#calculate mean residual, as well as mean of original concentrations 
 DHEA_mean <- DHEA %>% ungroup() %>%
   mutate(x="x") %>%
   group_by(SID) %>%
   summarise(residMean = mean(resid),
-            Mean = mean(concentration,na.rm=T))
+            Mean = mean(concentration,na.rm=T)) %>%
+  left_join(.,DHEA_ranef)
 
-#if we end up using MLM:
-DHEAcontrols <- lme(concentration ~ start_time + medicines_y_n, random = ~1|SID, data = DHEA,na.action=na.exclude)
-                    age + Sex, data = Orthodont, random = ~ 1)
+#plot mean vs. residMean vs. raneff - SEEMS LIKE EITHER RESID OR RANEFF ARE GOOD OPTIONS - ALL CORS ABOVE 0.99
+pairs(~residMean+Mean+raneff,data=DHEA_mean, 
+   main="Simple Scatterplot Matrix")
+
+#TEST
+impTEST <- mice(TEST,m=5,maxit=50,meth='pmm',seed=500)
+
+modelFit1 <- with(impTEST,lm(concentration~ start_time + medicines_y_n + sick_y_n + time_to_collect + timediff))
+summary(pool(modelFit1))
+
+#extract residuals for each imputation
+TEST$resid1 <- modelFit1$analyses[[1]]$residuals
+TEST$resid2 <- modelFit1$analyses[[2]]$residuals
+TEST$resid3 <- modelFit1$analyses[[3]]$residuals
+TEST$resid4 <- modelFit1$analyses[[4]]$residuals
+TEST$resid5 <- modelFit1$analyses[[5]]$residuals
+
+TEST <- TEST %>%
+  rowwise %>%
+  mutate(resid = mean(c(resid1,resid2,resid3,resid4,resid5)))
+
+#calculate mean residual, as well as mean of original concentrations 
+TEST_mean <- TEST %>% ungroup() %>%
+  mutate(x="x") %>%
+  group_by(SID) %>%
+  summarise(residMean = mean(resid),
+            Mean = mean(concentration,na.rm=T)) %>%
+  left_join(.,TEST_ranef)
+
+#plot mean vs. residMean vs. raneff - SEEMS LIKE EITHER RESID OR RANEFF ARE GOOD OPTIONS - ALL CORS ABOVE 0.99
+pairs(~residMean+Mean+raneff,data=TEST_mean, 
+   main="Simple Scatterplot Matrix") 
+
+#EST
+impEST <- mice(EST,m=5,maxit=50,meth='pmm',seed=500)
+
+modelFit1 <- with(impEST,lm(concentration~ start_time + medicines_y_n + sick_y_n + time_to_collect + timediff))
+summary(pool(modelFit1))
+
+#extract residuals for each imputation
+EST$resid1 <- modelFit1$analyses[[1]]$residuals
+EST$resid2 <- modelFit1$analyses[[2]]$residuals
+EST$resid3 <- modelFit1$analyses[[3]]$residuals
+EST$resid4 <- modelFit1$analyses[[4]]$residuals
+EST$resid5 <- modelFit1$analyses[[5]]$residuals
+
+EST <- EST %>%
+  rowwise %>%
+  mutate(resid = mean(c(resid1,resid2,resid3,resid4,resid5)))
+
+#calculate mean residual, as well as mean of original concentrations 
+EST_mean <- EST %>% ungroup() %>%
+  mutate(x="x") %>%
+  group_by(SID) %>%
+  summarise(residMean = mean(resid),
+            Mean = mean(concentration,na.rm=T)) %>%
+  left_join(.,EST_ranef)
+
+#plot mean vs. residMean vs. raneff - SEEMS LIKE EITHER RESID OR RANEFF ARE GOOD OPTIONS - ALL CORS ABOVE 0.98 (resid slightly lower cor with mean, than ranef and mean)
+pairs(~residMean+Mean+raneff,data=EST_mean, 
+   main="Simple Scatterplot Matrix")
+```

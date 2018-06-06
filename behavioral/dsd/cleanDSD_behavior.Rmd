@@ -94,6 +94,26 @@ longDF <- rbindlist(longDF)
 write.csv(longDF,paste0(outDataDir,'dsd_trials_long.csv'),row.names=F)
 ```
 
+#Save subject-specific files for behavioral analyses (i.e. PSE analyses in Matlab)
+```{r}
+out_df <- longDF %>% filter(wave==1)
+ids <- as.vector(unique(out_df$sid))
+
+files <- lapply(X=ids, df=out_df, FUN=function(id, df) {
+  
+  df <- df %>% filter(sid==id) %>% select(-statement) %>%
+    mutate(affective = ifelse(affective==TRUE,1,
+                              ifelse(affective==FALSE,0, NA))) %>%
+    mutate(disclosed = ifelse(disclosed==TRUE,1,
+                              ifelse(disclosed==FALSE,0, NA)))
+  
+    fid = stri_pad_left(id, 3, 0)
+    
+  write.table(df,file=paste0(outDataDir,'subjects/tag',fid,'.csv'),sep=",",row.names=F,col.names=F,na = "") 
+   })
+  
+```
+
 #Individual plots
 ```{r}
 allSubs <- ggplot(longDF, aes(x=share.value, y=disclosed, group=affective))+
