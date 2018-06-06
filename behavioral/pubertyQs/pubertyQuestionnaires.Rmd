@@ -7,7 +7,8 @@ output: html_document
 
 ###LOAD PACKAGES AND SET DIRECTORIES
 ```{r, include=FALSE}
-packages <- c("nlme", "ggplot2","tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan","xlsx","VIM")
+packages <- c("nlme", "ggplot2","tidyr", "stringr", "knitr","corrplot","data.table", "gridExtra", "dplyr", "psych","lavaan","xlsx","VIM")
+#"kableExtra"
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
@@ -62,6 +63,7 @@ PDS <- PDS %>% mutate(SID=str_replace(tagid,"TAG","")) %>%
   filter(!grepl("W2",survey_name)) %>% 
   #select(SID,contains("PDS"),adrenf2,gonadf2) %>%
   filter(!SID == "034")
+
 ExtraMens <- ExtraMens %>%
   select(tagid,menstruation_by_Wave1SB.before.wave.1) %>%
   rename(Menarche = menstruation_by_Wave1SB.before.wave.1) %>%
