@@ -9,7 +9,7 @@ Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
 #You should set this to the behavioral directory on the TAG file server 
-workdir='~/workdir/'
+workdir='/Volumes/psych-cog/dsnlab/TAG/behavior/'
 ```
 
 Load required packages
@@ -380,7 +380,7 @@ timebetween=function(subid){
   }
   as.data.frame(cbind(tag_id, totaldays))
 }
-output.df<-lapply(as.list(unique(survey_date$tagid)),timebetween)
+output.df<-lapply(as.list(unique(survey_date$tagid)),timebetween) ##NV: NOT WORKING, BUT SEEMINGLY ONLY RELEVANT FOR PLOTTING TIME DIFFERENCE
 output.df<-as.data.frame(do.call(rbind,output.df)) %>% 
   mutate(totaldays=round(as.numeric(levels(totaldays))[totaldays]),0)
 time_between <- ggplot(output.df,
@@ -784,7 +784,22 @@ PDS<-left_join(filter(cleaned_survey_data, grepl("PDS",item)) %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
                  select(tagid, sa_date, sb_date, dob),by="tagid")
 
-PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>% 
+#NV: Load in info about menstruation to update missing PDS_F6
+Menstruation <- read.csv(paste0(workdir,'Puberty_Followup/Menstruation.csv'), header=T)
+
+Menstruation <- Menstruation %>%
+  select(tagid,menstruation_by_Wave1SB.before.wave.1) %>%
+  mutate(w1_Menarche = ifelse(menstruation_by_Wave1SB.before.wave.1=="yes",1,0))
+w1_Menarche = as.list(Menstruation %>% filter(w1_Menarche==1) %>% select(tagid) %>% arrange(tagid))
+w1_NoMenarche = as.list(Menstruation %>% filter(w1_Menarche==0) %>% select(tagid) %>% arrange(tagid))
+
+#NV: Update missing PDS_F6 in PDS dataframe with info on menstruation collected by other methods 
+PDS <- PDS %>%
+  mutate(PDS_F6 = ifelse((!grepl("W2|W3",survey_name) & is.na(PDS_F6) & (tagid %in% w1_Menarche$tagid)), 1, 
+                         ifelse((!grepl("W2|W3",survey_name) & is.na(PDS_F6) & (tagid %in% w1_NoMenarche$tagid)), 0,
+                                PDS_F6)))
+                         
+PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>% #NV: This dataframe is called PDS_W1, but it doesn't seem to be filtering W1 alone). However, I'm not editing this as it seems like the same dataframe is being used for the RDoC submission below.l
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
   select(-value) %>%
@@ -857,8 +872,8 @@ PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>%
                                                                                                                                                NA))))))))))))))))))) %>%
   mutate(pdss=rowMeans(cbind(adrenf2,gonadf2),na.rm=F))                                            
 ## Save it
-write.csv(PDS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PDS_Wave1.csv"))
-
+PDS_Wave1_outdf <- PDS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) #NV: given comment above, I'm now saving another filtered PDS_wave1 document for saving output.
+write.csv(PDS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/PDS_Wave1.csv"))
 
 ## Graph it
 PDS_Wave1_pdss_graph<-ggplot(PDS_Wave1, aes(x=pdss, colour="deeppink")) +
@@ -945,9 +960,10 @@ PBIP_Wave1<-left_join(PBIP,survey_date, by = c("tagid","survey_name")) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob,-PBIP_1_Drawing,-PBIP_1_Question,-PBIP_2_Question,-PBIP_2_Drawing) %>%
   mutate(stage=rowMeans(cbind(PBIP_1A,PBIP_2A),na.rm=T)) %>%
   filter(!stage=="NaN")
-## Save it
-write.csv(PBIP_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PBIP_Wave1.csv"))
 
+## Save it
+PBIP_Wave1_outdf <- PBIP_Wave1 %>% filter(!grepl("W2|W3",survey_name)) #NV: Same comment as PDS re filtering to wave 1.
+write.csv(PBIP_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/PBIP_Wave1.csv"))
 
 ## Graph it
 PBIP_Wave1_pbip_graph<-ggplot(PBIP_Wave1, aes(x=stage, colour="deeppink")) +
@@ -4548,16 +4564,101 @@ rm(together,part2,part3,cbcl_df_header,cbcl_temp,cbcl_temp_df,CBCL,CBCL_Wave1)
 
 Prepare Parent-report PDS
 ```{r}
-qualtricsData_raw_parent_pds <-filter(qualtricsData_raw_long, grepl("Parent",survey_name)) %>% 
-  filter(grepl("PDS",item)) %>%
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  spread(item,value)
+#section completed by NV
+PDS_parent<-left_join(filter(cleaned_survey_data, grepl("Parent",survey_name)) %>%
+                  filter(grepl("PDS",item)) %>%
+                  filter(!is.na(value), !value=="") %>%
+                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                  spread(item,value),
+                redcap_cleaned %>%
+                  filter(!is.na(dob),!is.na(sa_date)) %>%
+                  select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_parent_pds<-left_join(qualtricsData_raw_parent_pds,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value)
+PDS_parent_Wave1<-left_join(PDS_parent,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Parent Questionnaires V1",sa_date,
+                            ifelse(survey_name=="TAG - Parent Questionnaires - V2 - Current",sa_date,
+                                   as.character(qualtrics_date)
+                                          ))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) 
+
+PDS_parent_Wave1<-left_join(PDS_parent,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>% 
+  select(-value) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Parent Questionnaires V1",sa_date,
+                            ifelse(survey_name=="TAG - Parent Questionnaires - V2 - Current",sa_date,
+                                   as.character(qualtrics_date)
+                                          ))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(peta=PDS_F1,
+         petb=PDS_F2,
+         petc=PDS_F3,
+         petd=PDS_F4,
+         pete=PDS_F5,
+         fpete=PDS_F6,
+         petaf=ifelse(PDS_F1==1,1,
+                      ifelse(PDS_F1==2,2,
+                             ifelse(PDS_F1==3,3,
+                                    ifelse(PDS_F1==4,5,
+                                           NA)))),
+         petbf=ifelse(PDS_F2==1,1,
+                      ifelse(PDS_F2==2,2,
+                             ifelse(PDS_F2==3,4,
+                                    ifelse(PDS_F2==4,5,
+                                           NA)))),
+         petcf=ifelse(PDS_F3==1,1,
+                      ifelse(PDS_F3==2,2,
+                             ifelse(PDS_F3==3,4,
+                                    ifelse(PDS_F3==4,5,
+                                           NA)))),
+         petdf=ifelse(PDS_F4==1,1,
+                      ifelse(PDS_F4==2,3,
+                             ifelse(PDS_F4==3,4,
+                                    ifelse(PDS_F4==4,5,
+                                           NA)))),         
+         petef=ifelse(PDS_F6==0,1,
+                      ifelse(PDS_F6==1,5,
+                             NA))) %>%
+  mutate(adrenf=rowMeans(cbind(petbf,petcf),na.rm=F)) %>%
+  mutate(adrenf2=ifelse(adrenf==1,1,
+                        ifelse(petb==1 & adrenf==1.5,1,
+                               ifelse(petb==2 & adrenf==1.5,2,
+                                      ifelse(adrenf==2,2,
+                                             ifelse(adrenf==2.5,3,
+                                                    ifelse(adrenf==3,3,
+                                                           ifelse(adrenf==3.5,4,
+                                                                  ifelse(adrenf==4,4,
+                                                                         ifelse(adrenf==4.5,5,
+                                                                                ifelse(adrenf==5,5,
+                                                                                       NA))))))))))) %>%
+  mutate(gonadf=rowMeans(cbind(petaf,petdf),na.rm=F)) %>%
+  mutate(gonadf2=ifelse(gonadf==1 & petef==1,1,
+                        ifelse(gonadf==1.5 & petef==1,1,
+                               ifelse(gonadf==2 & petef==1,2,
+                                      ifelse(gonadf==2.5 & petef==1,2,
+                                             ifelse(gonadf==3 & petef==1,3,
+                                                    ifelse(gonadf==3.5 & petef==1,3,
+                                                           ifelse(gonadf==4 & petef==1,3,
+                                                                  ifelse(gonadf==4.5 & petef==1,4,
+                                                                         ifelse(gonadf==5 & petef==1,4,
+                                                                                ifelse(gonadf==1 & petef==5,2,
+                                                                                       ifelse(gonadf==1.5 & petef==5,3,
+                                                                                              ifelse(gonadf==2 & petef==5,4,
+                                                                                                     ifelse(gonadf==2.5 & petef==5,4,
+                                                                                                            ifelse(gonadf==3 & petef==5,4,
+                                                                                                                   ifelse(gonadf==3.5 & petef==5,5,
+                                                                                                                          ifelse(gonadf==4 & petef==5,5,
+                                                                                                                                 ifelse(gonadf==4.5 & petef==5,5,
+                                                                                                                                        ifelse(gonadf==5 & petef==5,5,
+                                                                                                                                               NA))))))))))))))))))) %>%
+  mutate(pdss=rowMeans(cbind(adrenf2,gonadf2),na.rm=F))      
+
+## Save it
+PDS_parent_Wave1_outdf <- PDS_parent_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(PDS_parent_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/PDS_parent_Wave1.csv"))
 ```
 
 Prepare Parent-report CES_D 
