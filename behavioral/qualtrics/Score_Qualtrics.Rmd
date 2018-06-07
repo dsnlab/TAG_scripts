@@ -1475,7 +1475,8 @@ CTQ_Wave1<-left_join(CTQ,survey_date, by = c("tagid","survey_name")) %>%
          CTQ_validity_mean=rowMeans(cbind(CTQ_10,CTQ_16,CTQ_22),na.rm=F))
 
 ## Save it
-write.csv(CTQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CTQ_Wave1.csv"))
+CTQ_Wave1_outdf <- CTQ_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(CTQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/CTQ_Wave1.csv"))
 
 ## Graph it
 CTQ_Wave1_totals<-CTQ_Wave1 %>%
@@ -1746,7 +1747,8 @@ DSHI_Wave1<-left_join(DSHI,survey_date, by = c("tagid","survey_name")) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob)
 
 ## Save it
-write.csv(DSHI_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/DSHI_Wave1.csv"))
+DSHI_Wave1_outdf <- DSHI_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(DSHI_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/DSHI_Wave1.csv"))
 
 ## Make RDOC ready file
 ndar_dshi_data <- left_join(DSHI_Wave1,redcap_cleaned,by="tagid") %>%
@@ -4269,6 +4271,32 @@ Prepare PSQI_MEQ # Do not submit to RDOC
 
 Prepare YRBS # Do not submit to RDOC
 ```{r}
+YRBS<-left_join(filter(cleaned_survey_data, grepl("YRBS",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+  
+YRBS_Wave1<-left_join(YRBS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                          ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                          ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) 
+
+## Save it
+YRBS_Wave1_outdf <- YRBS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(YRBS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/YRBS_Wave1.csv"))
+
+
 ```
 
 Prepare HAIR # Do not submit to RDOC
