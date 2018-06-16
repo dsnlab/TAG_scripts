@@ -6,6 +6,11 @@
 % This script generates .mat files containing names,
 % onsets, durations based on summary.csv files 
 
+% Model: 1=affect_statement,2=neutral_statement,
+% 3=affect_share,4=neutral_share, 
+% 5=affect_private, 6=neutral_private
+
+%% 
 clear all
 
 %setting directory and listing csv files in matlab directory
@@ -22,6 +27,50 @@ fid=fopen(filename, 'r');
 M = textscan(fid,'%s%s%s%f%f%s\n','delimiter',',','Headerlines',1); 
 fclose(fid);
 
+%create array of names based on conditions that are present
+multicond = str2double(M{7}(1));
+
+if multicond ==1
+    names = {'affect_statement','neutral_statement','affect_share',...
+       'neutral_share','affect_private','neutral_private','disc_missing'};
+else if multicond ==2
+    names = {'affect_statement','neutral_statement','affect_share',...
+       'neutral_share','affect_private','neutral_private'};
+else if multicond ==3
+    names = {'affect_statement','neutral_statement','affect_share',...
+       'neutral_share','affect_private','disc_missing'};
+else if multicond ==4
+    names = {'affect_statement','neutral_statement','affect_share',...
+       'neutral_share','affect_private'};
+else if multicond ==5
+    names = {'affect_statement','neutral_statement','affect_share',...
+       'neutral_share','neutral_private','disc_missing'};
+else if multicond ==6
+    names = {'affect_statement','neutral_statement','affect_share',...
+       'neutral_share','neutral_private'};
+else if multicond ==7
+    names = {'affect_statement','neutral_statement','affect_share',...
+       'neutral_share','disc_missing'};
+else if multicond ==8
+    names = {'affect_statement','neutral_statement','affect_share',...
+       'neutral_share'};  
+else if multicond ==9
+    names = {'affect_statement','neutral_statement','affect_share',...
+       'affect_private','neutral_private','disc_missing'};
+else if multicond ==10
+    names = {'affect_statement','neutral_statement',...
+       'neutral_share','affect_private','neutral_private','disc_missing'};
+    end
+    end
+    end
+    end
+    end
+    end
+    end
+    end
+    end
+end
+       
 %changing durations from double to cell format
 M{5} = num2cell(M{5});
 M{4} = num2cell(M{4});
@@ -83,17 +132,29 @@ for j=1:7
     end
 end
 
+onsets=names;
+
+for j=1:7
+    if exist(strcat('E',num2str(j))) == 1
+        onsets{1,j}=E{1,j}(:,2);
+     end
+end       
+
+
+
 E1(all(cellfun('isempty',E1),2),:)=[];
 E2(all(cellfun('isempty',E2),2),:)=[];
 E3(all(cellfun('isempty',E3),2),:)=[];
 E4(all(cellfun('isempty',E4),2),:)=[];
 E5(all(cellfun('isempty',E5),2),:)=[];
 E6(all(cellfun('isempty',E6),2),:)=[];
-E7(all(cellfun('isempty',E7),2),:)=[];
 
-%create array of names
-names={'neutral_statement','affect_statement','affect_share',...
-       'affect_private','neutral_share','neutral_private','disc_missing'}; %generate names
+for j=1:7
+    if length(E) == j
+        E{j}(all(cellfun('isempty',E7),2),:)=[];
+end
+
+
 
 %hacky way of creating arrays for onsets and durations that are same size
 %as names, but replace values with []
@@ -108,24 +169,37 @@ end
 
 %input values from Mdata into onsets array
 
-for j=1:7
+for j=1:6
     if isempty(E{1,j})
         onsets{1,j}=[];
     else onsets{1,j}=E{1,j}(:,2);
     end
 end
 
-onsets = cellfun(@cell2mat, onsets, 'UniformOutput', false)
+if length(E) == 7
+    if isempty(E{1,7})
+        onsets{1,7}=[];
+    else onsets{1,7}=E{1,7}(:,2);
+    end
+end
 
+onsets = cellfun(@cell2mat, onsets, 'UniformOutput', false)
 
 %input values from Mdata into durations array
 
 durations=onsets;
 
-for j=1:7
+for j=1:6
     if isempty(E{1,j})
         durations{1,j}=[];
     else durations{1,j}=E{1,j}(:,3);
+    end
+end
+
+if length(E) == 7
+    if isempty(E{1,7})
+        durations{1,7}=[];
+    else durations{1,7}=E{1,7}(:,3);
     end
 end
 
@@ -167,7 +241,9 @@ pmod(6).param{1}=x6;
 pmod(6).poly{1}=1;
  
 %% SAVE
-saveName=strcat(M{1}(1),'_NOD.mat') % 
+
+sid=str2double(M{1}(1));
+saveName=strcat(sprintf('%03d',sid),'_DSD',M{2}(1),'_NOD.mat') 
 cd (g) 
 save(saveName{1},'names','onsets','durations','pmod')
 
