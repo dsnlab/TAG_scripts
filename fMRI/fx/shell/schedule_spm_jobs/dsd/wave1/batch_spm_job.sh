@@ -27,7 +27,7 @@ REPLACESID='001'
 SPM_PATH=/projects/dsnlab/shared/SPM12
 
 # Set MATLAB script path
-SCRIPT=${STUDY}/fMRI/fx/models/dsd/wave1/test_001.m
+SCRIPT=${STUDY}/fMRI/fx/models/dsd/wave1/test001.m
 
 # Tag the results files
 RESULTS_INFIX=fx_dsd
