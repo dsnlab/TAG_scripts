@@ -414,7 +414,7 @@ DHEA <- Saliva_control_long %>% filter(hormone=="sal_DHEA") %>%
   mutate(timediff = as.numeric(timediff)) %>%
   mutate(start_time = as.numeric(start_time)) %>%
   mutate(start_time = start_time - 1528190000) %>%
-  #mutate(start_time = start_time/10000000) %>%
+  mutate(start_time = start_time/10000000) %>%
   select(-wake_up_time)
 
 #imputation with Amelia
@@ -441,7 +441,7 @@ TEST <- Saliva_control_long %>% filter(hormone=="sal_TEST") %>%
   mutate(timediff = as.numeric(timediff)) %>%
   mutate(start_time = as.numeric(start_time)) %>%
   mutate(start_time = start_time - 1528190000) %>%
-  #mutate(start_time = start_time/10000000) %>%
+  mutate(start_time = start_time/10000000) %>%
   select(-wake_up_time)
 
 #imputation with Amelia
@@ -468,6 +468,7 @@ EST <- Saliva_control_long %>% filter(hormone=="sal_EST") %>%
   mutate(timediff = as.numeric(timediff)) %>%
   mutate(start_time = as.numeric(start_time)) %>%
   mutate(start_time = start_time - 1528190000) %>%
+  mutate(start_time = start_time/10000000) %>%
   select(-wake_up_time)
 
 #imputation with Amelia
@@ -491,6 +492,7 @@ EST_ranef <- EST_ranef %>% add_rownames(., var="SID") %>%
 #using MICE to impute and run pooled analyses
 
 #DHEA
+DHEA_mice <- DHEA %>% mutate(select(-start_time,-wake_up_time)
 impDHEA <- mice(DHEA,m=5,maxit=50,meth='pmm',seed=500)
 
 modelFit1 <- with(impDHEA,lm(concentration~ start_time + medicines_y_n + sick_y_n + time_to_collect + timediff))

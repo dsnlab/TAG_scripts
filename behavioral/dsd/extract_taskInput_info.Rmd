@@ -47,9 +47,9 @@ longDF <- longDF %>% mutate(trialLength = discoJitter + 7.5,
 check <- longDF %>% group_by(SID) %>% summarize(N=n()) #each ID has 82 trials, as expected
 ```
 
-#FILTER LONG FORMAT DF TO 183 PARTICIPANT SAMPLE (i.e. without exclusionary withdrawals)
+#FILTER LONG FORMAT DF TO 182 PARTICIPANT SAMPLE (i.e. without exclusionary withdrawals)
 ```{r}
-overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- read.xlsx(paste0(cas_dir,'behavior/Overview/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
 overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
 overview <- overview %>% 
   rename(SID = TAG_ID) %>%
@@ -63,13 +63,8 @@ overview <- overview %>%
   filter(!SID=="0")
 
 longDF <- longDF %>% filter(SID %in% overview$SID) #limit longDF to IDS in overview
-check2 <- longDF %>% group_by(SID) %>% summarize(N=n()) #check IDs remaining in longDF
-
-#figure out one missing ID in longDF (n=182, whereas overview n=183)
-longList <- unique(longDF$SID)
-overviewList <- unique(overview$SID)
-intersect(longList,overviewList)
-missing <- as.character(setdiff(overviewList,longList)) #missing TAG249 - doesn't matter as they withdrew at W1.
+check2 <- longDF %>% group_by(SID) %>% summarize(N=n()) #check IDs remaining in longDF... figure out one missing ID in longDF (n=181, whereas overview n=182)
+as.character(setdiff(overview$SID,check2$SID)) #missing TAG249 - doesn't matter as they withdrew at W1.
 ```
 
 #CALCULATE SUMMARIES
