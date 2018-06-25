@@ -100,7 +100,7 @@ if(nrow(df %>% filter(run==1)) > 0 & nrow(df %>% filter(run==2)) > 0) {
     saveDF <- df_long %>% group_by(run) %>%
       do({
         ungroup(.) 
-        write.csv(.,file=paste0(out_dir,'tag_',fid,'_DSD',.$run[[1]],'summary.csv'),row.names=F,na = "",)
+        #write.csv(.,file=paste0(out_dir,'tag_',fid,'_DSD',.$run[[1]],'summary.csv'),row.names=F,na = "",)
         data.frame()
         })
 
@@ -169,11 +169,11 @@ dsd_overview <- dsd_overview %>%
 write.csv(dsd_overview, '~/Desktop/dsd_overview.csv',row.names=F)
 ```
 
-#Of the final list, check how many subjects differ in multiconds between run 1 and run 2 - for creating contrasts.
+#Of the final list, create file outlining multiconds in run 1 and run 2 for subjects, and whether they differ between runs
 ```{r}
-con_bySubj <- summary_bySubj %>% filter(sid %in% final_list$SID) %>% arrange(sid,run) %>% group_by(sid) %>%
-  mutate(sameCon = ifelse(multicond==lead(multicond),1,0)) %>%
-  filter(run==1) %>%
-  filter(sameCon==0) %>%
-  arrange(multicond)
-write.csv(con_bySubj, '~/Desktop/con_bySubj.csv',row.names=F)
+Con_bySubj <- summary_bySubj %>% filter(sid %in% final_list$SID) %>% spread(key=run,value=multicond) %>%
+  rename(run1 = `1`,
+         run2 = `2`) %>%
+  mutate(same = ifelse(run1 == run2, 1, 0))
+write.csv(allCon_bySubj, '~/Desktop/Con_bySubj.csv',row.names=F)
+```
