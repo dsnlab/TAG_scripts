@@ -10,7 +10,7 @@ Output is saved in folder called "rawmotion"
 
 ###LOAD PACKAGES AND SET DIRECTORIES
 ```{r, include=FALSE}
-packages <- c("dplyr","tidyr","data.table")
+packages <- c("dplyr","tidyr","data.table","tibble")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
@@ -48,11 +48,14 @@ motion <- lapply(X=motionFiles, FUN=function(file) {
   })
 
 motionDF <- rbindlist(motion,fill=T)
-write.csv(motionDF, paste0(scriptDir,'fmriprep_motion.csv'), row.names = FALSE)
+
+#save full DF of all motion params from fmriprep for all subjects
+write.csv(motionDF, paste0(scriptDir,'output/fmriprep_motion.csv'), row.names = FALSE)
 ```
 
 ###WRITE RAW PARAMS (X,Y,Z,pitch,roll,yaw)
 ```{r}
+#write subject-specific files
 rawData <- motionDF %>% 
   group_by(SID,task,run) %>% 
   do({
@@ -75,7 +78,7 @@ motionDF2 <- motionDF %>% mutate(task = paste0(task, "_", run)) %>%
 
 # import mri overview doc from CAS & get list of everyone who should have fmri data according to masterfile
 MRIoverview <- read.csv(overviewDoc,header=T)
-MRIoverview <- MRIoverview %>% filter(!check_mri_completed.2.partial.1.full.0.none.==0) %>% select(SID,svc1_num,svc2_num,dsd1_num,dsd2_num)
+MRIoverview <- MRIoverview %>% filter(!Withdrawn_W1==1) %>% filter(!check_mri_completed.2.partial.1.full.0.none.==0) %>% select(SID,svc1_num,svc2_num,dsd1_num,dsd2_num)
 
 # check that all subjects have motion data
 MRIoverview <- MRIoverview %>% full_join(.,motionDF2) %>% 
@@ -86,5 +89,5 @@ MRIoverview <- MRIoverview %>% full_join(.,motionDF2) %>%
   arrange(-dsd1_missing, -dsd2_missing, -svc1_missing, -svc2_missing)
 ```
 
-#check: 5, 28, 253, 218, 140, 233 
+#issues: sub-TAG140 had too much motion to finish DSD2, sub-TAG028 TBD.
 

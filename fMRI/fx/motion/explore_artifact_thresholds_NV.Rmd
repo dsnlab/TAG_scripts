@@ -1,0 +1,395 @@
+---
+title: "auto-motion-fmriprep"
+author: "Nandi"
+date: "13 June 2018"
+output: html_document
+---
+
+# set paths & variables
+```{r, message=FALSE}
+#This is where all subject-numbered directories are:
+scriptDir = '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/motion/'
+confoundDir = '/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/fmriprep/'
+eucDir = '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/eucmotion/rp_txt'
+outputDir = '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt'
+plotDir = '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/plots/'
+  
+# variables
+study = 'TAG'
+subPattern = 'sub-TAG([0-9]{3})'
+wavePattern = 'ses-wave([0-9]{1})'
+taskPattern = 'task-(DSD|SVC)'
+runPattern = 'run-([0-9]{2})'
+```
+
+# load confound files
+```{r, message=FALSE}
+file_list = list.files(confoundDir, pattern = 'confounds.tsv', recursive = TRUE)
+
+if (!file.exists(paste0(outputDir,'/fmriprep_motion.csv'))) {
+  for (file in file_list){
+    # if the merged dataset doesn't exist, create it
+    if (!exists('dataset')){
+      filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
+      dataset <- read_tsv(paste0(confoundDir, file)) %>%
+        mutate(file = file) %>%
+        extract(file, c('subjectID', 'wave', 'task', 'run'),
+                file.path('sub-.*','ses-wave.*', 'func', filePattern)) %>%
+        mutate(wave = as.integer(wave),
+               run = as.integer(run),
+               stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", NA, stdDVARS)),
+               `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", NA, `non-stdDVARS`)),
+               `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", NA, `vx-wisestdDVARS`)),
+               FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", NA, FramewiseDisplacement)),
+               volume = row_number()) %>%
+        select(subjectID, wave, task, run, volume, everything())
+    }
+  
+    # if the merged dataset does exist, append to it
+    else {
+      filePattern = paste(subPattern, wavePattern, taskPattern, runPattern, 'bold_confounds.tsv', sep = "_")
+      tmp <- read_tsv(paste0(confoundDir, file)) %>%
+        mutate(file = file) %>%
+        extract(file, c('subjectID', 'wave', 'task', 'run'),
+                file.path('sub-.*','ses-wave.*', 'func', filePattern)) %>%
+        mutate(wave = as.integer(wave),
+               run = as.integer(run),
+               stdDVARS = as.numeric(ifelse(stdDVARS %in% "n/a", NA, stdDVARS)),
+               `non-stdDVARS` = as.numeric(ifelse(`non-stdDVARS` %in% "n/a", NA, `non-stdDVARS`)),
+               `vx-wisestdDVARS` = as.numeric(ifelse(`vx-wisestdDVARS` %in% "n/a", NA, `vx-wisestdDVARS`)),
+               FramewiseDisplacement = as.numeric(ifelse(FramewiseDisplacement %in% "n/a", NA, FramewiseDisplacement)),
+               volume = row_number()) %>%
+        select(subjectID, wave, task, run, volume, everything())
+      dataset = bind_rows(dataset, tmp)
+      rm(tmp)
+    }
+  write.csv(dataset, paste0(scriptDir,'fmriprep_motion.csv'), row.names = FALSE)
+  }
+} else {
+  dataset = read.csv(paste0(scriptDir,'fmriprep_motion.csv'), stringsAsFactors = FALSE)
+}
+
+dataset = dataset %>%
+  mutate(sub.run = paste(SID, task, run, sep = "_"),
+         subjectID = as.integer(SID))
+
+dataset$subjectID <- dataset$SID
+```
+
+# load euclidean distances
+```{r}
+eucFiles = list.files(path=eucDir,pattern='rp_', recursive = TRUE, full.names=T)
+
+eucDF <- lapply(X=eucFiles, FUN=function(file) {
+  subjectID <- sub(".*rp_txt/rp_", "", file) %>% substring(., 1,3)
+  task <- ifelse(grepl("DSD",file),"DSD",
+               ifelse(grepl("SVC",file),"SVC",NA))  
+  run <- sub(paste0('.*',task),"", file) %>% substring(., 1,1)   
+  eucData <- read.table(file, sep = ' ', header=F)
+  eucData <- eucData %>% 
+    rename(eucTrans = V1,
+           eucRot = V4,
+           eucTransDer = V7,
+           eucRotDer = V10,
+           eucArt = V13) %>%
+    mutate(subjectID = as.integer(subjectID),
+           task = task,
+           run = as.integer(run)) %>%
+    select(-contains("V")) %>%
+    rownames_to_column("volume") %>%
+    mutate(volume = as.integer(volume))
+  })
+eucDF_backup<-rbindlist(eucDF)
+eucDF<-eucDF_backup
+
+eucDF$subjectID <- eucDF$SID
+```
+
+# combine fmriprep and euclidean motion confounds 
+```{r}
+joined = left_join(dataset, eucDF, by = c("subjectID", "task", "run", "volume")) %>% select(subjectID, wave, task, run, volume, everything()) 
+```
+
+# visualize confounds
+```{r, fig.width = 10, fig.height = 15}
+data.plot = joined %>% select(-sub.run) %>%
+  gather(feature, value, -c(subjectID, wave, task, run, volume))
+
+ggplot(data.plot, aes(value)) + 
+  geom_density(fill = "pink") +
+  facet_wrap(~feature, scales = "free", ncol = 4)
+```
+
+# visualize confounds on a subject level
+```{r, fig.width = 12, fig.height = 15}
+features = c("CSF", "WhiteMatter", "GlobalSignal", "FramewiseDisplacement", "stdDVARS", "vx.wisestdDVARS", "non.stdDVARS","eucTrans","eucRot","eucTransDer","eucRotDer","eucArt")
+
+data.sub = data.plot %>%
+  filter(feature %in% features) %>%
+  mutate(sort = ifelse(feature == "CSF", 1,
+                ifelse(feature == "GlobalSignal", 2,
+                ifelse(feature == "WhiteMatter", 3,
+                ifelse(feature == "FramewiseDisplacement", 4,
+                ifelse(feature == "stdDVARS", 5,
+                ifelse(feature == "vx.wisestdDVARS", 6,
+                ifelse(feature == "non.stdDVARS", 7, 
+                ifelse(feature == "eucTrans", 8,
+                ifelse(feature == "eucRot", 9,
+                ifelse(feature == "eucTransDer", 10,
+                ifelse(feature == "eucRotDer", 11, 
+                ifelse(feature == "eucArt", 12, NA))))))))))))) %>%
+  mutate(value=round(as.numeric(value),1),
+         task2=paste0(task,run))
+
+nada = data.sub %>% 
+  group_by(subjectID,task) %>%
+    do({
+      plot = ggplot(., aes(volume, value)) + 
+        geom_line(aes(colour = feature), size = .25, show.legend = FALSE) +
+        facet_wrap(task2 ~ reorder(feature,sort), ncol = 4, scales = "free") +
+        labs(title = .$subjectID[[1]])
+      print(plot)
+      ggsave(plot, file = paste0(plotDir,'raw/',.$subjectID[[1]],'_',.$task[[1]],'.pdf'), height = 10, width = 12)
+      data.frame()
+    })
+```
+
+# thresholds FD & DVARS & visualize
+```{r, fig.width = 12, fig.height = 15}
+# recode FD and DVARS into binary variables. 
+
+joined <- joined %>% 
+  mutate(FD_0.6 = (ifelse(FramewiseDisplacement > 0.6, 1, 0)),
+         FD_0.7 = (ifelse(FramewiseDisplacement > 0.7, 1, 0)),
+         FD_0.8 = (ifelse(FramewiseDisplacement > 0.8, 1, 0)),
+         FD_0.9 = (ifelse(FramewiseDisplacement > 0.9, 1, 0)),
+         FD_1.0 = (ifelse(FramewiseDisplacement > 1.0, 1, 0)),
+         FD_1.1 = (ifelse(FramewiseDisplacement > 1.1, 1, 0)),
+         FD_0.8_DVARS_2.0 = (ifelse(FramewiseDisplacement > 0.8 | stdDVARS > 2.0, 1, 0)),
+         FD_0.8_DVARS_2.1 = (ifelse(FramewiseDisplacement > 0.8 | stdDVARS > 2.1, 1, 0)),
+         FD_0.9_DVARS_2.0 = (ifelse(FramewiseDisplacement > 0.9 | stdDVARS > 2.0, 1, 0)),
+         FD_0.9_DVARS_2.1 = (ifelse(FramewiseDisplacement > 0.9 | stdDVARS > 2.1, 1, 0)),
+         FD_1.0_DVARS_2.0 = (ifelse(FramewiseDisplacement > 1.0 | stdDVARS > 2.0, 1, 0)),
+         FD_1.0_DVARS_2.1 = (ifelse(FramewiseDisplacement > 1.0 | stdDVARS > 2.1, 1, 0))) %>%
+  mutate(FD_0.6N = ifelse(FD_0.6 == 1 | lag(FD_0.6) == 1 | lead(FD_0.6) ==1, 1, 0),
+         FD_0.7N = ifelse(FD_0.7 == 1 | lag(FD_0.7) == 1 | lead(FD_0.7) ==1, 1, 0),
+         FD_0.8N = ifelse(FD_0.8 == 1 | lag(FD_0.8) == 1 | lead(FD_0.8) ==1, 1, 0),
+         FD_0.9N = ifelse(FD_0.9 == 1 | lag(FD_0.9) == 1 | lead(FD_0.9) ==1, 1, 0),
+         FD_1.0N = ifelse(FD_1.0 == 1 | lag(FD_1.0) == 1 | lead(FD_1.0) ==1, 1, 0),
+         FD_1.1N = ifelse(FD_1.1 == 1 | lag(FD_1.1) == 1 | lead(FD_1.1) ==1, 1, 0),
+         FD_0.8_DVARS_2.0N = ifelse(FD_0.8_DVARS_2.0 == 1 | lag(FD_0.8_DVARS_2.0) == 1 | lead(FD_0.8_DVARS_2.0) ==1, 1, 0),
+         FD_0.8_DVARS_2.1N = ifelse(FD_0.8_DVARS_2.1 == 1 | lag(FD_0.8_DVARS_2.1) == 1 | lead(FD_0.8_DVARS_2.1) ==1, 1, 0),
+         FD_0.9_DVARS_2.0N = ifelse(FD_0.9_DVARS_2.0 == 1 | lag(FD_0.9_DVARS_2.0) == 1 | lead(FD_0.9_DVARS_2.0) ==1, 1, 0),
+         FD_0.9_DVARS_2.1N = ifelse(FD_0.9_DVARS_2.1 == 1 | lag(FD_0.9_DVARS_2.1) == 1 | lead(FD_0.9_DVARS_2.1) ==1, 1, 0),
+         FD_1.0_DVARS_2.0N = ifelse(FD_1.0_DVARS_2.0 == 1 | lag(FD_1.0_DVARS_2.0) == 1 | lead(FD_1.0_DVARS_2.0) ==1, 1, 0),
+         FD_1.0_DVARS_2.1N = ifelse(FD_1.0_DVARS_2.1 == 1 | lag(FD_1.0_DVARS_2.1) == 1 | lead(FD_1.0_DVARS_2.1) ==1, 1, 0))
+
+# summarise artifacts in each subject and task
+summaryDF <- joined %>% group_by(subjectID,task,run) %>%
+  summarise(FD_0.6_perc = 100*(sum(FD_0.6,na.rm=T))/n(),
+            FD_0.7_perc = 100*(sum(FD_0.7,na.rm=T))/n(),
+            FD_0.8_perc = 100*(sum(FD_0.8,na.rm=T))/n(),
+            FD_0.9_perc = 100*(sum(FD_0.9,na.rm=T))/n(),
+            FD_1.0_perc = 100*(sum(FD_1.0,na.rm=T))/n(),
+            FD_1.1_perc = 100*(sum(FD_1.1,na.rm=T))/n(),
+            FD_0.6N_perc = 100*(sum(FD_0.6N,na.rm=T))/n(),
+            FD_0.7N_perc = 100*(sum(FD_0.7N,na.rm=T))/n(),
+            FD_0.8N_perc = 100*(sum(FD_0.8N,na.rm=T))/n(),
+            FD_0.9N_perc = 100*(sum(FD_0.9N,na.rm=T))/n(),
+            FD_1.0N_perc = 100*(sum(FD_1.0N,na.rm=T))/n(),
+            FD_1.1N_perc = 100*(sum(FD_1.1N,na.rm=T))/n(),
+            FD_0.8_DVARS_2.0_perc = 100*(sum(FD_0.8_DVARS_2.0,na.rm=T))/n(),
+            FD_0.8_DVARS_2.1_perc = 100*(sum(FD_0.8_DVARS_2.1,na.rm=T))/n(),
+            FD_0.9_DVARS_2.0_perc = 100*(sum(FD_0.9_DVARS_2.0,na.rm=T))/n(),
+            FD_0.9_DVARS_2.1_perc = 100*(sum(FD_0.9_DVARS_2.1,na.rm=T))/n(),
+            FD_1.0_DVARS_2.0_perc = 100*(sum(FD_1.0_DVARS_2.0,na.rm=T))/n(),
+            FD_1.0_DVARS_2.1_perc = 100*(sum(FD_1.0_DVARS_2.1,na.rm=T))/n(),
+            FD_0.8_DVARS_2.0N_perc = 100*(sum(FD_0.8_DVARS_2.0N,na.rm=T))/n(),
+            FD_0.8_DVARS_2.1N_perc = 100*(sum(FD_0.8_DVARS_2.1N,na.rm=T))/n(),
+            FD_0.9_DVARS_2.0N_perc = 100*(sum(FD_0.9_DVARS_2.0N,na.rm=T))/n(),
+            FD_0.9_DVARS_2.1N_perc = 100*(sum(FD_0.9_DVARS_2.1N,na.rm=T))/n(),
+            FD_1.0_DVARS_2.0N_perc = 100*(sum(FD_1.0_DVARS_2.0N,na.rm=T))/n(),
+            FD_1.0_DVARS_2.1N_perc = 100*(sum(FD_1.0_DVARS_2.1N,na.rm=T))/n())
+
+# summarise artifacts in each subject in DSD. first load DSD overview and limit sample to 147 participants with DSD pre motion.
+
+dsd_overview <- read.csv('~/Desktop/dsd_overview.csv',header=T)
+
+DSDids <- dsd_overview %>% filter(Withdrawn_W1==0) %>% filter(W1S2_Completed==1) %>% filter(!check_mri_completed.2.partial.1.full.0.none.==0) %>% filter(dsd_completed==2) %>% filter(is.na(technical_missing)) %>% filter(is.na(participant_error)) %>% mutate(subjectID=SID) %>% select(subjectID)
+
+summaryDF_dsd <- summaryDF %>% filter(subjectID %in% DSDids$subjectID) %>%
+  filter(task=="DSD") %>% 
+  group_by(subjectID) %>% 
+  summarise(FD_0.6_perc = mean(FD_0.6_perc,na.rm=T),
+            FD_0.7_perc = mean(FD_0.7_perc,na.rm=T),
+            FD_0.8_perc = mean(FD_0.8_perc,na.rm=T),
+            FD_0.9_perc = mean(FD_0.9_perc,na.rm=T),
+            FD_1.0_perc = mean(FD_1.0_perc,na.rm=T),
+            FD_1.1_perc = mean(FD_1.1_perc,na.rm=T),
+            FD_0.6N_perc = mean(FD_0.6N_perc,na.rm=T),
+            FD_0.7N_perc = mean(FD_0.7N_perc,na.rm=T),
+            FD_0.8N_perc = mean(FD_0.8N_perc,na.rm=T),
+            FD_0.9N_perc = mean(FD_0.9N_perc,na.rm=T),
+            FD_1.0N_perc = mean(FD_1.0N_perc,na.rm=T),
+            FD_1.1N_perc = mean(FD_1.1N_perc,na.rm=T),
+            FD_0.8_DVARS_2.0_perc = mean(FD_0.8_DVARS_2.0_perc,na.rm=T),
+            FD_0.8_DVARS_2.1_perc = mean(FD_0.8_DVARS_2.1_perc,na.rm=T),
+            FD_0.9_DVARS_2.0_perc = mean(FD_0.9_DVARS_2.0_perc,na.rm=T),
+            FD_0.9_DVARS_2.1_perc = mean(FD_0.9_DVARS_2.1_perc,na.rm=T),
+            FD_1.0_DVARS_2.0_perc = mean(FD_1.0_DVARS_2.0_perc,na.rm=T),
+            FD_1.0_DVARS_2.1_perc = mean(FD_1.0_DVARS_2.1_perc,na.rm=T),
+            FD_0.8_DVARS_2.0N_perc = mean(FD_0.8_DVARS_2.0N_perc,na.rm=T),
+            FD_0.8_DVARS_2.1N_perc = mean(FD_0.8_DVARS_2.1N_perc,na.rm=T),
+            FD_0.9_DVARS_2.0N_perc = mean(FD_0.9_DVARS_2.0N_perc,na.rm=T),
+            FD_0.9_DVARS_2.1N_perc = mean(FD_0.9_DVARS_2.1N_perc,na.rm=T),
+            FD_1.0_DVARS_2.0N_perc = mean(FD_1.0_DVARS_2.0N_perc,na.rm=T),
+            FD_1.0_DVARS_2.1N_perc = mean(FD_1.0_DVARS_2.1N_perc,na.rm=T)) %>% 
+  arrange(-FD_0.8_DVARS_2.0_perc)
+```
+
+# print motion files with EUC and artifact
+```{r}
+df <- joined
+subjectList <- as.character(unique(joined$subjectID))
+  
+motion <- lapply(X=subjectList, df=df, FUN=function(sid, df) {
+                           
+  adf <- joined %>% filter(subjectID == as.integer(sid)) %>% 
+    select(subjectID, task, run, volume, eucTrans, eucRot, eucTransDer, eucRotDer, FD_0.8_DVARS_2.0) %>%
+    mutate(FD_0.8_DVARS_2.0 = ifelse(is.na(FD_0.8_DVARS_2.0),0,FD_0.8_DVARS_2.0)) %>%
+    group_by(task,run) %>%
+    do({
+      ungroup(.) 
+      saveDF <- select(.,eucTrans, eucRot, eucTransDer, eucRotDer, FD_0.8_DVARS_2.0)
+      write.table(saveDF, file=paste0('/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/fd0.8_dv2.0_Neighbors/rp_',str_pad(sid,3,pad="0"),'_',.$task[[1]],.$run[[1]],'.txt'), sep='\t', row.name=F, quote=F, col.names=F)
+      data.frame()
+      }) })
+      
+str_pad(anim, 6, pad = "0")
+    
+
+
+
+    do({
+      
+      write.table(saveDF, file=paste0('/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/fd0.8_dv2.0_Neighbors/tag_',sid,'_',.$task[[1]],.$run[[1]],'.txt'), sep='\t', row.name=F, quote=F, col.names=F)
+      
+      
+
+      ggsave(plot, file = paste0(plotDir,'thresh_combined2/',.$subjectID[[1]],'.pdf'), height = 10, width = 12)  
+  
+  SID <- sid
+  
+  
+  SID <- sub(".*sub-TAG", "", file) %>% substring(., 1,3)
+  task <- sub(".*task-", "", file) %>% substring(., 1,3)
+  run <- sub(".*run-0", "", file) %>% substring(., 1,1)  
+  motionData <- read.table(file, sep = '\t', header=T)
+  motionData <- motionData %>% select(X,Y,Z,RotX,RotY,RotZ)
+  write.table(motionData, file=paste0(cas_dir,'nonbids_data/fMRI/fx/motion/wave',wave,'/rawmotion/TAG',SID,'_',task,run,'.txt'), sep='\t', row.name=F, quote=F, col.names=F)
+  
+  out <- as.data.frame(cbind(SID,task,run))
+  })
+```
+
+# extra
+```{r}
+# plot
+data.plot = joined %>%
+  gather(feature, value, -c(subjectID, wave, task, run, volume))
+
+features = c("FD_5", "FD_6", "FD_7", "FD_8", "DVARS_1.5", "DVARS_1.6", "DVARS_1.7","DVARS_1.8","DVARS_1.9","DVARS_2.0")
+
+data.sub = data.plot %>%
+  filter(feature %in% features) %>%
+  mutate(sort = ifelse(feature == "FD_5", 1,
+                ifelse(feature == "FD_6", 2,
+                ifelse(feature == "FD_7", 3,
+                ifelse(feature == "FD_8", 4,
+                ifelse(feature == "DVARS_1.5", 5,
+                ifelse(feature == "DVARS_1.6", 6,
+                ifelse(feature == "DVARS_1.7", 7, 
+                ifelse(feature == "DVARS_1.8", 8,
+                ifelse(feature == "DVARS_1.9", 9,
+                ifelse(feature == "DVARS_2.0", 10, NA))))))))))) %>%
+  mutate(value=round(as.numeric(value),1),
+         task2=paste0(task,run))
+
+nada = data.sub %>% 
+  #filter(subjectID==1) %>%
+  group_by(subjectID,task) %>%
+    do({
+      plot = ggplot(., aes(volume, value)) + 
+        geom_line(aes(colour = feature), size = .25, show.legend = FALSE) +
+        facet_wrap(task2 ~ reorder(feature,sort), ncol = 4, scales = "free") +
+        labs(title = .$subjectID[[1]])
+      print(plot)
+      ggsave(plot, file = paste0(plotDir,'thresh/',.$subjectID[[1]],'_',.$task[[1]],'.pdf'), height = 10, width = 12)
+      data.frame()
+    })
+```
+
+# moving onto building a model based on rough visualization of plots
+```{r}
+
+joined <- joined %>% 
+  mutate(artifact_fmriprep1 = ifelse(FramewiseDisplacement > 0.8 | stdDVARS > 2.0, 1, 0),
+         artifact_fmriprep2 = ifelse(FramewiseDisplacement > 0.8 | stdDVARS > 2.1, 1, 0),
+         artifact_fmriprep3 = ifelse(FramewiseDisplacement > 1.0 | stdDVARS > 2.0, 1, 0),
+         artifact_fmriprep4 = ifelse(FramewiseDisplacement > 1.0 | stdDVARS > 2.1, 1, 0),
+         artifact_fmriprep5 = ifelse(FramewiseDisplacement > 1.2 | stdDVARS > 2.0, 1, 0),
+         artifact_fmriprep6 = ifelse(FramewiseDisplacement > 1.2 | stdDVARS > 2.1, 1, 0)) %>%
+  mutate(artifact_fmriprep1N = ifelse(artifact_fmriprep1 == 1 | lag(artifact_fmriprep1) == 1 | lead(artifact_fmriprep1) ==1, 1, 0),
+         artifact_fmriprep2N = ifelse(artifact_fmriprep2 == 1 | lag(artifact_fmriprep2) == 1 | lead(artifact_fmriprep2) ==1, 1, 0),
+         artifact_fmriprep3N = ifelse(artifact_fmriprep3 == 1 | lag(artifact_fmriprep3) == 1 | lead(artifact_fmriprep3) ==1, 1, 0),
+         artifact_fmriprep4N = ifelse(artifact_fmriprep4 == 1 | lag(artifact_fmriprep4) == 1 | lead(artifact_fmriprep4) ==1, 1, 0),
+         artifact_fmriprep5N = ifelse(artifact_fmriprep5 == 1 | lag(artifact_fmriprep5) == 1 | lead(artifact_fmriprep5) ==1, 1, 0),
+         artifact_fmriprep6N = ifelse(artifact_fmriprep6 == 1 | lag(artifact_fmriprep6) == 1 | lead(artifact_fmriprep6) ==1, 1, 0)) %>%
+  mutate(artifact_fmriprep1 = as.factor(artifact_fmriprep1),
+         artifact_fmriprep2 = as.factor(artifact_fmriprep2),
+         artifact_fmriprep3 = as.factor(artifact_fmriprep3),
+         artifact_fmriprep4 = as.factor(artifact_fmriprep4),
+         artifact_fmriprep5 = as.factor(artifact_fmriprep5),
+         artifact_fmriprep6 = as.factor(artifact_fmriprep6),
+         artifact_fmriprep1N = as.factor(artifact_fmriprep1N),
+         artifact_fmriprep2N = as.factor(artifact_fmriprep2N),
+         artifact_fmriprep3N = as.factor(artifact_fmriprep3N),
+         artifact_fmriprep4N = as.factor(artifact_fmriprep4N),
+         artifact_fmriprep5N = as.factor(artifact_fmriprep5N),
+         artifact_fmriprep6N = as.factor(artifact_fmriprep6N))
+
+# visualize new models
+data.plot = joined %>%
+  gather(feature, value, -c(subjectID, wave, task, run, volume))
+
+features = c("artifact_fmriprep1","artifact_fmriprep1N","artifact_fmriprep2","artifact_fmriprep2N","artifact_fmriprep3","artifact_fmriprep3N","artifact_fmriprep4","artifact_fmriprep4N","artifact_fmriprep5","artifact_fmriprep5N","artifact_fmriprep6","artifact_fmriprep6N")
+
+data.sub = data.plot %>%
+  filter(feature %in% features) %>%
+  mutate(sort = ifelse(feature == "artifact_fmriprep1", 1,
+                ifelse(feature == "artifact_fmriprep1N", 2,       
+                ifelse(feature == "artifact_fmriprep2", 3,
+                ifelse(feature == "artifact_fmriprep2N", 4,       
+                ifelse(feature == "artifact_fmriprep3", 5,
+                ifelse(feature == "artifact_fmriprep3N", 6,       
+                ifelse(feature == "artifact_fmriprep4", 7,
+                ifelse(feature == "artifact_fmriprep4N", 8,
+                ifelse(feature == "artifact_fmriprep5", 9,
+                ifelse(feature == "artifact_fmriprep5N", 10,
+                ifelse(feature == "artifact_fmriprep6", 11,
+                ifelse(feature == "artifact_fmriprep6N", 12, NA))))))))))))) %>%
+  mutate(value=round(as.numeric(value),1),
+         task2=paste0(task,run))
+
+nada = data.sub %>% 
+  #filter(subjectID==1) %>%
+  group_by(subjectID,task) %>%
+    do({
+      plot = ggplot(., aes(volume, value)) + 
+        geom_line(aes(colour=feature), size = .25, show.legend = FALSE) +
+        facet_wrap(task2 ~ reorder(feature,sort), ncol = 4, scales = "free") +
+        labs(title = .$subjectID[[1]])
+      print(plot)
+      ggsave(plot, file = paste0(plotDir,'thresh_combined/',.$subjectID[[1]],'_',.$task[[1]],'.pdf'), height = 10, width = 12)
+      data.frame()
+    })
