@@ -22,11 +22,11 @@ setwd("B:/dsnlab/TAG/behavior/Demographics/Age")
 cas_dir <- ("B:/dsnlab/TAG/")
 
 # For MAC
-setwd("/Volumes/psych-cog/dsnlab/TAG/behavior/Demographics/Age")
+agedir="/Volumes/psych-cog/dsnlab/TAG/behavior/Demographics/Age/"
 cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
 
 # Import the CSV file
-tag_age_session <- read_csv('DOB_W1W2_SessionDates.csv')
+tag_age_session <- read.csv(paste0(agedir,'DOB_W1W2_SessionDates.csv'))
 tag_age_session <- tag_age_session %>% filter(!is.na(TAG_ID)) %>% filter(!TAG_ID=="TAG000")
 View(tag_age_session)
 ```

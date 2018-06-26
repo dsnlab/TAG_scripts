@@ -13,9 +13,11 @@ for i = 1:length(files)
 end
 
 filename = fullfile('/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed', 'friend.csv');
-fid=fopen(filename, 'w');
+fopen(filename, 'w');
 fprintf(fid, '%s,%s,%s\n', 'SID','friend','parent');
+
 for k=1:size(friend,1)
+    fid=friend{k,1};
     fprintf(fid,'%s,%s,%s\n',friend{k,:});
 end
 fclose(fid);
