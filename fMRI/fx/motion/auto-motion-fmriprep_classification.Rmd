@@ -8,7 +8,12 @@ output: html_document
 # load packages & set paths
 ```{r}
 osuRepo = 'http://ftp.osuosl.org/pub/cran/'
-
+if(!require(tidyr)){
+  install.packages('tidyr',repos=osuRepo)
+}
+if(!require(dplyr)){
+  install.packages('dplyr',repos=osuRepo)
+}
 if(!require(caret)){
   install.packages('caret',repos=osuRepo)
 }
@@ -21,24 +26,24 @@ plotDir = '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-
 #Load fmriprep & euc motion
 ```{r}
 joined = read.csv(paste0(scriptDir,'output/all_motion.csv'), stringsAsFactors = FALSE)
+joined <- joined %>%
+  filter(task=="DSD")
 ```
 
 # load hand coded data and merge everything
 ```{r}
-coded = read.csv(paste0('~/Desktop/motionQC.csv'))
+coded = read.csv('/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/fd0.8_dv2.0_noNeighbors/DSD_motionQC.csv')
 coded <- coded %>%
-  extract(Run, c("task", "run"), "([A-Z]{3})([0-9]{1})") %>%
+  extract("Run", c("task", "run"), "([A-Z]{3})([0-9]{1})") %>%
   mutate(run = as.integer(run),
-         SID = as.integer(gsub("[^0-9\\.]", "", SID)),
+         SID = as.integer(gsub("[^0-9\\.]", "", Subject)),
          volume = Volume+1) %>%
   mutate(sub.run = paste(SID, task, run, sep = "_")) %>%
   mutate(manual_artifact = 1,
          manual_artifact = as.factor(manual_artifact))
 
-sub_run = unique(coded$sub.run) #those who have been coded
-
 joined = left_join(joined, coded, by = c("SID", "task", "run", "volume", "sub.run")) %>%
-  filter(sub.run %in% sub_run) %>%
+  filter(SID %in% coded$SID) %>%
   select(SID, task, run, volume, artifact, artifact_N, manual_artifact, everything()) %>%
   mutate(manual_artifact=ifelse(is.na(manual_artifact),0,manual_artifact))
 ```
