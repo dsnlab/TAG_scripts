@@ -3,7 +3,7 @@
 % spm SPM - SPM12 (6906)
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------
-matlabbatch{1}.cfg_basicio.file_dir.dir_ops.cfg_mkdir.parent = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/fd0.8_dv2.0_Neighbors'};
+matlabbatch{1}.cfg_basicio.file_dir.dir_ops.cfg_mkdir.parent = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/fd0.8_dv2.0_noNeighbors'};
 matlabbatch{1}.cfg_basicio.file_dir.dir_ops.cfg_mkdir.name = 'sub-TAG001';
 matlabbatch{2}.cfg_basicio.file_dir.file_ops.file_fplist.dir = {'/projects/dsnlab/shared/tag/bids_data/derivatives/fmriprep/sub-TAG001/ses-wave1/func/'};
 matlabbatch{2}.cfg_basicio.file_dir.file_ops.file_fplist.filter = '^sub-TAG001_ses-wave1_task-DSD_run-01_bold_space-MNI152NLin2009cAsym_preproc.nii.gz';
@@ -40,20 +40,20 @@ matlabbatch{10}.spm.stats.fmri_spec.sess(1).scans(1) = cfg_dep('Smooth: Smoothed
 matlabbatch{10}.spm.stats.fmri_spec.sess(1).cond = struct('name', {}, 'onset', {}, 'duration', {}, 'tmod', {}, 'pmod', {}, 'orth', {});
 matlabbatch{10}.spm.stats.fmri_spec.sess(1).multi = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/multiconds/dsd/wave1/NOD/001_DSD1_NOD.mat'};
 matlabbatch{10}.spm.stats.fmri_spec.sess(1).regress = struct('name', {}, 'val', {});
-matlabbatch{10}.spm.stats.fmri_spec.sess(1).multi_reg = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/fd0.8_dv2.0_Neighbors/rp_001_DSD1.txt'};
+matlabbatch{10}.spm.stats.fmri_spec.sess(1).multi_reg = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/fd0.8_dv2.0_noNeighbors/rp_001_DSD1.txt'};
 matlabbatch{10}.spm.stats.fmri_spec.sess(1).hpf = 128;
 matlabbatch{10}.spm.stats.fmri_spec.sess(2).scans(1) = cfg_dep('Smooth: Smoothed Images', substruct('.','val', '{}',{9}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','files'));
 matlabbatch{10}.spm.stats.fmri_spec.sess(2).cond = struct('name', {}, 'onset', {}, 'duration', {}, 'tmod', {}, 'pmod', {}, 'orth', {});
 matlabbatch{10}.spm.stats.fmri_spec.sess(2).multi = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/multiconds/dsd/wave1/NOD/001_DSD2_NOD.mat'};
 matlabbatch{10}.spm.stats.fmri_spec.sess(2).regress = struct('name', {}, 'val', {});
-matlabbatch{10}.spm.stats.fmri_spec.sess(2).multi_reg = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/fd0.8_dv2.0_Neighbors/rp_001_DSD2.txt'};
+matlabbatch{10}.spm.stats.fmri_spec.sess(2).multi_reg = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/fd0.8_dv2.0_noNeighbors/rp_001_DSD2.txt'};
 matlabbatch{10}.spm.stats.fmri_spec.sess(2).hpf = 128;
 matlabbatch{10}.spm.stats.fmri_spec.fact = struct('name', {}, 'levels', {});
 matlabbatch{10}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
 matlabbatch{10}.spm.stats.fmri_spec.volt = 1;
 matlabbatch{10}.spm.stats.fmri_spec.global = 'None';
 matlabbatch{10}.spm.stats.fmri_spec.mthresh = -Inf;
-matlabbatch{10}.spm.stats.fmri_spec.mask = {'/projects/dsnlab/shared/tds/fMRI/analysis/masks/tds1_tds2/tds1_tds2_gw_smoothed_group_average_optthr.nii,1'};
+matlabbatch{10}.spm.stats.fmri_spec.mask = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/masks/groupMask.nii,1'};
 matlabbatch{10}.spm.stats.fmri_spec.cvi = 'AR(1)';
 matlabbatch{11}.spm.stats.fmri_est.spmmat(1) = cfg_dep('fMRI model specification: SPM.mat File', substruct('.','val', '{}',{10}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
 matlabbatch{11}.spm.stats.fmri_est.write_residuals = 1;
