@@ -73,18 +73,23 @@ summary_age <- tag_age_session_gathered %>% mutate(TAG_ID = as.factor(TAG_ID)) %
 ```{r}
 # Create summary for those who are not withdrawn at wave 1
 # Import overview doc to check for exclusions 
-overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- read.xlsx(paste0(cas_dir,'behavior/Overview/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
 overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
 overview <- overview %>% 
   replace_na(list(Withdrawn_W1 = 0)) %>%
   replace_na(list(Exclusionary_Withdrawl = 0)) %>%
   filter(Exclusionary_Withdrawl == 0) %>%
-  filter(!TAG_ID=="TAG000")
+  filter(!TAG_ID=="TAG000") %>%
+  filter(Withdrawn_W1 == 0)
 
 # Merge overview and age info
 tag_age_session_gathered <- tag_age_session_gathered %>% mutate(TAG_ID = as.factor(TAG_ID)) 
 tag_age_session_gathered <- tag_age_session_gathered %>% left_join(., overview) 
 non_withdrawnW1 <- tag_age_session_gathered %>% filter(Exclusionary_Withdrawl == 0)
+
+# Save age output
+write.csv(tag_age_session_gathered,paste0(agedir,'Age.csv'),row.names=F)
+
 
 # Create summary of non withdrawn participants
 summary_age_nonwithdrawn <- non_withdrawnW1 %>% mutate(TAG_ID = as.factor(TAG_ID)) %>%
