@@ -18,7 +18,7 @@
 STUDY=/projects/dsnlab/shared/tag/TAG_scripts
 
 # Set subject list
-SUBJLIST=`cat subject_list_motion.txt`
+SUBJLIST=`cat subject_list_test.txt`
 
 #Which SID should be replaced?
 REPLACESID='001'
@@ -27,10 +27,10 @@ REPLACESID='001'
 SPM_PATH=/projects/dsnlab/shared/SPM12
 
 # Set MATLAB script path
-SCRIPT=${STUDY}/fMRI/fx/models/dsd/wave1/contrasts.m
+SCRIPT=${STUDY}/fMRI/fx/models/dsd/wave1/test001_job.m
 
 # Tag the results files
-RESULTS_INFIX=fx_dsd
+RESULTS_INFIX=fx
 
 # Set output dir
 OUTPUTDIR=${STUDY}/fMRI/fx/shell/schedule_spm_jobs/dsd/wave1/output

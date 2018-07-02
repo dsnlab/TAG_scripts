@@ -3,7 +3,7 @@
 % spm SPM - SPM12 (6906)
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------
-matlabbatch{1}.spm.stats.con.spmmat = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/fd0.8_dv2.0_Neighbors/sub-TAG001/SPM.mat'};
+matlabbatch{1}.spm.stats.con.spmmat = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/sub-TAG001/SPM.mat'};
 matlabbatch{1}.spm.stats.con.consess{1}.tcon.name = 'affect_state';
 matlabbatch{1}.spm.stats.con.consess{1}.tcon.weights = [1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0];
 matlabbatch{1}.spm.stats.con.consess{1}.tcon.sessrep = 'none';
@@ -34,4 +34,4 @@ matlabbatch{1}.spm.stats.con.consess{9}.tcon.sessrep = 'none';
 matlabbatch{1}.spm.stats.con.consess{10}.tcon.name = 'neutral_pri_pmod';
 matlabbatch{1}.spm.stats.con.consess{10}.tcon.weights = [0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0];
 matlabbatch{1}.spm.stats.con.consess{10}.tcon.sessrep = 'none';
-matlabbatch{1}.spm.stats.con.delete = 0;
+matlabbatch{1}.spm.stats.con.delete = 1;
