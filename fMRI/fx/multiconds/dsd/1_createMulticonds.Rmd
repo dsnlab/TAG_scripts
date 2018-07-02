@@ -28,7 +28,8 @@ lapply(packages, library, character.only = TRUE)
 input_file <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/dsd_trials_long.csv'
 
 # directory to save output. make sure folder is created.
-out_dir <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fmri/fx/multiconds/dsd/wave1/Summary/'
+out_dir <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/'
+
 ```
 
 #Read data
@@ -97,6 +98,16 @@ if(nrow(df %>% filter(run==1)) > 0 & nrow(df %>% filter(run==2)) > 0) {
   
     df_long <- df_long %>% left_join(.,multicondDF)
     
+  #update pmods to NA if 1) only one instance of that event or 2) all instances of that event have same pmod value
+   pmod_check <- df_long %>% group_by(run,name,pmod) %>% summarise(n=n()) %>% filter(name >2) %>%
+      group_by(run,name) %>% summarise(n=n()) %>% filter(n==1) %>% mutate(run_name = paste0(run,'_',name))
+  
+    df_long <- df_long %>% 
+      mutate(run_name = paste0(run,'_',name),
+             pmod = ifelse(run_name %in% pmod_check$run_name, NA, pmod)) %>%
+      select(-run_name)
+  
+  #save models
     saveDF <- df_long %>% group_by(run) %>%
       do({
         ungroup(.) 
@@ -132,21 +143,6 @@ comp_DF <- multicondsDF %>% select(sid,run,name,onset,duration,pmod,multicond) %
 comp_IDS <- unique(comp_DF$sid) 
 ```
 
-#Create a document outlining what conditions each subject has
-```{r}
-summary_byRun <- comp_DF %>% group_by(sid,run,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6,7)) %>% group_by(run,name) %>% summarise(N = n()) 
-
-summary_DF <- comp_DF %>% filter(name %in% c(3,4,5,6,7)) %>%
-  mutate(name=as.factor(paste0('cond_',name))) %>%
-  group_by(sid,run,name) %>% summarise(N = n()) %>%
-  complete(name, fill = list(N = 0)) %>% spread(key=name,value=N)
-write.csv(summary_DF, '~/Desktop/dsd_summary_bySubj.csv',row.names=F)
-
-summary_bySubj <- comp_DF %>% group_by(sid,run) %>% summarise(multicond=mean(multicond))                           
-
-write.csv(summary_bySubj, '~/Desktop/dsd_summary_bySubj.csv',row.names=F)
-```
-
 #Of the completed list, how many had useable fMRI data - i.e. what is my final dataset.
 ```{r}
 #import dsd overview doc
@@ -159,21 +155,65 @@ final_list <- dsd_overview %>% #189
   filter(Withdrawn_W1==0) %>% #174
   filter(!check_mri_completed.2.partial.1.full.0.none.==0) %>% #164
   filter(dsd_completed == 2) %>% #151
-  filter(is.na(technical_missing)) %>% #148
-  filter(is.na(participant_error)) %>% #146 
+  filter(is.na(technical_missing)) %>% #147
+  filter(is.na(participant_error)) %>% #145 
+  filter(is.na(too_much_missing)) %>% #137
   filter(multiconds==1) 
 
 #save final list
 dsd_overview <- dsd_overview %>% 
   mutate(final_sample = ifelse(SID %in% final_list$SID, 1, 0))
-write.csv(dsd_overview, '~/Desktop/dsd_overview.csv',row.names=F)
+#write.csv(dsd_overview, '~/Desktop/dsd_overview.csv',row.names=F)
 ```
 
-#Of the final list, create file outlining multiconds in run 1 and run 2 for subjects, and whether they differ between runs
+#Create summary DFs outlining what conditions each subject has
 ```{r}
-Con_bySubj <- summary_bySubj %>% filter(sid %in% final_list$SID) %>% spread(key=run,value=multicond) %>%
+comp_DF <- comp_DF %>% filter(sid %in% final_list$SID)
+
+#summary of N subjects for each condition, for each run
+summary_byRun <- comp_DF %>% group_by(sid,run,name) %>% summarise(N = n()) %>% filter(name %in% c(3,4,5,6,7)) %>% group_by(run,name) %>% summarise(N = n()) 
+
+#summary of multicond condition for each run for each subject
+summary_conditions_long <- comp_DF %>% group_by(sid,run) %>% summarise(multicond=mean(multicond))                           
+write.csv(summary_conditions_long, paste0(out_dir,'summary_conditions_long.csv'),row.names=F)
+
+#as bove, but wide format, and comparing conditions across the two runs
+summary_conditions_wide <- summary_conditions_long %>% spread(key=run,value=multicond) %>%
   rename(run1 = `1`,
          run2 = `2`) %>%
   mutate(same = ifelse(run1 == run2, 1, 0))
-write.csv(allCon_bySubj, '~/Desktop/Con_bySubj.csv',row.names=F)
+write.csv(summary_conditions_wide, paste0(out_dir,'summary_conditions_wide.csv'),row.names=F)
+
+#summary of N of each condition (including pmods), for each subject
+summary_constrasts <- comp_DF %>% filter(name %in% c(3,4,5,6,7)) %>%
+  mutate(name=as.factor(paste0('cond_',name))) %>%
+  group_by(sid,run,name) %>% 
+  summarise(N = n(), pmod_na=sum(is.na(pmod))) %>%
+  gather(var,value,N:pmod_na) %>%
+  arrange(sid,run,var) %>%
+  mutate(name=paste0(name,'_',var)) %>% select(-var) 
+summary_constrasts$name <- as.factor(summary_constrasts$name)
+summary_constrasts <- summary_constrasts %>%
+  complete(name, fill = list(N = 0)) %>% 
+  spread(key=name,value=value)
+
+#as above, but binarized - note this output is used in "createContrasts.Rmd"
+summary_constrasts_bin <- summary_constrasts %>% 
+  select(-cond_7_pmod_na) %>%
+  mutate(affect_share = ifelse(is.na(cond_3_N), 0, 1),
+         affect_share_pmod = ifelse(is.na(cond_3_pmod_na),0,
+                                 ifelse(cond_3_pmod_na>0,0,1)),
+         neutral_share = ifelse(is.na(cond_4_N), 0, 1),
+         neutral_share_pmod = ifelse(is.na(cond_4_pmod_na),0,
+                                 ifelse(cond_4_pmod_na>0,0,1)),
+         affect_private = ifelse(is.na(cond_5_N), 0, 1),
+         affect_private_pmod = ifelse(is.na(cond_5_pmod_na),0,
+                                 ifelse(cond_5_pmod_na>0,0,1)),
+         neutral_private = ifelse(is.na(cond_6_N), 0, 1),
+         neutral_private_pmod = ifelse(is.na(cond_6_pmod_na),0,
+                                 ifelse(cond_6_pmod_na>0,0,1)),
+         missing = ifelse(is.na(cond_7_N), 0, 1)) %>%
+  select(-contains("cond"))
+
+write.csv(summary_constrasts_bin, paste0(out_dir,'summary_contrasts.csv'),row.names=F) #this output is used in "createContrasts.Rmd"
 ```

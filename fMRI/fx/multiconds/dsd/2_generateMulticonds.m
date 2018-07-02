@@ -10,9 +10,12 @@
 % 3=affect_share,4=neutral_share, 
 % 5=affect_private, 6=neutral_private
 
-%% SET FOLDERS 
+%% SET VARIABLES & FOLDERS 
 
 clear all
+
+% save main models or pmod models?
+save_pmods = true;
 
 % setting directory and listing csv files in matlab directory
 f = '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fmri/fx/multiconds/dsd/wave1/Summary/';
@@ -22,7 +25,7 @@ d = dir(fullfile(f,'*summary.csv'));
 %% READ RAW DATA 
 
 % for each subject and run
-for k=1:244 %:length(d)
+for k=1:length(d)
     
 cd (f)
 
@@ -135,15 +138,30 @@ for j=3:length(pmod)
     if contains(pmod(j).name,'disc_missing')
         pmod(j)=[];
     end
-end        
+end  
+
+for j=3:length(pmod)
+    if isnan(pmod(j).param{1,1}(1))
+        pmod(j).name=[];
+        pmod(j).param=[];
+        pmod(j).poly=[];
+    end
+end
         
 % SAVE
 
-sid=str2double(M{1}(1));
-saveName=strcat(sprintf('%03d',sid),'_DSD',M{2}(1),'_NOD.mat') 
-cd (g) 
-save(saveName{1},'names','onsets','durations','pmod')
+if save_pmods == 1
+    sid=str2double(M{1}(1));
+    saveName=strcat(sprintf('%03d',sid),'_DSD',M{2}(1),'_NOD.mat') 
+    cd (g) 
+    save(saveName{1},'names','onsets','durations','pmod')
+else 
+    sid=str2double(M{1}(1));
+    saveName=strcat(sprintf('%03d',sid),'_DSD',M{2}(1),'_NOD.mat') 
+    cd (g) 
+    save(saveName{1},'names','onsets','durations')
+end
 
-clearvars -except f g d
+clearvars -except f g d save_pmods
 
 end
