@@ -175,7 +175,7 @@ end
 %% READ RAW DATA 
 
 % for each subject and run
-for k=1:242 %245:length(d)
+for k=245:length(d)
     
 cd (f)
 
@@ -244,10 +244,6 @@ end
 
 orth=cell(size(names));
 
-for j=1:length(names)
-    orth{j}=0;
-end
-
 % CREATE PMODS
 
 pmod = struct('name',{''},'param', {}, 'poly', {});
@@ -276,7 +272,7 @@ if save_pmods == 1
     sid=str2double(M{1}(1));
     saveName=strcat(sprintf('%03d',sid),'_DSD',M{2}(1),'_NOD.mat') 
     cd (g) 
-    save(saveName{1},'names','onsets','durations','orth','pmod')
+    save(saveName{1},'names','onsets','durations','pmod')
 else 
     sid=str2double(M{1}(1));
     saveName=strcat(sprintf('%03d',sid),'_DSD',M{2}(1),'_NOD.mat') 

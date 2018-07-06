@@ -166,13 +166,11 @@ conDF <- read.csv(input_file)
 
 contrasts <- lapply(X=as.list(conDF$sid), df=conDF, FUN=function(id, df) {
   
-adf <- df %>% filter(sid==id) %>% ungroup() %>% 
-  mutate(affect_dec_pmod = ifelse(cond3_remove==1,0,1),
-         neutral_dec_pmod = ifelse(cond4_remove==1,0,1))
+adf <- df %>% filter(sid==id) %>% ungroup() 
 run1 <- adf %>% filter(run==1) %>% select(-sid,-run) %>% mutate(affect_state=1, neutral_state=1, affect_decision=1, affect_value_pmod=1,neutral_decision=1, neutral_value_pmod=1) %>%
-  select(affect_state,neutral_state,affect_decision,affect_value_pmod,affect_dec_pmod,neutral_decision,neutral_value_pmod,neutral_dec_pmod)
+  select(affect_state,neutral_state,affect_decision,affect_value_pmod,affect_dec_pmod,neutral_decision,neutral_value_pmod,neutral_dec_pmod,missing)
 run2 <- adf %>% filter(run==2) %>% select(-sid,-run) %>% mutate(affect_state=1, neutral_state=1, affect_decision=1, affect_value_pmod=1,neutral_decision=1, neutral_value_pmod=1) %>%
-  select(affect_state,neutral_state,affect_decision,affect_value_pmod,affect_dec_pmod,neutral_decision,neutral_value_pmod,neutral_dec_pmod)
+  select(affect_state,neutral_state,affect_decision,affect_value_pmod,affect_dec_pmod,neutral_decision,neutral_value_pmod,neutral_dec_pmod,missing)
 
 run1<-run1[, colSums(run1 != 0) > 0]
 run2<-run2[, colSums(run2 != 0) > 0]
@@ -192,7 +190,7 @@ neutral_state=c(neutral_state1,0,0,0,0,0,neutral_state2,0,0,0,0,0)
 
 df <- data.frame(affect_state,neutral_state)
 
-contrasts <- c("affect_share","neutral_share","affect_decision","neutral_decision","affect_value_pmod","neutral_value_pmod","affect_dec_pmod","neutral_dec_pmod")
+contrasts <- c("affect_share","neutral_share","affect_decision","neutral_decision","affect_value_pmod","neutral_value_pmod","affect_dec_pmod","neutral_dec_pmod","missing")
 
 for (i in 1:length(contrasts)) {
   

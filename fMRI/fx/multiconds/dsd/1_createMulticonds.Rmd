@@ -39,7 +39,7 @@ input_df <- input_df %>% filter(wave==1)
 ids <- as.vector(unique(input_df$sid))
 ```
 
-#Format multiconds and save output
+#Format multiconds for 2x2 and save output
 ```{r}
 multicondsDF <- lapply(X=ids, df=input_df, FUN=function(id, df) {
   
@@ -53,10 +53,10 @@ if(nrow(df %>% filter(run==1)) > 0 & nrow(df %>% filter(run==2)) > 0) {
                                                 ifelse(affective == FALSE & disclosed == TRUE, 2,
                                                        ifelse(affective == TRUE & disclosed == FALSE, 3,
                                                               ifelse(affective == FALSE & disclosed == FALSE, 4, NA))))) %>%
-      select(sid,run,trial,statement.condition,statement.onset,disc.condition,disc.onset,share.value)
+      select(sid,run,trial,statement.condition,statement.onset,statement.rt.seconds,disc.condition,disc.onset,target.rt.seconds,share.value) %>% rename(disc.rt.seconds=target.rt.seconds)
 
   df_long <- df %>% 
-      gather(v, value, statement.condition:disc.onset) %>% 
+      gather(v, value, statement.condition:disc.rt.seconds) %>% 
       separate(v, c("task", "v2")) %>% 
       arrange(sid) %>% 
       spread(v2, value) %>%
@@ -67,13 +67,14 @@ if(nrow(df %>% filter(run==1)) > 0 & nrow(df %>% filter(run==2)) > 0) {
                                          ifelse(task == "disc" & condition == 4, 6, condition))))) %>%
       mutate(name = ifelse(is.na(name), 7, name)) %>%
       group_by(run) %>%
-      mutate(duration = lead(onset) - onset) %>%
+      mutate(duration = rt) %>%
+      #mutate(duration = lead(onset) - onset) %>%
       mutate(pmod = ifelse(task=="statement",NA,share.value)) %>%
       mutate(pmod = ifelse(pmod < 0, -1,
                            ifelse(pmod > 0, 1,
                                   ifelse(pmod == 0, 0, NA)))) %>%
-      select(sid,run,name,onset,duration,pmod) %>%
-      mutate(duration = ifelse(is.na(duration),3,duration))
+      select(sid,run,name,onset,duration,pmod) 
+      # %>% mutate(duration = ifelse(is.na(duration),3,duration))
 
     fid = stri_pad_left(id, 3, 0)
 
@@ -111,7 +112,7 @@ if(nrow(df %>% filter(run==1)) > 0 & nrow(df %>% filter(run==2)) > 0) {
     saveDF <- df_long %>% group_by(run) %>%
       do({
         ungroup(.) 
-        #write.csv(.,file=paste0(out_dir,'tag_',fid,'_DSD',.$run[[1]],'summary.csv'),row.names=F,na = "",)
+        #write.csv(.,file=paste0(out_dir,'2x2/tag_',fid,'_DSD',.$run[[1]],'summary.csv'),row.names=F,na = "",)
         data.frame()
         })
 
@@ -175,14 +176,14 @@ summary_byRun <- comp_DF %>% group_by(sid,run,name) %>% summarise(N = n()) %>% f
 
 #summary of multicond condition for each run for each subject
 summary_conditions_long <- comp_DF %>% group_by(sid,run) %>% summarise(multicond=mean(multicond))                           
-write.csv(summary_conditions_long, paste0(out_dir,'summary_conditions_long.csv'),row.names=F)
+write.csv(summary_conditions_long, paste0(out_dir,'2X2/summary_conditions_long.csv'),row.names=F)
 
 #as bove, but wide format, and comparing conditions across the two runs
 summary_conditions_wide <- summary_conditions_long %>% spread(key=run,value=multicond) %>%
   rename(run1 = `1`,
          run2 = `2`) %>%
   mutate(same = ifelse(run1 == run2, 1, 0))
-write.csv(summary_conditions_wide, paste0(out_dir,'summary_conditions_wide.csv'),row.names=F)
+write.csv(summary_conditions_wide, paste0(out_dir,'2X2/summary_conditions_wide.csv'),row.names=F)
 
 #summary of N of each condition (including pmods), for each subject
 summary_constrasts <- comp_DF %>% filter(name %in% c(3,4,5,6,7)) %>%
@@ -215,5 +216,166 @@ summary_constrasts_bin <- summary_constrasts %>%
          missing = ifelse(is.na(cond_7_N), 0, 1)) %>%
   select(-contains("cond"))
 
-write.csv(summary_constrasts_bin, paste0(out_dir,'summary_contrasts.csv'),row.names=F) #this output is used in "createContrasts.Rmd"
+write.csv(summary_constrasts_bin, paste0(out_dir,'2X2/summary_contrasts.csv'),row.names=F) #this output is used in "createContrasts.Rmd"
 ```
+
+#Identify subjects with 5 or more events of each type in each run (note - this ends up giving us the same number of subjects as if we choose 4 as minimum number of events)
+```{r}
+summary_constrasts_5min <- summary_constrasts %>% filter(cond_3_N > 4) %>% filter(cond_4_N > 4) %>% 
+  filter(cond_5_N > 4) %>% filter(cond_6_N > 4)
+ids_5min <- summary_constrasts_5min %>% group_by(sid) %>% summarise(N=n()) %>% filter(N ==2)
+summary_constrasts_5min <- summary_constrasts_5min %>% filter(sid %in% ids_5min$sid)
+```
+
+#Format multiconds for decisions pmod and save model
+```{r}
+multicondsDF <- lapply(X=ids, df=input_df, FUN=function(id, df) {
+  
+df <- df %>% filter(sid==id)
+  
+if(nrow(df %>% filter(run==1)) > 0 & nrow(df %>% filter(run==2)) > 0) {
+  
+  df <- df %>% mutate(statement.condition = ifelse(affective == TRUE, 1,
+                                                     ifelse(affective == FALSE, 2, NA)),
+                        disc.condition = ifelse(affective == TRUE, 1,
+                                                ifelse(affective == FALSE, 2, NA))) %>%
+      select(sid,run,trial,statement.condition,statement.onset,statement.rt.seconds,disc.condition,disc.onset,target.rt.seconds,share.value,disclosed) %>% rename(disc.rt.seconds=target.rt.seconds)
+
+  df_long <- df %>% 
+      gather(v, value, statement.condition:disc.rt.seconds) %>% 
+      separate(v, c("task", "v2")) %>% 
+      arrange(sid) %>% 
+      spread(v2, value) %>%
+      arrange(run,trial,desc(task)) %>%
+      mutate(name = ifelse(task == "statement" & condition == 1, 1,
+                           ifelse(task == "statement" & condition == 2, 2, 
+                                  ifelse(task == "disc" & condition == 1, 3,
+                                         ifelse(task == "disc" & condition == 2, 4, NA))))) %>%
+      group_by(run) %>%
+      mutate(duration = rt) %>%
+      #mutate(duration = lead(onset) - onset) %>%
+      mutate(pmod_shareValue = ifelse(task=="statement",NA,share.value)) %>%
+      mutate(pmod_shareValue = ifelse(pmod_shareValue < 0, -1,
+                                      ifelse(pmod_shareValue > 0, 1,
+                                             ifelse(pmod_shareValue == 0, 0, NA)))) %>%
+      mutate(pmod_decision = ifelse(task=="statement",NA,disclosed)) %>%
+      select(sid,run,name,onset,duration,pmod_shareValue,pmod_decision) 
+  
+    fid = stri_pad_left(id, 3, 0)
+      
+  #update pmods to NA if less than 5 for either share or private
+  pmod_check <- df_long %>% ungroup() %>%
+    mutate(run=factor(run),
+           name=factor(name),
+           pmod_decision=factor(pmod_decision,levels=c(0,1))) %>%
+    group_by(run,name,pmod_decision) %>% 
+    summarise(n=n()) %>% filter(!name %in% c(1,2)) %>%
+    filter(!is.na(pmod_decision)) %>%
+    complete(pmod_decision, fill = list(n = 0)) %>%
+    mutate(run_name = paste0(run,'_',name)) %>%
+    filter(n < 5)
+
+  df_long <- df_long %>% 
+      mutate(run_name = paste0(run,'_',name),
+             pmod_decision = ifelse(run_name %in% pmod_check$run_name, NA, pmod_decision)) %>%
+      select(-run_name) %>%
+      mutate(pmod_decision = ifelse(pmod_decision==1,0.5,
+                                    ifelse(pmod_decision==0,-0.5,NA))) 
+  df_long <- df_long %>% 
+      mutate(name = ifelse((name %in% c(3,4)) & (duration=="NaN"),5,name),
+             pmod_shareValue = ifelse((name %in% c(3,4)) & (duration=="NaN"),NA,pmod_shareValue),
+             pmod_decision = ifelse((name %in% c(3,4)) & (duration=="NaN"),NA,pmod_decision)) 
+  missing <- df_long %>% group_by(sid,run,name) %>% summarise(N=n()) %>% filter(name==5) %>% filter(N > 0)
+  df_long <- df_long %>% mutate(missing = ifelse(run %in% missing$run,1,0)) 
+  
+  #save models
+    saveDF <- df_long %>% group_by(run) %>%
+      do({
+        ungroup(.) 
+        write.csv(.,file=paste0(out_dir,'pmod/tag_',fid,'_DSD',.$run[[1]],'summary.csv'),row.names=F,na = "",)
+        data.frame()
+        })
+
+    df_long
+
+} else {
+  
+    sid=id
+    run1 <- nrow(df %>% filter(run==1))
+    run2 <- nrow(df %>% filter(run==2))
+    check <- cbind(sid, run1, run2)
+    check <- as.data.table(check) }
+})
+```
+
+```{r}
+multicondsDF <- rbindlist(multicondsDF, fill=T)
+
+#full subject list: 165 subjects
+all_ids <- unique(multicondsDF$sid)
+
+#IDs to check and run manually: 9 subjects
+check_ids <- multicondsDF %>% select(sid,run1,run2) %>% filter(!is.na(run1))
+
+#completed subjects - processed completely: 155 subjects
+comp_DF <- multicondsDF %>% select(sid,run,name,onset,duration,pmod_shareValue,pmod_decision) %>%
+  filter(!sid %in% check_ids$sid)
+comp_IDS <- unique(comp_DF$sid) 
+```
+
+#Of the completed list, how many had useable fMRI data - i.e. what is my final dataset.
+```{r}
+#import dsd overview doc
+dsd_overview <- read.csv('~/Desktop/dsd_overview.csv',header=T)
+dsd_overview <- dsd_overview %>% 
+  mutate(multiconds = ifelse(SID %in% comp_IDS, 1, 0))
+
+#final DSD fMRI list
+final_list <- dsd_overview %>% #189
+  filter(Withdrawn_W1==0) %>% #174
+  filter(!check_mri_completed.2.partial.1.full.0.none.==0) %>% #164
+  filter(dsd_completed == 2) %>% #151
+  filter(is.na(technical_missing)) %>% #147
+  filter(is.na(participant_error)) %>% #145 
+  filter(is.na(too_much_missing)) %>% #137
+  filter(multiconds==1) 
+
+#save final list
+dsd_overview <- dsd_overview %>% 
+  mutate(final_sample = ifelse(SID %in% final_list$SID, 1, 0))
+#write.csv(dsd_overview, '~/Desktop/dsd_overview.csv',row.names=F)
+```
+
+#Create summary DFs outlining what conditions each subject has
+```{r}
+comp_DF <- comp_DF %>% filter(sid %in% final_list$SID)
+
+#summary of whether each subject has pmod decision for affect and neutral 
+summary_constrasts <- comp_DF %>% filter(name %in% c(3,4,5)) %>%
+  mutate(name=as.factor(paste0('cond_',name))) %>%
+  group_by(sid,run,name) %>% 
+  summarise(N = n(), pmod_na=sum(is.na(pmod_decision))) %>%
+  gather(var,value,N:pmod_na) %>%
+  arrange(sid,run,var) %>%
+  mutate(name=paste0(name,'_',var)) %>% select(-var) 
+summary_constrasts$name <- as.factor(summary_constrasts$name)
+summary_constrasts <- summary_constrasts %>%
+  complete(name, fill = list(N = 0)) %>% 
+  spread(key=name,value=value) %>%
+  select(-cond_5_pmod_na)
+
+summary_constrasts1 <- summary_constrasts %>%
+  mutate(affect_dec_pmod = ifelse(cond_3_N==cond_3_pmod_na,0,1),
+         neutral_dec_pmod = ifelse(cond_4_N==cond_4_pmod_na,0,1),
+         missing = ifelse(is.na(cond_5_N),0,1)) %>%
+  select(sid,run,affect_dec_pmod,neutral_dec_pmod,missing)
+
+write.csv(summary_constrasts1, paste0(out_dir,'pmod/summary_constrasts.csv'),row.names=F) #this output is used in "createContrasts.Rmd"
+```
+
+```{r}
+#check that there are no NA - should all be coded as condition 5 now.
+summary_constrasts2 <- summary_constrasts %>%
+  mutate(cond3_na = ifelse((!cond_3_N==cond_3_pmod_na) & !(cond_3_pmod_na==0), cond_3_pmod_na, 0),
+         cond4_na = ifelse((!cond_4_N==cond_4_pmod_na) & !(cond_4_pmod_na==0), cond_4_pmod_na, 0)) %>%
+  arrange(-cond3_na,-cond4_na)
