@@ -183,12 +183,19 @@ affect_state2=rep(0, (length(run2)))
 affect_state2[1]=1
 neutral_state2=rep(0, (length(run2)))
 neutral_state2[2]=1
+state1=rep(0, (length(run1)))
+state1[1]=1
+state1[2]=1
+state2=rep(0, (length(run2)))
+state2[1]=1
+state2[2]=1
 
 #creat DF of contrasts
 affect_state=c(affect_state1,0,0,0,0,0,affect_state2,0,0,0,0,0)
 neutral_state=c(neutral_state1,0,0,0,0,0,neutral_state2,0,0,0,0,0)
+state=c(state1,0,0,0,0,0,state2,0,0,0,0,0)
 
-df <- data.frame(affect_state,neutral_state)
+df <- data.frame(state,affect_state,neutral_state)
 
 contrasts <- c("affect_share","neutral_share","affect_decision","neutral_decision","affect_value_pmod","neutral_value_pmod","affect_dec_pmod","neutral_dec_pmod","missing")
 
