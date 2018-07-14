@@ -1,0 +1,261 @@
+---
+title: "creating contrasts"
+author: "Nandi"
+date: "1 July 2018"
+output: html_document
+---
+
+```{r}
+packages <- c("tidyr", "stringr","data.table", "dplyr")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+# read input file from
+input_file <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/pmod/summary_constrasts.csv'
+
+# directory to save output. make sure folder is created.
+out_dir <- '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/models/dsd/wave1/contrasts/pmod/'
+```
+
+
+```{r}
+conDF <- read.csv(input_file)
+
+contrasts <- lapply(X=as.list(conDF$sid), df=conDF, FUN=function(id, df) {
+  
+adf <- df %>% filter(sid==id) %>% ungroup()
+run1 <- adf %>% filter(run==1) %>% select(-sid,-run) %>% mutate(affect_state=1, neutral_state=1) %>%
+  select(affect_state,neutral_state,everything())
+run2 <- adf %>% filter(run==2) %>% select(-sid,-run) %>% mutate(affect_state=1, neutral_state=1) %>%
+  select(affect_state,neutral_state,everything())
+run1<-run1[, colSums(run1 != 0) > 0]
+run2<-run2[, colSums(run2 != 0) > 0]
+
+affect_state1=rep(0, (length(run1)))
+affect_state1[1]=1
+neutral_state1=rep(0, (length(run1)))
+neutral_state1[2]=1
+affect_state2=rep(0, (length(run2)))
+affect_state2[1]=1
+neutral_state2=rep(0, (length(run2)))
+neutral_state2[2]=1
+
+#creat DF of contrasts
+affect_state=c(affect_state1,0,0,0,0,0,affect_state2,0,0,0,0,0)
+neutral_state=c(neutral_state1,0,0,0,0,0,neutral_state2,0,0,0,0,0)
+
+df <- data.frame(affect_state,neutral_state)
+
+contrasts <- c("affect_share","neutral_share","affect_private","neutral_private",
+               "affect_share_pmod","neutral_share_pmod","affect_private_pmod","neutral_private_pmod")
+
+for (i in 1:length(contrasts)) {
+  
+  conn=contrasts[i]
+    
+  if(conn %in% colnames(run1)) {
+    colnum=which( colnames(run1)==conn )
+    conn1=rep(0, (length(run1)))
+    conn1[colnum]=1  
+    } else {}
+  
+  if(conn %in% colnames(run2)) {
+    colnum=which( colnames(run2)==conn )
+    conn2=rep(0, (length(run2)))
+    conn2[colnum]=1  
+    } else {}
+
+  if (exists("conn1") & exists("conn2")) {
+    df <- df %>% 
+      mutate(var = c(conn1,0,0,0,0,0,conn2,0,0,0,0,0))
+    names(df)[ncol(df)]<-conn
+    } else if (exists("conn1") & !exists("conn2")) {
+      df <- df %>% 
+        mutate(var = c(conn1,0,0,0,0,0,rep(0,length(run2)),0,0,0,0,0))
+      names(df)[ncol(df)]<-conn
+    } else if (!exists("conn1") & exists("conn2")) {
+      df <- df %>% 
+        mutate(var = c(rep(0,length(run1)),0,0,0,0,0,conn2,0,0,0,0,0))
+      names(df)[ncol(df)]<-conn }
+  rm(conn1)
+  rm(conn2)
+  }
+
+fid = stri_pad_left(id, 3, 0)
+
+sink(paste0(out_dir,"TAG",fid,".m",sep=""))
+cat("%-----------------------------------------------------------------------
+% Job saved on 01-Jul-2018 20:22:20 by cfg_util (rev $Rev: 6460 $)
+% spm SPM - SPM12 (6906)
+% cfg_basicio BasicIO - Unknown
+%-----------------------------------------------------------------------")
+cat("\n")
+cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/sub-TAG",fid,"/SPM.mat'};",sep="")
+cat("\n")
+for(i in 1:length(df)){
+cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.name = '", colnames(df)[i],"';", sep="")
+cat("\n")
+cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.weights = [",noquote(paste0(df[,i],sep=" ")),"];",sep="")
+cat("\n")
+cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.sessrep = 'none';",sep="")
+cat("\n") }
+cat("matlabbatch{1}.spm.stats.con.delete = 0;")
+sink()
+
+rows <- names(df)
+df2 <- transpose(df) %>% mutate(contrast = names(df), id=id) %>% select(id, contrast, everything())
+df2
+
+})
+
+connDF <- rbindlist(contrasts,fill=T)
+```
+
+#create summary - to be used for rx scripts
+```{r}
+conn_summaryDF <- connDF[!duplicated(connDF), ]
+conn_summaryDF <- conn_summaryDF %>% group_by(id) %>% mutate(number = 1:n()) %>%
+  select(id,contrast,number)
+```
+
+#create rx lists
+```{r}
+#affect share - 137 subjects - everyone present.
+affect_share <- conn_summaryDF %>% filter(contrast=="affect_share")
+
+#neutral share - 136 subjects - 1 missing
+neutral_share <- conn_summaryDF %>% filter(contrast=="neutral_share")
+  #missing = 179
+  as.character(setdiff(affect_share$id,neutral_share$id)) 
+
+#affect private - 127 subjects - 1 missing
+affect_private <- conn_summaryDF %>% filter(contrast=="affect_private")
+  #missing = "51"  "55"  "72"  "75"  "109" "200" "209" "224" "240" "250"
+  as.character(setdiff(affect_share$id,affect_private$id)) 
+
+#neutral private - 119 subjects - 1 missing
+neutral_private <- conn_summaryDF %>% filter(contrast=="neutral_private")
+  #missing = "34"  "35"  "42"  "51"  "55"  "68"  "71"  "72"  "75"  "109" "119" "155" "165" "200" "207" "209" "223" "250"
+  as.character(setdiff(affect_share$id,neutral_private$id)) #179
+
+###create subject lists
+#share t-test
+list_share_ttest <- conn_summaryDF %>% filter(contrast %in% c("affect_share","neutral_share")) %>% group_by(id) %>% summarise(N=n()) %>% filter(N == 2) %>% select(id)
+write.csv(full2x2_list,'~/Desktop/subject_list_ttest.txt',row.names=F)
+#
+  
+#2x2
+list_2x2 <- conn_summaryDF %>% filter(contrast %in% c("affect_share","neutral_share","affect_private","neutral_private")) %>% group_by(id) %>% summarise(N=n()) %>% filter(N == 4) %>% select(id)
+write.csv(full2x2_list,'~/Desktop/subject_list_2x2.txt',row.names=F)
+
+#share pmod t-test
+list_share_pmod_ttest <- conn_summaryDF %>% filter(contrast %in% c("affect_share_pmod","neutral_share_pmod")) %>% group_by(id) %>% summarise(N=n()) %>% filter(N == 2) %>% select(id)
+write.csv(full2x2_list,'~/Desktop/subject_list_pmod_ttest.txt',row.names=F)
+
+
+
+#pmod 2x2
+list_2x2_pmod <- conn_summaryDF %>% filter(contrast %in% c("affect_share_pmod","neutral_share_pmod","affect_private_pmod","neutral_private_pmod")) %>% group_by(id) %>% summarise(N=n()) %>% filter(N == 4) %>% select(id)
+write.csv(full2x2_list,'~/Desktop/subject_list_2x2.txt',row.names=F)
+```
+
+```{r}
+conDF <- read.csv(input_file)
+
+contrasts <- lapply(X=as.list(conDF$sid), df=conDF, FUN=function(id, df) {
+  
+adf <- df %>% filter(sid==id) %>% ungroup() 
+run1 <- adf %>% filter(run==1) %>% select(-sid,-run) %>% mutate(affect_state=1, neutral_state=1, affect_decision=1, affect_value_pmod=1,neutral_decision=1, neutral_value_pmod=1) %>%
+  select(affect_state,neutral_state,affect_decision,affect_value_pmod,affect_dec_pmod,neutral_decision,neutral_value_pmod,neutral_dec_pmod,missing)
+run2 <- adf %>% filter(run==2) %>% select(-sid,-run) %>% mutate(affect_state=1, neutral_state=1, affect_decision=1, affect_value_pmod=1,neutral_decision=1, neutral_value_pmod=1) %>%
+  select(affect_state,neutral_state,affect_decision,affect_value_pmod,affect_dec_pmod,neutral_decision,neutral_value_pmod,neutral_dec_pmod,missing)
+
+run1<-run1[, colSums(run1 != 0) > 0]
+run2<-run2[, colSums(run2 != 0) > 0]
+
+affect_state1=rep(0, (length(run1)))
+affect_state1[1]=1
+neutral_state1=rep(0, (length(run1)))
+neutral_state1[2]=1
+affect_state2=rep(0, (length(run2)))
+affect_state2[1]=1
+neutral_state2=rep(0, (length(run2)))
+neutral_state2[2]=1
+state1=rep(0, (length(run1)))
+state1[1]=1
+state1[2]=1
+state2=rep(0, (length(run2)))
+state2[1]=1
+state2[2]=1
+
+#creat DF of contrasts
+affect_state=c(affect_state1,0,0,0,0,0,affect_state2,0,0,0,0,0)
+neutral_state=c(neutral_state1,0,0,0,0,0,neutral_state2,0,0,0,0,0)
+state=c(state1,0,0,0,0,0,state2,0,0,0,0,0)
+
+df <- data.frame(state,affect_state,neutral_state)
+
+contrasts <- c("affect_share","neutral_share","affect_decision","neutral_decision","affect_value_pmod","neutral_value_pmod","affect_dec_pmod","neutral_dec_pmod","missing")
+
+for (i in 1:length(contrasts)) {
+  
+  conn=contrasts[i]
+    
+  if(conn %in% colnames(run1)) {
+    colnum=which( colnames(run1)==conn )
+    conn1=rep(0, (length(run1)))
+    conn1[colnum]=1  
+    } else {}
+  
+  if(conn %in% colnames(run2)) {
+    colnum=which( colnames(run2)==conn )
+    conn2=rep(0, (length(run2)))
+    conn2[colnum]=1  
+    } else {}
+
+  if (exists("conn1") & exists("conn2")) {
+    df <- df %>% 
+      mutate(var = c(conn1,0,0,0,0,0,conn2,0,0,0,0,0))
+    names(df)[ncol(df)]<-conn
+    } else if (exists("conn1") & !exists("conn2")) {
+      df <- df %>% 
+        mutate(var = c(conn1,0,0,0,0,0,rep(0,length(run2)),0,0,0,0,0))
+      names(df)[ncol(df)]<-conn
+    } else if (!exists("conn1") & exists("conn2")) {
+      df <- df %>% 
+        mutate(var = c(rep(0,length(run1)),0,0,0,0,0,conn2,0,0,0,0,0))
+      names(df)[ncol(df)]<-conn }
+  rm(conn1)
+  rm(conn2)
+  }
+
+fid = stri_pad_left(id, 3, 0)
+
+sink(paste0(out_dir,"TAG",fid,".m",sep=""))
+cat("%-----------------------------------------------------------------------
+% Job saved on 01-Jul-2018 20:22:20 by cfg_util (rev $Rev: 6460 $)
+% spm SPM - SPM12 (6906)
+% cfg_basicio BasicIO - Unknown
+%-----------------------------------------------------------------------")
+cat("\n")
+cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/sub-TAG",fid,"/SPM.mat'};",sep="")
+cat("\n")
+for(i in 1:length(df)){
+cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.name = '", colnames(df)[i],"';", sep="")
+cat("\n")
+cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.weights = [",noquote(paste0(df[,i],sep=" ")),"];",sep="")
+cat("\n")
+cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.sessrep = 'none';",sep="")
+cat("\n") }
+cat("matlabbatch{1}.spm.stats.con.delete = 0;")
+sink()
+
+rows <- names(df)
+df2 <- transpose(df) %>% mutate(contrast = names(df), id=id) %>% select(id, contrast, everything())
+df2
+
+})
+
+connDF <- rbindlist(contrasts,fill=T)
