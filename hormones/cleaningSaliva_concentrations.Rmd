@@ -5,6 +5,10 @@ date: "9 May 2018"
 output: html_document
 ---
 
+#step1: import "final" mean concentrations, edit "????" based on raw concentrations (i.e. too low or too high for assay). and also based on other samples provided by the participant.
+
+#step2: examine all repeats (re-runs) and make decision on whether to use original mean or repeat mean. edit "final" mean concentrations accordingly.
+
 ```{r, include=FALSE}
 #LOAD PACKAGES AND SET DIRECTORIES
 
@@ -36,39 +40,81 @@ overview <- overview %>%
   filter(Withdrawn_W1==0)
 ```
 
-###IMPORT "FINAL" SALIVA CONCENTRATIONS
+###IMPORT "FINAL" SALIVA CONCENTRATIONS & IDENTIFY '?????'
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
 ###IMPORT FINAL CONCENTRATIONS 
-Sal_DHEA_final <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=4)
-Sal_TEST_final <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=8)
-Sal_EST_final <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=12)
+#version 1
+Sal_DHEA_final1 <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=4)
+Sal_TEST_final1 <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=8)
+Sal_EST_final1 <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=12)
+
+#version 2
+Sal_DHEA_final2 <- read_xlsx(paste0(saliva_dir,'/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=6)
+Sal_TEST_final2 <- read_xlsx(paste0(saliva_dir,'/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=4)
+Sal_EST_final2 <- read_xlsx(paste0(saliva_dir,'/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=2)
 
 #check entries with '?????' listed in concentration columns -
 #these refer to either entries that are too high or too low.
-DHEA_check <- Sal_DHEA_final %>% filter(Concentration =='?????') 
-TEST_check <- Sal_TEST_final %>% filter(Concentration =='?????') 
-EST_check <- Sal_EST_final %>% filter(Concentration =='?????') 
+DHEA_check1 <- filter(Sal_DHEA_final1, grepl('\\?',Concentration)) %>% rename(Mean=Concentration)
+DHEA_check2 <- filter(Sal_DHEA_final2, grepl('\\?',Mean))
+DHEA_check <- rbind(DHEA_check1,DHEA_check2)
 
-###NOTE: NV & MB made decisions about how to update/use each of these '?????' values.
+TEST_check1 <- filter(Sal_TEST_final1, grepl('\\?',Concentration)) %>% rename(Mean=Concentration)
+TEST_check2 <- filter(Sal_TEST_final2, grepl('\\?',Mean)) 
+TEST_check <- rbind(TEST_check1,TEST_check2)
+
+EST_check1 <- filter(Sal_EST_final1, grepl('\\?',Concentration)) %>% rename(Mean=Concentration)
+EST_check2 <- filter(Sal_EST_final2, grepl('\\?',Mean)) 
+EST_check <- rbind(EST_check1,EST_check2)
+
+
+###NOTE: NV & MB to make decisions about how to update/use each of these '?????' values.
 
 
 #format imported DFs for each hormone, update with deciscreate SID as 3 digit numeric factor (i.e. "001"), combine all three hormones in one dataframe. 
-Sal_DHEA_final <- Sal_DHEA_final %>% 
-  mutate(Concentration = ifelse(Concentration =='?????',1,Concentration)) %>%
-  mutate(SID = as.factor(round(as.numeric(ID),2)),
-         sal_DHEA = round(as.numeric(Concentration),3)) %>%
+Sal_DHEA_final1 <- Sal_DHEA_final1 %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
+  mutate(sal_DHEA = ifelse(Concentration == "?????",1,Concentration)) %>%
+  #mutate(sal_DHEA = 
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1, Concentration))))) %>%
+  mutate(sal_DHEA = round(as.numeric(sal_DHEA),3)) %>%
   select(SID,sal_DHEA) %>%
-  replace_na(list(sal_DHEA = "missing")) %>%
+  #replace_na(list(sal_DHEA = "missing")) %>%
   filter(!is.na(SID)) %>%
   separate(SID, into =c("SID","week")) %>%
   mutate(SID = str_pad(SID, 3, pad = "0")) %>%
   mutate(SID = as.factor(SID),
          week = as.factor(week))
 
-Sal_TEST_final <- Sal_TEST_final %>% 
-  mutate(Concentration = ifelse(Concentration =='?????',4,Concentration)) %>%
-  mutate(SID = as.factor(round(as.numeric(ID),2)),
-         sal_TEST = round(as.numeric(Concentration),3)) %>%
+Sal_DHEA_final2 <- Sal_DHEA_final2 %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
+  mutate(sal_DHEA = ifelse(Mean == "?????",1,Mean)) %>%
+  #mutate(sal_DHEA = 
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1, Mean))))) %>%
+  mutate(sal_DHEA = round(as.numeric(sal_DHEA),3)) %>%
+  select(SID,sal_DHEA) %>%
+  #replace_na(list(sal_DHEA = "missing")) %>%
+  filter(!is.na(SID)) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week))
+
+Sal_TEST_final1 <- Sal_TEST_final1 %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
+  mutate(sal_TEST = ifelse(Concentration == "?????",1,Concentration)) %>%
+  #mutate(sal_TEST =
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1, Concentration))))) %>%
+  mutate(sal_TEST = round(as.numeric(sal_TEST),3)) %>%
   select(SID,sal_TEST) %>%
   replace_na(list(sal_TEST = "missing")) %>%
   filter(!is.na(SID)) %>%
@@ -77,10 +123,32 @@ Sal_TEST_final <- Sal_TEST_final %>%
   mutate(SID = as.factor(SID),
          week = as.factor(week))
 
-Sal_EST_final <- Sal_EST_final %>% 
-  mutate(Concentration = ifelse(Concentration =='?????',0.1,Concentration)) %>%
-  mutate(SID = as.factor(round(as.numeric(ID),2)),
-         sal_EST = round(as.numeric(Concentration),3)) %>%
+Sal_TEST_final2 <- Sal_TEST_final2 %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
+  mutate(sal_TEST = ifelse(Mean == "?????",1,Mean)) %>%
+  #mutate(sal_TEST =
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1, Mean))))) %>%
+  mutate(sal_TEST = round(as.numeric(sal_TEST),3)) %>%
+  select(SID,sal_TEST) %>%
+  replace_na(list(sal_TEST = "missing")) %>%
+  filter(!is.na(SID)) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week))
+
+Sal_EST_final1 <- Sal_EST_final1 %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
+  mutate(sal_EST = ifelse(Concentration == "?????",1,Concentration)) %>%
+  #mutate(sal_EST = 
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1, Concentration))))) %>%
+  mutate(sal_EST = round(as.numeric(sal_EST),3)) %>%
   select(SID,sal_EST) %>%
   replace_na(list(sal_EST = "missing")) %>%
   filter(!is.na(SID)) %>%
@@ -89,31 +157,147 @@ Sal_EST_final <- Sal_EST_final %>%
   mutate(SID = as.factor(SID),
          week = as.factor(week))
 
-Saliva <- Sal_DHEA_final %>% full_join(.,Sal_TEST_final) %>% full_join(.,Sal_EST_final) %>%
-  mutate(ID = paste(SID,week,sep="_")) %>%
+Sal_EST_final2 <- Sal_EST_final2 %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
+  mutate(sal_EST = ifelse(Mean == "?????",1,Mean)) %>%
+  #mutate(sal_EST = 
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1,
+  #         ifelse(SID == XXX,1, Mean))))) %>%
+  mutate(sal_EST = round(as.numeric(sal_EST),3)) %>%
+  select(SID,sal_EST) %>%
+  replace_na(list(sal_EST = "missing")) %>%
+  filter(!is.na(SID)) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week))
+
+Sal_DHEA_final <- rbind(Sal_DHEA_final1,Sal_DHEA_final2)
+Sal_TEST_final <- rbind(Sal_TEST_final1,Sal_TEST_final2)
+Sal_EST_final <- rbind(Sal_EST_final1,Sal_EST_final2)
+```
+
+###IMPORT SALIVA REPEATS
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+
+#version1
+Sal_DHEA_rep1 <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=3)
+Sal_TEST_rep1 <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=7)
+Sal_EST_rep1 <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=11)
+
+#version2
+Sal_DHEA_rep2 <- read_xlsx(paste0(saliva_dir,'/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=5)
+Sal_TEST_rep2 <- read_xlsx(paste0(saliva_dir,'/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=3)
+Sal_EST_rep2 <- read_xlsx(paste0(saliva_dir,'/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=1)
+
+Sal_DHEA_rep1 <- Sal_DHEA_rep1 %>%
+  rename(SID = Name,
+         rep1 = TAG_2017.07.18_DHEA_Yoojin.xlsx,
+         rep2 = X__1,
+         CV2 = X__2,
+         notes = X__3) %>%
+  mutate(rep1 = as.numeric(rep1)) %>%
+  filter(!is.na(rep1)) %>%
+  mutate(SID = as.factor(round(as.numeric(SID),2))) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week)) %>%
+  filter(!(SID == "Name")) %>%
   filter(SID %in% overview$SID)
+
+Sal_DHEA_rep2 <- Sal_DHEA_rep2 %>%
+  rename(SID = Name,
+         rep = X__5) %>%
+  mutate(rep = as.numeric(rep)) %>%
+  filter(!is.na(rep))
+
+#Sal_DHEA_final <- Sal_DHEA_final %>% 
+  #mutate(sal_DHEA = 
+  #         ifelse(SID == XXX & week == X,1,
+  #         ifelse(SID == XXX & week == X,1,
+  #         ifelse(SID == XXX & week == X,1,
+  #         ifelse(SID == XXX & week == X,1, sal_DHEA)))))
+  
+Sal_TEST_rep1 <- Sal_TEST_rep1 %>% 
+  rename(SID = Name,
+         rep1 = tag_06.18.2017_testo_tray2_ellen.xlsx,
+         rep2 = X__1,
+         CV2 = X__2,
+         notes = X__3) %>%
+  mutate(rep1 = as.numeric(rep1)) %>%
+  filter(!is.na(rep1)) %>%
+  mutate(SID = as.factor(round(as.numeric(SID),2))) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week)) %>%
+  filter(!(SID == "Name"))  %>%
+  filter(SID %in% overview$SID)
+
+#Sal_TEST_rep2 - none present
+
+#Sal_TEST_final <- Sal_DHEA_final %>% 
+  #mutate(sal_TEST = 
+  #         ifelse(SID == XXX & week == X,1,
+  #         ifelse(SID == XXX & week == X,1,
+  #         ifelse(SID == XXX & week == X,1,
+  #         ifelse(SID == XXX & week == X,1, sal_TEST)))))
+
+Sal_EST_rep1 <- Sal_EST_rep1 %>% 
+  rename(SID = Name,
+         rep1 = TAG_06.18.2017_Estradiol_Tray2_Olivia.xlsx,
+         rep2 = X__1,
+         CV2 = X__2,
+         notes = X__3) %>%
+  mutate(rep1 = as.numeric(rep1)) %>%
+  filter(!is.na(rep1)) %>%
+  mutate(SID = as.factor(round(as.numeric(SID),2))) %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID),
+         week = as.factor(week)) %>%
+  filter(!(SID == "Name"))  %>%
+  filter(SID %in% overview$SID)
+
+Sal_EST_rep2 <- Sal_EST_rep2 %>%
+  rename(SID = Name,
+         rep = X__5) %>%
+  mutate(rep = as.numeric(rep)) %>%
+  filter(!is.na(rep))
+
+#Sal_EST_final <- Sal_DHEA_final %>% 
+  #mutate(sal_EST = 
+  #         ifelse(SID == XXX & week == X,1,
+  #         ifelse(SID == XXX & week == X,1,
+  #         ifelse(SID == XXX & week == X,1,
+  #         ifelse(SID == XXX & week == X,1, sal_EST)))))
+```
+
+###FINAL MEAN CONCENTRATIONS & DISTRIBUTIONS
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
+Saliva <- Sal_DHEA_final %>% full_join(.,Sal_TEST_final) %>% full_join(.,Sal_EST_final) %>%
+  mutate(ID = paste(SID,week,sep="_")) 
+  #%>% filter(SID %in% overview$SID) #DO WE FILTER TO OUR FINAL SUBJECT LIST??
 Saliva_long <- gather(Saliva, hormone, concentration, c(sal_DHEA,sal_TEST,sal_EST), factor_key=TRUE)
 Saliva_long <- Saliva_long %>%
   mutate(concentration = as.numeric(concentration))
-```
 
-###DISTRIBUTIONS OF CONCENTRATIONS & LOG TRANSFORMATIONS
-```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
 #plot concentrations
-      #Saliva_long <- Saliva_long %>% 
-      #  mutate(missing = if_else(concentration == "missing",1,0))
-
 Saliva_plot <- Saliva_long %>% 
   ggplot(aes(x = concentration)) +
   geom_histogram(color="black",fill="white") +
   facet_wrap(~ hormone, scales="free")
 Saliva_plot
 
-#log transformation 
+###LOG TRANSFORMATION - NOTE FROM HERE ON, "CONCENTRATION" IS LOG TRANSFORMED###
 Saliva_long <- Saliva_long %>% 
   mutate(concentration_orig = concentration,
-         concentration = log(concentration + 4)) ###NOTE FROM HERE ON, "CONCENTRATION" IS LOG TRANSFORMED###
+         concentration = log(concentration + 4)) 
 
+#plot transformed concentrations
 Saliva_plot <- Saliva_long %>% 
   ggplot(aes(x = concentration)) +
   geom_histogram(color="black",fill="white") +
@@ -180,63 +364,7 @@ Saliva_CV <- Sal_DHEA_CV %>% full_join(.,Sal_TEST_CV) %>% full_join(.,Sal_EST_CV
   filter(SID %in% overview$SID)
 ```
 
-###IMPORT SALIVA REPLICATES
-```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
-
-Sal_DHEA_CV_rep <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=3)
-Sal_TEST_CV_rep <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=7)
-Sal_EST_CV_rep <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=11)
-
-Sal_DHEA_CV_rep <- Sal_DHEA_CV_rep %>%
-  rename(SID = Name,
-         rep1 = TAG_2017.07.18_DHEA_Yoojin.xlsx,
-         rep2 = X__1,
-         CV2 = X__2,
-         notes = X__3) %>%
-  mutate(rep1 = as.numeric(rep1)) %>%
-  filter(!is.na(rep1)) %>%
-  mutate(SID = as.factor(round(as.numeric(SID),2))) %>%
-  separate(SID, into =c("SID","week")) %>%
-  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
-  mutate(SID = as.factor(SID),
-         week = as.factor(week)) %>%
-  filter(!(SID == "Name")) %>%
-  filter(SID %in% overview$SID)
-
-Sal_TEST_CV_rep <- Sal_TEST_CV_rep %>% 
-  rename(SID = Name,
-         rep1 = tag_06.18.2017_testo_tray2_ellen.xlsx,
-         rep2 = X__1,
-         CV2 = X__2,
-         notes = X__3) %>%
-  mutate(rep1 = as.numeric(rep1)) %>%
-  filter(!is.na(rep1)) %>%
-  mutate(SID = as.factor(round(as.numeric(SID),2))) %>%
-  separate(SID, into =c("SID","week")) %>%
-  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
-  mutate(SID = as.factor(SID),
-         week = as.factor(week)) %>%
-  filter(!(SID == "Name"))  %>%
-  filter(SID %in% overview$SID)
-
-Sal_EST_CV_rep <- Sal_EST_CV_rep %>% 
-  rename(SID = Name,
-         rep1 = TAG_06.18.2017_Estradiol_Tray2_Olivia.xlsx,
-         rep2 = X__1,
-         CV2 = X__2,
-         notes = X__3) %>%
-  mutate(rep1 = as.numeric(rep1)) %>%
-  filter(!is.na(rep1)) %>%
-  mutate(SID = as.factor(round(as.numeric(SID),2))) %>%
-  separate(SID, into =c("SID","week")) %>%
-  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
-  mutate(SID = as.factor(SID),
-         week = as.factor(week)) %>%
-  filter(!(SID == "Name"))  %>%
-  filter(SID %in% overview$SID)
-```
-
-###DISTRIBUTIONS OF ICV
+###DISTRIBUTIONS OF CV
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
 CVplot <- Saliva_CV %>% select(SID, DHEA_CV, TEST_CV, EST_CV) %>%
   gather(-SID, key = "var", value = "value") %>% 
@@ -253,7 +381,7 @@ EST_CV_exc <- Saliva_CV %>% filter(EST_CV > 30) %>% select(ID)
 ```
 
 ```{r, include=FALSE}
-###INDIVIDUAL ICV PLOTS - DO NOT PRINT
+###INDIVIDUAL CV PLOTS - DO NOT PRINT
 DHEA_CV<-ggplot(Saliva_CV, aes(x=DHEA_CV)) +
   geom_histogram(color="black",fill="white")
 # + geom_vline(xintercept=30,linetype="dashed",colour="red")
@@ -270,7 +398,7 @@ EST_CV<-ggplot(Saliva_CV, aes(x=EST_CV)) +
 EST_CV
 ```
 
-###DISTRIBUTIONS OF 450 ICV
+###DISTRIBUTIONS OF 450 CV
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
 
 CV_450_plot <- Saliva_CV %>% select(SID, DHEA_450CV, TEST_450CV, EST_450CV) %>%
