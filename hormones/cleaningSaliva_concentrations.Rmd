@@ -70,8 +70,7 @@ EST_check <- rbind(EST_check1,EST_check2)
 
 ###NOTE: NV & MB to make decisions about how to update/use each of these '?????' values.
 
-
-#format imported DFs for each hormone, update with deciscreate SID as 3 digit numeric factor (i.e. "001"), combine all three hormones in one dataframe. 
+#format imported DFs for each hormone, update with decisions, create SID as 3 digit numeric factor (i.e. "001"), combine all three hormones in one dataframe. 
 Sal_DHEA_final1 <- Sal_DHEA_final1 %>% 
   mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
   mutate(sal_DHEA = ifelse(Concentration == "?????",1,Concentration)) %>%
