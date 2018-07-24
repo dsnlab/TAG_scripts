@@ -17,7 +17,7 @@ lapply(packages, library, character.only = TRUE)
 cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
 age_dir <- paste0(cas_dir,'behavior/Demographics/Age')
 quest_dir <- paste0(cas_dir,'behavior/Questionnaires/Wave_1')
-menarche_dir <- paste0(cas_dir,'behavior/Puberty_Followup')
+puberty_dir <- paste0(cas_dir,'behavior/Puberty/Questionnaires/Wave1')
 options(digits=3)
 ```
 
@@ -60,7 +60,7 @@ PDS <- read.csv(paste0(quest_dir,'/PDS_Wave1.csv'), header=T)
 
 PDS <- PDS %>% mutate(SID=str_replace(tagid,"TAG","")) %>% 
   filter(!grepl("W2",survey_name)) %>% 
-  filter(!SID == "034") %>%
+  filter(!(survey_name == "TAG - W1S2 - Current V3" & SID=="034")) %>%
   mutate(pdss2 = trunc(pdss))
 ```
 
@@ -73,13 +73,17 @@ PBIP <- read.csv(paste0(quest_dir,'/PBIP_Wave1.csv'), header=T)
 PBIP <- PBIP %>% mutate(SID=str_replace(tagid,"TAG",""),
                         PBIP_stage=stage) %>%
   filter(!grepl("W2",survey_name)) %>% 
-  select(SID,contains("PBIP")) %>%
-  filter(!SID == "034")
+  filter(!(survey_name == "TAG - W1S2 - Current V3" & SID=="034")) %>%
+  select(SID,contains("PBIP")) 
 ```
 
 ###SCORE PARENT PDS
 ```{r, include=FALSE}
+#import PDS_parent, create SID as 3 digit numeric factor (i.e. "001").
 PDS_parent <- read.csv(paste0(quest_dir,'/PDS_parent_Wave1.csv'), header=T)
+
+PDS_parent <- PDS_parent %>% mutate(SID=str_replace(tagid,"TAG","")) %>% 
+  filter(!grepl("W2",survey_name))
 
 PDS_parent <- PDS_parent %>% 
   mutate(SID=str_replace(tagid,"TAG","")) %>%
@@ -98,19 +102,16 @@ PDS_parent <- PDS_parent %>%
          PDS_F4_p = as.numeric(as.character(PDS_F4_p)),
          PDS_F6_p = as.numeric(as.character(PDS_F6_p))) %>%
   select(SID, contains("_p"))
-
 ```
 
-###COMBINE PDS & PBIP & PDS_p
+###COMBINE PDS & PBIP & PDS_p & LIMIT TO OUR SAMPLE
 ```{r, include=FALSE}
-Qdf <- overview %>% left_join(.,PDS) %>% left_join(.,PBIP) %>% left_join(.,PDS_parent) 
-
-Qdf_items <- Qdf %>% select(-pdss,-pdss2,-gonadf2,-adrenf2,-PDS_F5,-PDS_F7,-PDS_F8,-PDS_F9,-PBIP_stage,-PBIP_1B,-PBIP_2B, -adrenf2_p, -gonadf2_p, -pdss_p)
+Qdf <- overview %>% left_join(.,PDS) %>% left_join(.,PBIP) %>% left_join(.,PDS_parent) %>% filter(SID %in% overview$SID)
 ```
 
 ###CHECK MISSING DATA
 ```{r, include=FALSE}
-Qdf_items <- Qdf_items %>% select(PDS_F1, PDS_F2, PDS_F3, PDS_F4, PDS_F6,PBIP_1A,PBIP_2A,PDS_F1_p,PDS_F2_p,PDS_F3_p,PDS_F4_p,PDS_F6_p) 
+Qdf_items <- Qdf %>% select(PDS_F1, PDS_F2, PDS_F3, PDS_F4, PDS_F6,PBIP_1A,PBIP_2A,PDS_F1_p,PDS_F2_p,PDS_F3_p,PDS_F4_p,PDS_F6_p) 
 
 aggr_plot <- aggr(Qdf_items, col=c('navyblue','red'), numbers=TRUE, labels=names(Qdf_items), cex.axis=.7, gap=3, ylab=c("Histogram of missing data","Pattern"))
 ```
@@ -230,7 +231,6 @@ barplot_PDSgonad_p <- ggplot(subset(Qdf, !is.na(gonadf2_p)), aes((gonadf2_p))) +
           panel.background = element_blank(),
           legend.position="none")
 
-
 scale_dist <- Qdf %>%
   select(pdss,adrenf2,gonadf2,PBIP_stage,pdss_p,adrenf2_p,gonadf2_p) %>%
   gather() %>% 
@@ -249,7 +249,6 @@ scale_dist <- Qdf %>%
           legend.position="none")
 
 item_dist <- Qdf_items %>%
-  select(-SID) %>%
   mutate(PDS_F6 = ifelse(PDS_F6==1,2,
                          ifelse(PDS_F6==0,1,
                                 NA)),
@@ -278,7 +277,8 @@ item_dist
 
 ###CORRELATION MATRIX
 ```{r, echo=FALSE}
-corr_df <- Qdf[-1] %>% select(-PDS_F5,-PDS_F7,-PDS_F8,-PDS_F9,-pdss2,-PBIP_1B,-PBIP_2B)
+corr_df <- Qdf %>% select(PDS_F1, PDS_F2, PDS_F3, PDS_F4, PDS_F6,PBIP_1A,PBIP_2A,PDS_F1_p,PDS_F2_p,PDS_F3_p,PDS_F4_p,PDS_F6_p,pdss,adrenf2,gonadf2,PBIP_stage,pdss_p,adrenf2_p,gonadf2_p) %>%
+  mutate_all(., function(x) as.numeric(as.character(x)))
 corr_plot <- cor(corr_df,use="pairwise.complete.obs")
 res1 <- corr.test(corr_df, adjust = "none")
 corr_heatmap_overall <- corrplot(corr_plot, p.mat = res1$p, method = "color", type = "upper",
@@ -419,7 +419,7 @@ GONADPplot
 ###CREATE COMPOSITE ADRENAL AND GONADAL SCORES FROM PDS & PBIP
 ```{r}
 #calculates mean of adrenal and gonadal composites that are mean of PBIP and PDS items, 
-PubertyComposite <- Qdf %>% select(SID,adrenf2,gonadf2,pdss,pdss2,PBIP_1A,PBIP_2A,PBIP_stage) %>%
+PubertyComposite <- Qdf %>%
   mutate(ADRENdiff = adrenf2-PBIP_2A,
          GONADdiff = gonadf2-PBIP_1A) %>%
   rowwise %>% 
@@ -428,9 +428,16 @@ PubertyComposite <- Qdf %>% select(SID,adrenf2,gonadf2,pdss,pdss2,PBIP_1A,PBIP_2
          PUBcomp = mean(c(pdss, PBIP_stage),na.rm=T)) %>%
   mutate(PUBcomp_trunc = trunc(PUBcomp))
 
-PubertyMissing <- PubertyComposite %>% filter(is.na(PUBcomp_trunc)) %>%
-  left_join(.,PDS_parent) #3 kids with missing composite scores have parent PDS data. need to decide if we will incorporate them.
+PubertyMissing <- PubertyComposite %>% filter(is.na(PUBcomp_trunc)) 
 ```
+
+###SAVE COMPOSITE SCORES AND "FULL" PUBERTY DF
+```{r}
+write.csv(PubertyComposite,paste0(puberty_dir,'/TAG_W1_PubertyComposite.csv'),row.names=F)
+save.image(paste0(puberty_dir,"/TAG_W1_PubertyComposite.RData")
+```
+
+###---------------------------------TBC----------------------------------###
 
 ###RUNNING SOME CFAS 
 ```{r}

@@ -8,20 +8,20 @@ output: html_document
 ```{r, include=FALSE}
 #LOAD PACKAGES AND SET DIRECTORIES
 
-packages <- c("ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx")
+packages <- c("ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx","DescTools")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 lapply(packages, library, character.only = TRUE)
 
 cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
-hair_dir <- paste0(cas_dir,'behavior/Hair/Wave1')
+hair_dir <- paste0(cas_dir,'behavior/Puberty/Hair/Wave1')
 options(digits=3)
 ```
 
 ###IMPORT TAG OVERVIEW DOC FROM CAS
 ```{r, include = F}
-overview <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- read.xlsx(paste0(cas_dir,'behavior/Overview/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
 overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
 
 #removing everyone who withdrew at W1 (exclusionary withdrawals)
@@ -31,20 +31,8 @@ overview <- overview %>%
   replace_na(list(Exclusionary_Withdrawl = 0)) %>% 
   arrange(Exclusionary_Withdrawl) %>% 
   mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
-  filter(Exclusionary_Withdrawl==0)
-```
-
-```{r, include=FALSE}
-#Set exclusion critera
-
-#Remove outliers?
-removeOut="TRUE"
-#Remove high CV?
-removeCV="FALSE"
-#Remove high 450 CV?
-remove450CV="FALSE"
-#Remove hair confounds?
-removeConfounds="FALSE"
+  filter(Exclusionary_Withdrawl==0) %>%
+  filter(Withdrawn_W1==0)
 ```
 
 ###IMPORT "FINAL" HAIR CONCENTRATIONS
@@ -52,15 +40,22 @@ removeConfounds="FALSE"
 ###IMPORT & CLEAN CONCENTRATIONS 
 #import dataframe for each hormone, create SID as 3 digit numeric factor (i.e. "001"), combine all three hormones in one dataframe.
 
-Hair_DHEA <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=2)
-Hair_TEST <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=5)
-Hair_EST <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=8)
+#round 1 of assays
+Hair_DHEA1 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_Master_File.xlsx'), sheet=2)
+Hair_TEST1 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_Master_File.xlsx'), sheet=5)
+Hair_EST1 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_Master_File.xlsx'), sheet=8)
 
-Hair_DHEA <- Hair_DHEA %>% 
+#round 2 of assays
+Hair_DHEA2 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_2nd_Run_Master_Sheet.xlsx'), sheet=2)
+Hair_TEST2 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_2nd_Run_Master_Sheet.xlsx'), sheet=5)
+Hair_EST2 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_2nd_Run_Master_Sheet.xlsx'), sheet=8)
+
+#clean up formatting and merge two DFs
+Hair_DHEA1 <- Hair_DHEA1 %>% 
   mutate(SID = as.factor(round(as.numeric(ID),2)),
          hair_DHEA = round(as.numeric(Concentration),3),
          hair_DHEA_pgmg = round(as.numeric(`Concentration in pg/mg`),3)) %>%
-  replace_na(list(hair_DHEA_pgmg = "missing")) %>%
+  replace_na(list(hair_DHEA_pgmg = NA)) %>%
   select(SID,hair_DHEA_pgmg) %>%
   filter(!is.na(SID)) %>%
   filter(!SID == "0.1") %>%
@@ -69,11 +64,27 @@ Hair_DHEA <- Hair_DHEA %>%
   mutate(SID = as.factor(SID)) %>%
   mutate(SID = str_pad(SID, 3, pad = "0"))
 
-Hair_TEST <- Hair_TEST %>% 
+Hair_DHEA2 <- Hair_DHEA2 %>% 
+  separate(ID, into =c("ID","junk")) %>%
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         hair_DHEA = round(as.numeric(Concentration),3),
+         hair_DHEA_pgmg = round(as.numeric(`Concentration in pg/mg`),3)) %>%
+  select(SID,hair_DHEA_pgmg) %>%
+  filter(!is.na(SID)) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  select(-week) %>%
+  mutate(SID = as.factor(SID)) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0"))
+
+Hair_DHEA <- Hair_DHEA1 %>% rbind(Hair_DHEA2)
+  
+Hair_TEST1 <- Hair_TEST1 %>% 
   mutate(SID = as.factor(round(as.numeric(ID),2)),
          hair_TEST = round(as.numeric(Concentration),3),
          hair_TEST_pgmg = round(as.numeric(`Concentration in pg/mg`),3)) %>%
-  replace_na(list(hair_TEST_pgmg = "missing")) %>%
+  mutate(hair_TEST = ifelse(SID==101.1,600,hair_TEST),
+         hair_TEST_pgmg = ifelse(SID==101.1,(600/25),hair_TEST_pgmg)) %>%  
   select(SID,hair_TEST_pgmg) %>%
   filter(!is.na(SID)) %>%
   filter(!SID == "0.1") %>%
@@ -82,11 +93,29 @@ Hair_TEST <- Hair_TEST %>%
   mutate(SID = as.factor(SID)) %>%
   mutate(SID = str_pad(SID, 3, pad = "0"))
 
-Hair_EST <- Hair_EST %>% 
+Hair_TEST2 <- Hair_TEST2 %>% 
+  separate(ID, into =c("ID","junk")) %>%
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         hair_TEST = round(as.numeric(Concentration),3),
+         hair_TEST_pgmg = round(as.numeric(`Concentration in pg/mg`),3)) %>%
+  mutate(hair_TEST = ifelse(SID==110,600,hair_TEST),
+         hair_TEST_pgmg = ifelse(SID==110,(600/25),hair_TEST_pgmg)) %>%  
+  select(SID,hair_TEST_pgmg) %>%
+  filter(!is.na(SID)) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  select(-week) %>%
+  mutate(SID = as.factor(SID)) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0"))
+
+Hair_TEST <- Hair_TEST1 %>% rbind(Hair_TEST2)
+
+Hair_EST1 <- Hair_EST1 %>% 
+  separate(ID, into =c("ID","junk")) %>%
   mutate(SID = as.factor(round(as.numeric(ID),2)),
          hair_EST = round(as.numeric(`Adjusted Concentration`),3),
          hair_EST_pgug = round(as.numeric(`Concentration in pg/ug`),3)) %>%
-  replace_na(list(hair_EST_pgug = "missing")) %>%
+  replace_na(list(hair_EST_pgug = NA)) %>%
   select(SID,hair_EST_pgug) %>%
   filter(!is.na(SID)) %>%
   filter(!SID == "0.1") %>%
@@ -95,11 +124,223 @@ Hair_EST <- Hair_EST %>%
   mutate(SID = as.factor(SID)) %>%
   mutate(SID = str_pad(SID, 3, pad = "0"))
 
-Hair <- Hair_DHEA %>% full_join(.,Hair_TEST) %>% full_join(.,Hair_EST) %>%
+Hair_EST2 <- Hair_EST2 %>% 
+  mutate(SID = as.factor(round(as.numeric(ID),2)),
+         hair_EST = round(as.numeric(`Adjusted Concentration`),3),
+         hair_EST_pgug = round(as.numeric(`Concentration in pg/ug`),3)) %>%
+  replace_na(list(hair_EST_pgug = NA)) %>%
+  select(SID,hair_EST_pgug) %>%
+  filter(!is.na(SID)) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  select(-week) %>%
+  mutate(SID = as.factor(SID)) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0"))
+
+Hair_EST <- Hair_EST1 %>% rbind(Hair_EST2)
+
+Hair <- Hair_EST %>% full_join(.,Hair_TEST) %>% full_join(.,Hair_DHEA) %>%
   mutate(SID = as.factor(SID)) %>% arrange(SID) %>%
   filter(SID %in% overview$SID)
 ```
 
+###NO HAIR RE-RUNS TO CHECK
+
+###FINAL CONCENTRATIONS & DISTRIBUTIONS
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
+Hair_long <- Hair %>% select(SID,contains("pg")) %>% gather(., hormone, concentration, c(hair_DHEA_pgmg,hair_TEST_pgmg,hair_EST_pgug), factor_key=TRUE)
+
+Hair_long <- Hair_long %>%
+  mutate(concentration = as.numeric(concentration))
+
+Hair_plot <- Hair_long %>% 
+  ggplot(aes(x = concentration)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ hormone, scales="free")
+
+Hair_plot
+
+###SKEW & KURTOSIS
+skew(subset(Hair_long,hormone=="hair_DHEA_pgmg")$concentration,na.rm=T)
+skew(subset(Hair_long,hormone=="hair_TEST_pgmg")$concentration,na.rm=T)
+skew(subset(Hair_long,hormone=="hair_EST_pgug")$concentration,na.rm=T)
+kurtosi(subset(Hair_long,hormone=="hair_DHEA_pgmg")$concentration,na.rm=T)
+kurtosi(subset(Hair_long,hormone=="hair_TEST_pgmg")$concentration,na.rm=T)
+kurtosi(subset(Hair_long,hormone=="hair_EST_pgug")$concentration,na.rm=T)
+
+###LOG TRANSFORMATION - NOTE FROM HERE ON, "CONCENTRATION_LN" IS LOG TRANSFORMED###
+Hair_long <- Hair_long %>% group_by(hormone) %>%
+  mutate(concentration_orig = concentration,
+         concentration_ln = log(concentration + 4))
+
+#plot transformed concentrations
+Hair_plot <- Hair_long %>% 
+  ggplot(aes(x = concentration_ln)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ hormone, scales="free")
+Hair_plot
+```
+
+###WINSORIZE OUTLIERS
+```{r}
+#this section provided by MB and Johnny
+#set outlier limits for winsoring
+
+TEST_up_limit <- (mean(subset(Hair_long, hormone == "hair_TEST_pgmg")$concentration_ln,na.rm=T) + 
+  3*(sd(subset(Hair_long, hormone == "hair_TEST_pgmg")$concentration_ln,na.rm=T)))
+TEST_lo_limit <-  (mean(subset(Hair_long, hormone == "hair_TEST_pgmg")$concentration_ln,na.rm=T) - 
+                     3*(sd(subset(Hair_long, hormone == "hair_TEST_pgmg")$concentration_ln,na.rm=T)))
+TEST_lo_limit <- ifelse(TEST_lo_limit<0, 0, TEST_lo_limit)
+
+EST_up_limit <- (mean(subset(Hair_long, hormone == "hair_EST_pgug")$concentration_ln,na.rm=T) + 
+                    3*(sd(subset(Hair_long, hormone == "hair_EST_pgug")$concentration_ln,na.rm=T)))
+EST_lo_limit <-  (mean(subset(Hair_long, hormone == "hair_EST_pgug")$concentration_ln,na.rm=T) - 
+                     3*(sd(subset(Hair_long, hormone == "hair_EST_pgug")$concentration_ln,na.rm=T)))
+EST_lo_limit <- ifelse(EST_lo_limit<0, 0, EST_lo_limit)
+
+DHEA_up_limit <- (mean(subset(Hair_long, hormone == "hair_DHEA_pgmg")$concentration_ln,na.rm=T) + 
+                   3*(sd(subset(Hair_long, hormone == "hair_DHEA_pgmg")$concentration_ln,na.rm=T)))
+DHEA_lo_limit <-  (mean(subset(Hair_long, hormone == "hair_DHEA_pgmg")$concentration_ln,na.rm=T) - 
+                    3*(sd(subset(Hair_long, hormone == "hair_DHEA_pgmg")$concentration_ln,na.rm=T)))
+DHEA_lo_limit <- ifelse(DHEA_lo_limit<0, 0, DHEA_lo_limit)
+
+#Prep data & plot outliers
+Hair_EST <- Hair_long %>% filter(hormone=="hair_EST_pgug")
+Hair_TEST <- Hair_long %>% filter(hormone=="hair_TEST_pgmg")
+Hair_DHEA <- Hair_long %>% filter(hormone=="hair_DHEA_pgmg")
+
+hist(Hair_EST$concentration_ln, main="", xlab="EST")
+abline(v=EST_up_limit,col="red")
+hist(Hair_TEST$concentration_ln, main="", xlab="TEST")
+abline(v=TEST_up_limit,col="red")
+hist(Hair_DHEA$concentration_ln, main="", xlab="DHEA")
+abline(v=DHEA_up_limit,col="red")
+
+# Winsorize data with min and max values
+Hair_EST$concentration_ln_w <- Winsorize(Hair_EST$concentration_ln, minval = EST_lo_limit, maxval = EST_up_limit, na.rm = TRUE)
+Hair_TEST$concentration_ln_w <- Winsorize(Hair_TEST$concentration_ln, minval = TEST_lo_limit, maxval = TEST_up_limit, na.rm = TRUE)
+Hair_DHEA$concentration_ln_w <- Winsorize(Hair_DHEA$concentration_ln, minval = DHEA_lo_limit, maxval = DHEA_up_limit, na.rm = TRUE)
+
+# Code from here to end of chunk thank you to Johnny
+
+# identify the points that were changed to the min and max
+# (aka those points that are equal to the min and max but weren't before)
+
+cleaned_EST <- na.omit(Hair_EST$concentration_ln_w)
+original_EST <- na.omit(Hair_EST$concentration_ln)
+
+min_pts_EST <- which(cleaned_EST == min(cleaned_EST) & original_EST != min(cleaned_EST))
+max_pts_EST <- which(cleaned_EST == max(cleaned_EST) & original_EST != max(cleaned_EST))
+
+cleaned_TEST <- na.omit(Hair_TEST$concentration_ln_w)
+original_TEST <- na.omit(Hair_TEST$concentration_ln)
+
+min_pts_TEST <- which(cleaned_TEST == min(cleaned_TEST) & original_TEST != min(cleaned_TEST))
+max_pts_TEST <- which(cleaned_TEST == max(cleaned_TEST) & original_TEST != max(cleaned_TEST))
+
+cleaned_DHEA <- na.omit(Hair_DHEA$concentration_ln_w)
+original_DHEA <- na.omit(Hair_DHEA$concentration_ln)
+
+min_pts_DHEA <- which(cleaned_DHEA == min(cleaned_DHEA) & original_DHEA != min(cleaned_DHEA))
+max_pts_DHEA <- which(cleaned_DHEA == max(cleaned_DHEA) & original_DHEA != max(cleaned_DHEA))
+
+# NOTE: Rank-preserving changes below are only done for max TEST values. The rest either didn't have any outliers or only had one outlier.
+
+# then rank them
+# rank will give you smallest -> largest ranks, 
+# so to get least-> most outlierish we just reverse min_ranks
+max_ranks_TEST <- rank(original_TEST[max_pts_TEST])
+
+# now you can replace them with whatever you want
+increment=0.05
+
+rank_preserving_TEST <- cleaned_TEST
+rank_preserving_TEST[max_pts_TEST] <- rank_preserving_TEST[max_pts_TEST]+(increment * max_ranks_TEST)
+
+# check out what we did
+outliers_TEST <- c(min_pts_TEST, max_pts_TEST)
+comparison_TEST <- cbind(original_TEST[outliers_TEST],
+                         cleaned_TEST[outliers_TEST],
+                         rank_preserving_TEST[outliers_TEST])
+
+# reorder by the first column
+comparison_TEST <- comparison_TEST[order(comparison_TEST[,1]),]
+comparison_TEST <- as.data.frame(comparison_TEST) %>% rename(concentration_ln=V1,
+                                                             concentration_ln_w=V2,
+                                                             concentration_ln_w_r=V3)
+comparison_TEST <- comparison_TEST[!duplicated(comparison_TEST), ]
+
+Hair_long <- Hair_long %>% left_join(.,comparison_TEST,by="concentration_ln") %>%
+  mutate(concentration_ln = ifelse(!is.na(concentration_ln_w_r),concentration_ln_w_r,concentration_ln)) %>%
+  mutate(concentration_ln = ifelse((hormone=="hair_DHEA_pgmg" & (concentration_ln > DHEA_up_limit)),DHEA_up_limit,concentration_ln)) %>%
+  mutate(concentration_ln = ifelse((hormone=="hair_EST_pgug" & (concentration_ln > EST_up_limit)),EST_up_limit,concentration_ln)) %>%
+  select(-concentration_ln_w_r,-concentration_ln_w,-concentration)
+```
+
+###CHECK FINAL SKEW AND KURTOSIS AFTER WINSORIZING
+```{r}
+skew(subset(Hair_long,hormone=="hair_DHEA_pgmg")$concentration_ln,na.rm=T)
+skew(subset(Hair_long,hormone=="hair_TEST_pgmg")$concentration_ln,na.rm=T)
+skew(subset(Hair_long,hormone=="hair_EST_pgug")$concentration_ln,na.rm=T)
+kurtosi(subset(Hair_long,hormone=="hair_DHEA_pgmg")$concentration_ln,na.rm=T)
+kurtosi(subset(Hair_long,hormone=="hair_TEST_pgmg")$concentration_ln,na.rm=T)
+kurtosi(subset(Hair_long,hormone=="hair_EST_pgug")$concentration_ln,na.rm=T)
+
+#plot final concentrations
+Hair_plot <- Hair_long %>% 
+  ggplot(aes(x = concentration_ln)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ hormone, scales="free")
+Hair_plot
+```
+
+###SUMMARY
+```{r, include=FALSE}
+#Samples sent
+cat('No of Subjects: ') 
+cat(length(unique(Hair$SID)))
+
+#Samples assayed
+Hair_assayed <- Hair_long %>% 
+  mutate(concentration_ln = as.numeric(concentration_ln)) %>%
+  group_by(SID,hormone) %>% 
+  summarise(Assayed = sum(!is.na(concentration_ln)),
+            notAssayed = sum(is.na(concentration_ln))) %>%
+  group_by(hormone) %>% 
+  summarise(Assayed = sum(Assayed),
+            notAssayed = sum(notAssayed))
+
+####Summary of samples
+kable(Hair_assayed, "html", align='c') %>%
+kable_styling(full_width = F, position = "left", font_size = 12)
+```
+
+###CONTROL FOR CONFOUNDS
+```{r}
+confounds <- read.csv(paste0(hair_dir,'/TAG_W1_Hair_questionnaire_coded.csv'))
+confounds$SID <- as.factor(confounds$SID)
+Hair_long <- Hair_long %>% left_join(.,confounds)
+
+summary(lm(concentration_ln ~ colour_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_DHEA_pgmg")))
+summary(lm(concentration_ln ~ colour_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_TEST_pgmg")))
+summary(lm(concentration_ln ~ colour_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_EST_pgug")))
+
+summary(lm(concentration_ln ~ perm_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_DHEA_pgmg")))
+summary(lm(concentration_ln ~ perm_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_TEST_pgmg")))
+summary(lm(concentration_ln ~ perm_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_EST_pgug")))
+
+#no effects of coloring or perming hair. did not use the "hair treatment" info as girls seem to have interpreted this as straightening or curling their hair on occassion.
+```
+
+###SAVE HAIR CONCENTRATIONS
+```{r}
+Hair_long <- Hair_long %>% select(-colour,-colour_6mn,-perm_6mn)
+write.csv(Hair_long,paste0(hair_dir,'/TAG_W1_Hair_processed.csv'),row.names=F)
+save.image(paste0(hair_dir,"/TAG_W1_Hair.RData"))
+```
+
+
+###--------------------------------------TBC---------------------------------------###
 ###IMPORT HAIR CVs
 ```{r, include=FALSE}
 Hair_DHEA_CV <- read_xlsx(paste0(hair_dir,'/TAG_HAIR_Master_File.xlsx'), sheet=1)
@@ -175,26 +416,6 @@ Hair_CV <- Hair_DHEA_CV %>% full_join(.,Hair_TEST_CV) %>%
   filter(SID %in% overview$SID)
 ```
 
-###NO HAIR REPLICATES TO IMPORT
-
-###DISTRIBUTIONS OF CONCENTRATIONS
-```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
-Hair_long <- Hair %>% select(SID,contains("pg")) %>% gather(., hormone, concentration, c(hair_DHEA_pgmg,hair_TEST_pgmg,hair_EST_pgug), factor_key=TRUE)
-
-#Hair_long <- Hair_long %>% 
-#  mutate(missing = if_else(concentration == "missing",1,0))
-
-Hair_long <- Hair_long %>%
-  mutate(concentration = as.numeric(concentration))
-
-Hair_plot <- Hair_long %>% 
-  ggplot(aes(x = concentration)) +
-  geom_histogram(color="black",fill="white") +
-  facet_wrap(~ hormone, scales="free")
-
-Hair_plot
-```
-
 ###DISTRIBUTIONS OF ICV
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
 CVplot <- Hair_CV %>% select(SID, DHEA_CV, TEST_CV, EST_CV) %>%
@@ -226,41 +447,6 @@ CV_450_plot
 DHEA_450CV_exc <- Hair_CV %>% filter(DHEA_450CV > 20) %>% select(SID)
 TEST_450CV_exc <- Hair_CV %>% filter(TEST_450CV > 20) %>% select(SID)
 EST_450CV_exc <- Hair_CV %>% filter(EST_450CV > 20) %>% select(SID)
-```
-
-
-```{r, include=FALSE}
-###EXTRA
-
-Hair_missing <- Hair_long %>% 
-  mutate(missing = ifelse(is.na(concentration),1,0)) %>%
-  select(-concentration) %>%
-  group_by(hormone) %>% 
-  summarise(missing = sum(missing))
-
-Hair_assayed <- Hair_long %>% 
-  filter(!is.na(concentration)) %>%
-  mutate(concentration = as.numeric(concentration)) %>%
-  group_by(SID,hormone) %>% 
-  summarise(Conc = sum(!is.na(concentration)),
-            NoCon = sum(is.na(concentration))) %>%
-  group_by(hormone) %>% 
-  summarise(Conc = sum(Conc),
-            NoCon = sum(NoCon))
-
-Hair_summary <- Hair_assayed %>% left_join(.,Hair_missing)
-
-####Samples sent
-cat('No of Subjects: ') 
-cat(length(unique(Hair$SID)))
-
-####Summary of samples
-kable(Hair_summary, "html", align='c') %>%
-kable_styling(full_width = F, position = "left", font_size = 12)
-
-Hair <- Hair %>% mutate(hair_DHEA_pgmg = as.numeric(hair_DHEA_pgmg),
-                        hair_TEST_pgmg = as.numeric(hair_TEST_pgmg),
-                        hair_EST_pgug = as.numeric(hair_EST_pgug))
 ```
 
 
@@ -335,6 +521,16 @@ cat(length(Hair_EST_CV_exc$SID))
 writeLines("\n")
 ```
 
+
+```{r, include=FALSE}
+#Set exclusion critera
+
+#Remove hair confounds?
+removeConfounds="FALSE"
+```
+
+
+
 ```{r, include = FALSE}
 ###THINGS WE NEED TO DECIDE ON...
 #High 450 CVs
@@ -396,11 +592,6 @@ Hair_summary2 <- Hair_long %>% group_by(SID,hormone) %>%
 
 kable(Hair_summary2, "html", align='c') %>%
 kable_styling(full_width = F, position = "left", font_size = 12)
-```
-
-```{r,echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
-#write final output for analyses
-
 ```
 
 
