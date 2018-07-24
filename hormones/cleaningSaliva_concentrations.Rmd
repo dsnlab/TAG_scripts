@@ -5,6 +5,9 @@ date: "9 May 2018"
 output: html_document
 ---
 
+#!!!!!!!!!!
+#NOTE: before you begin - please do not re-run the imputation models. As this will obviously change the final hormone values ever-so-slightly, which we want to keep consistent across papers!! Instead, please load in the workspace from '/Volumes/psych-cog/dsnlab/TAG/behavior/Puberty/Saliva/Wave1/TAG_W1_Saliva.RData'
+
 #step1: import "final" mean concentrations, edit "????" based on raw concentrations (i.e. too low or too high for assay). and also based on other samples provided by the participant.
 
 #step2: examine all repeats (re-runs) and make decision on whether to use original mean or repeat mean. edit "final" mean concentrations accordingly.
@@ -638,6 +641,8 @@ pairs(~ESTresid+ESTmean+ESTcoef,data=Saliva_basal,
    main="Simple Scatterplot Matrix") 
 ```
 
+###DO NOT RE-RUN IMPUTATION IN THIS SECTION
+
 ###CONTROL FOR CONFOUNDS - RUNNING ANALYSES AFTER IMPUTATION OF CONTROL VARIABLES
 ```{r}
 #given missing confounds are time variables (i.e. collection time), i am imputing using age, pds and day of collection
@@ -721,6 +726,8 @@ ESTranef_imp <- ESTranef_imp %>% group_by(grp) %>%
 
 Saliva_basal <- Saliva_basal %>% left_join(.,DHEAranef_imp) %>% left_join(., TESTranef_imp) %>% left_join(., ESTranef_imp)
 ```
+
+###DO NOT RE-RUN IMPUTATION IN THIS SECTION
 
 ###CALCULATE RESIDUALS FOR CROSS-SEC DATAFRAME AND THEN AVERAGE THESE RESIDUALS
 ```{r}
