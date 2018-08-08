@@ -17,8 +17,8 @@ echo -e "\nSetting up AFNI"
 module use /projects/tau/packages/Modules/modulefiles/
 module load afni
 
-rsfMRIdir="/projects/dsnlab/tag/bids_data/derivatives/rsfMRI_preproc_noFDscrub_yesWBVR/"
-templatedir="/projects/dsnlab/tag/TAG_scripts/sMRI/templates/"
+rsfMRIdir="/projects/dsnlab/shared/tag/bids_data/derivatives/rsfMRI_preproc_noFDscrub_yesWBVR/"
+templatedir="/projects/dsnlab/shared/tag/TAG_scripts/sMRI/templates/"
 
 echo -e "\nFreesurfer Home is $FREESURFER_HOME"
 echo -e "\nThe Subject Directory is $SUBJECTS_DIR"
