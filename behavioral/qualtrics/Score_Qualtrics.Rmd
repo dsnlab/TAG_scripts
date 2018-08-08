@@ -5,11 +5,15 @@ date: "15 July 2017"
 output: html_document
 ---
 
+```{r}
+
+```
+
 Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
 #You should set this to the behavioral directory on the TAG file server 
-workdir='/Volumes/psych-cog/dsnlab/TAG/behavior/'
+workdir='/Volumes/psych-cog/dsnlab/TAG/behavior/' #"I:/TAG/behavior/" (for Sam)
 ```
 
 Load required packages
@@ -28,7 +32,7 @@ rm(packages)
 
 Extract qualtrics data from website
 ```{r Extract Qualtrics, message=FALSE, warning=FALSE, include=FALSE}
-credsFile<-file.path(workdir,"Questionnaires/Confidential/credentials.yaml.DEFAULT")
+credsFile<-file.path(workdir,"Questionnaires/Confidential/credentials.yaml.DEFAULT", fsep="")
 creds<-creds_from_file(credsFile)
 
 exclude_survey=c("NV","GUT","TEST","Appointment","Newsletter","SOS","Sharing Task")
@@ -400,8 +404,8 @@ Prepare NDAR template
 ```{r}
 # Before running this you must have generated GUIDs for each participant to be uploaded
 # Load the subject key which has the original TAGID, an anonymized ID, and the GUID
-ndar_key<-left_join(read.csv(file=paste0(workdir,"RDoCdb/Confidential/GUID_Batch_Current/GUID_batch_subIDkey.csv"),stringsAsFactors = FALSE),
-                    read.csv(file=paste0(workdir,"RDoCdb/Confidential/TAG_RDoC_key.csv"),stringsAsFactors = FALSE),by="tagid")
+ndar_key<-left_join(read.csv(file=paste0(workdir,"RDoCdb/confidential/GUID_Batch_201705/GUID_batch_subIDkey.csv"),stringsAsFactors = FALSE),
+                    read.csv(file=paste0(workdir,"RDoCdb/confidential/TAG_RDoC_key.csv"),stringsAsFactors = FALSE),by="tagid")
 
 # NDAR requires a constrained answer for a participants "race"
 ethnicity_long<-cleaned_survey_data %>%
@@ -798,7 +802,7 @@ PDS<-left_join(filter(cleaned_survey_data, grepl("PDS",item)) %>%
                  select(tagid, sa_date, sb_date, dob),by="tagid")
 
 #NV: Load in info about menstruation to update missing PDS_F6
-Menstruation <- read.csv(paste0(workdir,'Puberty_Followup/Menstruation.csv'), header=T)
+Menstruation <- read.csv(paste0(workdir,'Puberty/Puberty_Followup/Menstruation.csv'), header=T)
 
 Menstruation <- Menstruation %>%
   select(tagid,menstruation_by_Wave1SB.before.wave.1) %>%
@@ -3775,7 +3779,9 @@ SCC_Wave1<-left_join(SCC,survey_date, by = c("tagid","survey_name")) %>%
                                      ifelse(SCC_12==4,2,
                                             ifelse(SCC_12==5,1,
                                                    NA)))))) %>%
-  mutate(SCC_total=rowSums(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=F),
+  mutate(SCC_N=10,
+         SCC_missing=rowSums(is.na(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12))),
+         SCC_total=rowSums(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=F),
          SCC_mean=rowMeans(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=T))
 
 ## Save it
@@ -3836,7 +3842,7 @@ part2<-colnames(ndar_scc_data)
 part3<-as.matrix(ndar_scc_data)
 colnames(part3)<-NULL
 together<-rbind(scc_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/scc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jul2018/scc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,scc_df_header,scc_temp,scc_temp_df,SCC,SCC_Wave1,SCC_Wave1_mean,SCC_Wave1_mean_graph,
    SCC_Wave1_total,SCC_Wave1_total_graph)
 ```

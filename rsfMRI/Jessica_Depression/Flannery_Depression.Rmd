@@ -9,7 +9,7 @@ Load required packages
 ```{r Load Required Packages, message=FALSE, warning=FALSE, include=FALSE}
 ## Load required packages ##
 packages <-  c("lme4", "nlme", "ggplot2", "zoo", "dplyr", "tidyr", "knitr",
-              "parallel", "data.table", "lubridate")
+              "parallel", "data.table", "lubridate", "data.table", "stringr", "summarytools")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
@@ -33,11 +33,48 @@ redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
   mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
   select(-subject_spit_id)
 
-CESDC<-read.csv(paste0("/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/Jessica_Depression/CESDC_scored.csv"),header = TRUE) %>%
+CESDC<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/CESDC_Wave1.csv")) %>%
   mutate(sub=paste0("sub-",tagid)) %>%
-  select(sub, CES_DC_total, CES_DC_mean)
+  select(sub, CES_DC_total, CES_DC_mean) %>%
+arrange(sub)
+# glimpse(SCARED)
+# class(SCARED)
+# names(SCARED)
+# summary(SCARED)
+# view(dfSummary(CESDC))
 
-rm(redcapData_dob,redcapData,redcapData_sessiondates)
+SCARED<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/SCARED_Wave1.csv")) %>%
+  mutate(sub=paste0("sub-",tagid)) %>%
+  select(sub, SCARED_mean,	SCARED_ptsd_mean,	SCARED_anxiety_mean) %>%
+  arrange(sub)
+# glimpse(SCARED)
+# class(SCARED)
+# names(SCARED)
+# summary(SCARED)
+# view(dfSummary(SCARED))
+
+Dep_Anx <-merge(CESDC,SCARED, by= "sub") 
+
+#get demographics
+Parent_SES_1<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/TAG_W1_SES_ParentQ.csv"))
+Parent_clean_1 <- Parent_SES_1[ -c(1:3), c(-2, -4, -6)] 
+class(Parent_clean_1)
+Parent_clean_1<- as.data.frame(Parent_clean_1)
+
+Parent_SES_2<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/TAG_W1_SES_ParentQ_2.csv"))
+Parent_clean_2 <- Parent_SES_2[ c(-1, -3), c(-3, -5)] 
+class(Parent_clean_2)
+Parent_clean_2 <- as.data.frame(Parent_clean_2)
+colnames(Parent_clean_2) <- Parent_clean_2[1,]
+Parent_clean_2 <- Parent_clean_2[c(-1, -57),]
+
+#make sure variable names are the same
+colnames(Parent_clean_1) <- colnames(Parent_clean_2)
+
+#combine datasets
+Parent_clean<- rbind(Parent_clean_1, Parent_clean_2)
+
+# rm(redcapData_dob,redcapData,redcapData_sessiondates)
 ```
 
 Filter sublist
