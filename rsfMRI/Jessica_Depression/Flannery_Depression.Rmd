@@ -1,7 +1,7 @@
 ---
 title: "Flannery Depression Project"
 author: "Kate & Jessica WITH JOHN"
-date: "May 24, 2017"
+date: "August 16, 2018"
 output: html_document
 ---
 
@@ -14,6 +14,93 @@ if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 lapply(packages, library, character.only = TRUE)
+# Set directory
+getwd()
+workdir=as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
+```
+
+Set graph/plot options
+```{r}
+theme_kate <- function () { 
+    theme_bw() +
+  theme_minimal(base_size = 14, base_family = "Avenir") +
+  theme(axis.line = element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        legend.position="none")
+}
+
+resave_plots=FALSE
+
+heatmap_color_palette <- colorRampPalette(c("#fde0dd", "#fa9fb5", "#c51b8a"))
+
+group_labels<-c("community"='Community', 
+                "foster"="Child Welfare Services")
+
+colour_labels=c("#fa9fb5", "#ae017e")
+
+purple_colours=c("#bcbddc","#756bb1","#54278f")
+
+group_colors <- c("community" = "#fa9fb5", "foster" = "#ae017e")
+```
+
+Extract rsfcMRI preprocessing stats
+```{r Extract and plot run times, echo=TRUE}
+
+rsfcMRI_subjects=paste0(workdir,"../bids_data/derivatives/rsfMRI_preproc_wave1/")
+# create sub list based on folders within the resting state subjects folder
+subs<-list.files(path = rsfcMRI_subjects, pattern = "sub")
+# motion threshold
+scrubbingThreshold<-.2
+# extract info
+alignmentissues=function(sub){
+  if (file.exists(paste0(rsfcMRI_subjects,sub,"/",sub,".results/out.ss_review.",sub,".txt"))){
+      alignment<-(read.csv(paste0(rsfcMRI_subjects,sub,"/",sub,".results/out.ss_review.",sub,".txt")) %>%
+                    filter(grepl("anat/EPI",.[[1]])))
+      alignment<-(as.numeric(substring(as.character(alignment[[1]][1]),29,36)))
+      } else {
+        alignment<-NA
+      }
+  cbind(sub,alignment)
+}
+alignmentout<-lapply(subs,alignmentissues)
+alignmentout.df<-as.data.frame(do.call(rbind,alignmentout))
+
+extract_rsfcMRI_runinfo= function(sub){
+if (file.exists(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))){
+      log<-read.csv(paste0(rsfcMRI_subjects,sub,"/",sub,".results/motion_",sub,"_enorm.1D"))
+      preproc_complete="yes"
+      blurps<-nrow(log %>% filter(.[[1]]>scrubbingThreshold))
+      potential<-(nrow(log)-(blurps*2))
+      viable<-ifelse(potential>=385,"yes","no")
+      cbind(sub,blurps,potential,viable,preproc_complete)
+    } else{
+      preproc_complete="no"
+      blurps<-NA
+      potential<-NA
+      viable<-"no"
+      cbind(sub,blurps,potential,viable,preproc_complete)
+      }
+}
+outputlist<-lapply(subs,extract_rsfcMRI_runinfo)
+output.df<-as.data.frame(do.call(rbind,outputlist)) %>% 
+  mutate(blurps=as.numeric(levels(blurps))[blurps],
+         potential=as.numeric(levels(potential))[potential]) %>%
+  mutate(potential=ifelse(potential<0,0,potential))
+
+useable <- ggplot((output.df %>% select(-blurps)),
+                aes(x=sub, y=(potential*.78)/60, fill=viable)) +
+  ylab("minutes")
+useable + geom_bar(colour="black", stat="identity") 
+
+
+sublist<-output.df %>% 
+  filter(viable=="yes") %>%
+  select(sub)
+
+print(paste0(nrow(output.df%>%filter(viable=="yes"))," have at least 5 minutes of good data"))
 ```
 
 
@@ -66,6 +153,7 @@ Dep_Anx <- list(CESDC, SCARED) %>%
 
 
 ```
+
 #mock PCA
 http://rfunctions.blogspot.com/2015/01/pca-principal-component-analysis.html 
 ```{r}
@@ -136,7 +224,13 @@ write.csv(PCA_combined, "PCA_combined.csv")
 Filter sublist
 ```{r}
 sublist<-sublist %>%
-  filter(!sub=="sub-TAG000") %>%
+  filter(!sub=="sub-TAG000",
+         !sub=="sub-TAG074",
+         !sub=="sub-TAG087",
+         !sub=="sub-TAG120",
+         !sub=="sub-TAG122",
+         !sub=="sub-TAG125",
+         !sub=="sub-TAG155") %>%
   mutate(sub=as.character(sub))
   
 ```
@@ -145,13 +239,13 @@ Get timecourses
 ```{r}
 numcores<-detectCores()[1]
 scrubbingThreshold<-.2
-sub_base_dir="/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/rsfMRI_preproc_noFDscrub/rsfMRI_preproc_noFDscrub/"
+sub_base_dir=rsfcMRI_subjects
 parcellation_list_dir='/projects/dsnlab/tag/TAG_scripts/sMRI/templates/lists/'
 # https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
-jessparcels<-as.data.frame(rbind("aseg_18","aseg_54","aseg_17","aseg_53","lh.L_a24_ROI","rh.R_a24_ROI")) %>%
+amygdala<-as.data.frame(rbind("aseg_18","aseg_54")) %>%
    mutate(parcel_name=.[[1]]) %>%
   select(parcel_name)
-rois<-bind_rows(jessparcels)
+rois<-bind_rows(amygdala)
 
 colnames(rois)<-"parcel_name"
   
@@ -173,24 +267,20 @@ collectAndCorTimecourses <- function(sub, parcels, scrubbingThreshold, sub_base_
     }) %>%
     mutate(index=1:n()) %>% filter(!is.na(V1))
   sub_dir <- paste0(sub_base_dir,sub,"/",sub,".results/")
-  #get the motion information and censor properly
-  fdfile <- data.frame(motion=read.table(paste0(sub_dir,"motion_",sub,"_enorm.1D"))$V1) %>%
-    mutate(index=1:n(),
-           censor_raw=motion>scrubbingThreshold, #censor if over the threshold
-           censor_1after=censor_raw | lag(censor_raw,1, default=F), #censor 1 after any censored vols
-           censor=censor_1after | (lead(censor_1after,1, default=F) & lag(censor_1after,1, default=F))) #censor any vols between censored vols
-  #timecourse length == motion data length error checking
-  fdlength <- dim(fdfile)[1]
+  # get the censor file generated by afni
+  censortp <- data.frame(censored=read.table(paste0(sub_dir,"censor_",sub,"_combined_2.1D"))$V1) %>%
+    mutate(index=as.integer(row.names(.)))
+  # timecourse length == censor length error checking
+  censorlength <- dim(censortp)[1]
   nada <- timecourses %>% group_by(parcel) %>%
     summarize(n=n()) %>% group_by(parcel) %>%
-    do(thing=if(.$n != fdlength) stop(paste0('fdfile and timecourse ARE NOT SAME LENGTH!!!',
+    do(thing=if(.$n != censorlength) stop(paste0('fdfile and timecourse ARE NOT SAME LENGTH!!!',
                                              sub, ' ', .$parcel, '\n')))
   #get a summary of motion for filtering later, and just for our info
-  motiondata <- summarize(fdfile,
-                          Blurps=sum(censor_raw),
-                          Numcensored=sum(censor))
+  motiondata <- summarize(censortp,
+                          Numcensored=sum(censored==0))
   #remove censored volumes
-  timecourses_censored <- left_join(timecourses, select(fdfile,index,censor)) %>% filter(!censor)
+  timecourses_censored <- left_join(timecourses, censortp,by="index") %>% filter(censored==1)
   #more summary info for filtering subjects later
   motiondata$Framesremaining <- timecourses_censored %>% group_by(parcel) %>% 
     summarize(frames_remaining=n()) %>% distinct(frames_remaining) %>%
@@ -218,15 +308,15 @@ collectAndCorTimecourses <- function(sub, parcels, scrubbingThreshold, sub_base_
   # now we want to add in our summary timecourse info re motion etc, so we just 
   # add columns to the correlation data frame, and turn it into a data table for
   # efficiency later on.
-  subjDF <- CorrDF %>% mutate(sub=sub, 
-                              Blurps=motiondata$Blurps,
+  subjDF <- CorrDF %>% mutate(sub=sub,
                               Numcensored=motiondata$Numcensored,
                               Framesremaining=motiondata$Framesremaining) %>% as.data.table
   # subjDF <- subjDF %>%
   #   filter(grepl("aseg", coi))
 }
 
-system.time(jess_cois <- mclapply(as.list(sublist$sub),
+vectorsublist<-sublist$sub
+system.time(bilatamyg <- mclapply(vectorsublist,
                                     collectAndCorTimecourses, 
                                     parcels=rois,
                                     scrubbingThreshold=scrubbingThreshold, 
