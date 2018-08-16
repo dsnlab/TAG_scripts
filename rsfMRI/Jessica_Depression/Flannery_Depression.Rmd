@@ -53,28 +53,84 @@ SCARED<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessic
 # summary(SCARED)
 # view(dfSummary(SCARED))
 
-Dep_Anx <-merge(CESDC,SCARED, by= "sub") 
 
-#get demographics
-Parent_SES_1<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/TAG_W1_SES_ParentQ.csv"))
-Parent_clean_1 <- Parent_SES_1[ -c(1:3), c(-2, -4, -6)] 
-class(Parent_clean_1)
-Parent_clean_1<- as.data.frame(Parent_clean_1)
+# CTQ<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/CTQ_Wave1.csv")) %>%
+#   mutate(sub=paste0("sub-",tagid)) %>%
+#   select(sub, c(73:84)) %>%
+#   arrange(sub)
 
-Parent_SES_2<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/TAG_W1_SES_ParentQ_2.csv"))
-Parent_clean_2 <- Parent_SES_2[ c(-1, -3), c(-3, -5)] 
-class(Parent_clean_2)
-Parent_clean_2 <- as.data.frame(Parent_clean_2)
-colnames(Parent_clean_2) <- Parent_clean_2[1,]
-Parent_clean_2 <- Parent_clean_2[c(-1, -57),]
+library(purrr)
+Dep_Anx <- list(CESDC, SCARED) %>%
+  reduce(full_join, by= "sub") 
 
-#make sure variable names are the same
-colnames(Parent_clean_1) <- colnames(Parent_clean_2)
 
-#combine datasets
-Parent_clean<- rbind(Parent_clean_1, Parent_clean_2)
 
-# rm(redcapData_dob,redcapData,redcapData_sessiondates)
+```
+#mock PCA
+http://rfunctions.blogspot.com/2015/01/pca-principal-component-analysis.html 
+```{r}
+library("vegan")
+library("FactoMineR")
+library("factoextra")
+library(gplots)
+
+reduced_data <- na.omit(Dep_Anx)
+reduced_data <- as_data_frame(reduced_data)
+
+#write.csv(reduced_data, "reduced_data.csv")
+# Install packages.
+
+# install.packages("rgl")
+# install.packages("devtools")
+
+# Load packages.
+
+library(rgl)
+
+# Install another package using "devtools".
+
+library(devtools)
+# install_github("ggbiplot", "vqv")
+library(ggbiplot)
+
+# str(reduced_data)
+reduced_data$CES_DC_total<-  as.numeric(reduced_data$CES_DC_total)
+ir.pca <- prcomp(reduced_data[,c(2:6)], center = TRUE, scale. = TRUE)
+# ir.pca <- prcomp(reduced_data[,c(3:6, 13:18)], center = TRUE, scale. = TRUE)
+ir.pca
+summary(ir.pca)
+loadings <- ir.pca$rotation
+scores <- ir.pca$x
+correlations <- t(loadings)*ir.pca$sdev
+
+plot(ir.pca, type = "l",main="")
+
+source ('http://www.davidzeleny.net/anadat-r/doku.php/en:numecolr:evplot?do=export_code&codeblock=1')
+
+ev <- ir.pca$sdev^2
+evplot(ev)
+library(ggplot2)
+ggbiplot(ir.pca, choices=c(1,2), obs.scale = 1, var.scale = 1)
+
+# ggbiplot(ir.pca,choices=c(1,2), groups=CES_DC_total[,2] obs.scale = 1, var.scale = 1, ellipse = TRUE)
+
+plot3d(scores[,1:3],size=2.5)
+text3d(loadings[,1:3], texts=rownames(loadings), col="red")
+coords <- NULL
+for (i in 1:nrow(loadings)) {
+  coords <- rbind(coords, rbind(c(0,0,0),loadings[i,1:3]))}
+lines3d(coords, col="red", lwd=4)
+
+#merge PCA 1 into redcued data set for mood variable
+scores <- tbl_df(scores)
+library(tibble)
+scores_2 <- rownames_to_column(scores, var = "ID")
+
+PCA_combined<- scores_2 %>% 
+  bind_cols(reduced_data)
+
+write.csv(PCA_combined, "PCA_combined.csv")
+
 ```
 
 Filter sublist
