@@ -223,6 +223,8 @@ write.csv(PCA_combined, "PCA_combined.csv")
 
 Filter sublist
 ```{r}
+
+# many of these subs need to be re-run because HPC timed out on their processing
 sublist<-sublist %>%
   filter(!sub=="sub-TAG000",
          !sub=="sub-TAG074",
@@ -230,24 +232,44 @@ sublist<-sublist %>%
          !sub=="sub-TAG120",
          !sub=="sub-TAG122",
          !sub=="sub-TAG125",
-         !sub=="sub-TAG155") %>%
+         !sub=="sub-TAG155",
+         !sub=="sub-TAG166",
+         !sub=="sub-TAG175",
+         !sub=="sub-TAG188",
+         !sub=="sub-TAG200",
+         !sub=="sub-TAG203",
+         !sub=="sub-TAG206",
+         !sub=="sub-TAG223",
+         !sub=="sub-TAG224",
+         !sub=="sub-TAG225",
+         !sub=="sub-TAG238",
+         !sub=="sub-TAG243",
+         !sub=="sub-TAG250",
+         !sub=="sub-TAG252") %>%
   mutate(sub=as.character(sub))
   
 ```
 
 Get timecourses
-```{r}
+```{r, message=FALSE, warning=FALSE, include=FALSE}
 numcores<-detectCores()[1]
 scrubbingThreshold<-.2
 sub_base_dir=rsfcMRI_subjects
 parcellation_list_dir='/projects/dsnlab/tag/TAG_scripts/sMRI/templates/lists/'
 # https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
-amygdala<-as.data.frame(rbind("aseg_18","aseg_54")) %>%
-   mutate(parcel_name=.[[1]]) %>%
-  select(parcel_name)
-rois<-bind_rows(amygdala)
-
-colnames(rois)<-"parcel_name"
+gordon_lhparcels<-as.data.frame(read.table(paste0(parcellation_list_dir,"lhlabels.txt"))[[1]]) %>%
+    filter(grepl("lh.Parcel", .[[1]]))%>%
+    mutate(parcel_name=.[[1]]) %>%
+    select(parcel_name)
+  gordon_rhparcels<-as.data.frame(read.table(paste0(parcellation_list_dir,"rhlabels.txt"))[[1]]) %>%
+    filter(grepl("rh.Parcel", .[[1]]))%>%
+    mutate(parcel_name=.[[1]]) %>%
+    select(parcel_name)
+  amygdala<-as.data.frame(c("aseg_18","aseg_54")) %>%
+    mutate(parcel_name=.[[1]]) %>%
+    select(parcel_name)
+  gordon<-bind_rows(gordon_rhparcels,gordon_lhparcels)
+  gordon_amygdala<-bind_rows(gordon,amygdala)
   
 # rsfcMRI_subjects="/Volumes/TDS/bids_data/derivatives/rsfMRI_preproc/"
 # # create sub list based on folders within the freesurfer subjects folder
@@ -311,27 +333,27 @@ collectAndCorTimecourses <- function(sub, parcels, scrubbingThreshold, sub_base_
   subjDF <- CorrDF %>% mutate(sub=sub,
                               Numcensored=motiondata$Numcensored,
                               Framesremaining=motiondata$Framesremaining) %>% as.data.table
-  # subjDF <- subjDF %>%
-  #   filter(grepl("aseg", coi))
+   subjDF <- subjDF %>%
+     filter(grepl("aseg", coi))
 }
 
 vectorsublist<-sublist$sub
-system.time(bilatamyg <- mclapply(vectorsublist,
+system.time(gordonamyg <- mclapply(vectorsublist,
                                     collectAndCorTimecourses, 
-                                    parcels=rois,
+                                    parcels=gordon_amygdala,
                                     scrubbingThreshold=scrubbingThreshold, 
                                     sub_base_dir=sub_base_dir,
-                                    mc.cores=1))
-print(object.size(jess_cois), quote = FALSE, units = "Mb")
+                                    mc.cores=numcores))
+print(object.size(gordonamyg), quote = FALSE, units = "Mb")
 
 # bind list of data.tables into one long data.table and filter by frames remaining (< 5 mins)
-system.time(jess_coisDT <- do.call(bind_rows, jess_cois) %>% 
+system.time(gordonamygDT<- do.call(bind_rows, gordonamyg) %>% 
               filter(Framesremaining >= 385) %>%
-              select(-Blurps, -Numcensored, -Framesremaining) %>%  #we don't need these columns anymore
+              select(-Numcensored, -Framesremaining) %>%  #we don't need these columns anymore
               as.data.table)
-print(object.size(jess_coisDT), quote = FALSE, units = "Mb") #much smaller than the list of data.tables
-rm(jess_cois);gc() #remove list, and garbage collect
-save(jess_coisDT,file = "/Volumes/psych-cog/dsnlab/TAG/TAG_BIDS/derivatives/Jessica_Depression/jess_coisDT.RDS")
+print(object.size(gordonamygDT), quote = FALSE, units = "Mb") #much smaller than the list of data.tables
+rm(gordonamyg);gc() #remove list, and garbage collect
+save(gordonamygDT,file = "/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/gordonamygDT.RDS")
 ```
 
 IN PROG: Analysis 
