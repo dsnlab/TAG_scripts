@@ -53,5 +53,5 @@ matlabbatch{10}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
 matlabbatch{10}.spm.stats.fmri_spec.volt = 1;
 matlabbatch{10}.spm.stats.fmri_spec.global = 'None';
 matlabbatch{10}.spm.stats.fmri_spec.mthresh = -Inf;
-matlabbatch{10}.spm.stats.fmri_spec.mask = {};
+matlabbatch{10}.spm.stats.fmri_spec.mask = {''};
 matlabbatch{10}.spm.stats.fmri_spec.cvi = 'AR(1)';
