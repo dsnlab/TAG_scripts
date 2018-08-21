@@ -27,10 +27,10 @@ REPLACESID='001'
 SPM_PATH=/projects/dsnlab/shared/SPM12
 
 # Set MATLAB script path
-SCRIPT=${STUDY}/fMRI/fx/models/svc/wave1/fx_flux_auto-motion_2MMcons.m
+SCRIPT=${STUDY}/fMRI/fx/models/svc/wave1/fx_flux_auto-motion_NAcons.m
 
 # Tag the results files
-RESULTS_INFIX=fx_2MM_cons
+RESULTS_INFIX=fx_NA_cons
 
 # Set output dir
 OUTPUTDIR=${STUDY}/fMRI/fx/shell/schedule_spm_jobs/svc/wave1/flux_auto-motion/output
