@@ -9,7 +9,7 @@ Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
 #You should set this to the behavioral directory on the TAG file server 
-workdir='/media/casfiles/TAG/behavior/'
+workdir='/data/jflournoy/TAG/'
 ```
 
 Load required packages
@@ -259,7 +259,7 @@ anthro_change_graph <- anthro %>%
 rm(waist_graph,heights_graph,weights_graph,redcap_anthro,anthro_change_graph)
 ```
 
-DO NOT RUN: Prepare GUIDs
+DO NOT RUN: This Prepares files used to retrieve GUIDs from NIH
 ```{r, eval=FALSE, include=FALSE}
 redcap_NDA_info <- read.csv(paste0(workdir,"RDoCdb/Confidential/redcap_nda_consent.csv"),
                             header = TRUE,
@@ -403,20 +403,57 @@ rm(time_between,graph_dates)
 
 Prepare NDAR template
 ```{r}
+#2018-09-14
+# Info on correspondences should be in REDCap. If not, here's some more info:
+# It is easier, and better for the NIH system if we keep a record of the correspondence between anonymized TAG ID and
+# the NIH GUID or (especially) the pseudo-GUID. If the participant actually has all the correct 
+# info: First, last, middle name; date of birth; city of birth; and sex; and if they already have a 
+# GUID, we can just use that. If it becomes apaprent that they have a mistaken GUID (because last time their
+# city of birth was listed as NA which was eroneiously used) then we need to email NDAHelp@mail.nih.gov.
+# This happened to me, which is why it's probably important to check current participant info against older
+# participant infor in the confidential folder. We still don't have complete info for each participant meaning
+# we could still get updates too.
+#
+# It is also possible that someone who didn't have complete info now has complete info. If they did not have complete
+# info before, we uploaded data using a pseudo-GUID. We can now get a full GUID and promote the pseudo-GUID (see 
+# https://data-archive.nimh.nih.gov/guid). 
+#
+# If we've used a pseudo-GUID in the past, it's important that we use the same one. This is why I started keeping
+# track in the csv below of who has what GUID or pseudo-GUID. 
+#
+# Anyone without an existing GUID or pseudo-GUID, and who you are not able to generate an new GUID for just gets
+# a pseudo-GUID which does not depend on their personal information (assign it arbitrarily).
+#
+# What NIH does check is whether the uploaded src_subject_id and NDAR subjectkey pair for the current upload matches
+# the pair from the previous upload. If it does not, it throws an error.
+#
+# There are three correspondences you need to be aware of:
+# 1) TAG ID in redcap to anonymized TAG ID in the TAG_RDoC_key.csv file
+# 2) TAG ID in redcap to "ID" column in GUID_batch_subIDkey_*.csv file
+# 3) "ID" column in the GUID_batch_*.csv files and the number in the output_guid_*.txt file, which also contains 
+#    the NDAR GUID or pseudo GUID.
+#
 # Before running this you must have generated GUIDs for each participant to be uploaded
 # Change file names below to match the dates of the actual files you're using
 
-#read the output from the GUID tool, with added pseudo GUIDs if necessary
-rawGUIDoutput <- readr::read_lines(file.path(workdir,'RDoCdb/confidential/GUID_Batch_201806','guid_w_pguid_1531351660887.txt'))
-rawGUIDoutput_df <- dplyr::data_frame(unparsed = rawGUIDoutput) %>%
-  extract(unparsed, c('ID', 'guid'), '^(\\d+) - (.*)$') %>%
-  mutate(ID = as.numeric(ID))
-  
-# Load the subject key which has the original TAGID, an anonymized ID, and the GUID
-ndar_key_<-left_join(read.csv(file=paste0(workdir,"RDoCdb/Confidential/GUID_Batch_201806/GUID_batch_subIDkey_2018-07-11.csv"),stringsAsFactors = FALSE),
-                    read.csv(file=paste0(workdir,"RDoCdb/Confidential/TAG_RDoC_key.csv"),stringsAsFactors = FALSE),by="tagid")
-ndar_key <- left_join(ndar_key_, rawGUIDoutput_df, by = 'ID') 
+# If you need to read in new GUIDs or pseudo-GUIDs, here's an example:
+#
+# #read the output from the GUID tool, with added pseudo GUIDs if necessary
+# rawGUIDoutput <- readr::read_lines(file.path(workdir,'RDoCdb/confidential/GUID_Batch_201806','guid_w_pguid_1531351660887.txt'))
+# rawGUIDoutput_df <- dplyr::data_frame(unparsed = rawGUIDoutput) %>%
+#   extract(unparsed, c('ID', 'guid'), '^(\\d+) - (.*)$') %>%
+#   mutate(ID = as.numeric(ID))
+#   
+# # Load the subject key which has the original TAGID, an anonymized ID, and the GUID
+# ndar_key_<-left_join(read.csv(file=paste0(workdir,"RDoCdb/confidential/GUID_Batch_201806/GUID_batch_subIDkey_2018-07-11.csv"),stringsAsFactors = FALSE),
+#                     read.csv(file=paste0(workdir,"RDoCdb/confidential/TAG_RDoC_key.csv"),stringsAsFactors = FALSE),by="tagid")
+# ndar_key <- left_join(ndar_key_, rawGUIDoutput_df, by = 'ID') 
 
+# ndar_key should contain the tagid, anontagid, and the guid columns - find this info on redcap
+ndar_key <- readr::read_csv(file.path(workdir,'RDoCdb/confidential/ndar_key.csv'))
+# careful below, some code may also expect "ID" column which is just the row number. 
+# I dont *think* this column matters, so you can add this by running:
+# ndar_key$ID <- 1:nrow(ndar_key)
 
 # NDAR requires a constrained answer for a participants "race"
 ethnicity_long<-cleaned_survey_data %>%
