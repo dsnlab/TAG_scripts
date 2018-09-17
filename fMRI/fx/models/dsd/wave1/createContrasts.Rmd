@@ -6,17 +6,17 @@ output: html_document
 ---
 
 ```{r}
-packages <- c("tidyr", "stringr","data.table", "dplyr")
+packages <- c("tidyr", "stringr","data.table", "dplyr","stringi")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 lapply(packages, library, character.only = TRUE)
 
 # read input file from
-input_file <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/pmod/summary_constrasts.csv'
+input_file <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/2x2/summary_contrasts.csv'
 
 # directory to save output. make sure folder is created.
-out_dir <- '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/models/dsd/wave1/contrasts/pmod/'
+out_dir <- '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/models/dsd/wave1/contrasts/2x2/fd0.8dv2.0/'
 ```
 
 
@@ -92,7 +92,7 @@ cat("%-----------------------------------------------------------------------
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------")
 cat("\n")
-cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/sub-TAG",fid,"/SPM.mat'};",sep="")
+cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/fd0.8_noN/2x2/sub-TAG",fid,"/SPM.mat'};",sep="")
 cat("\n")
 for(i in 1:length(df)){
 cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.name = '", colnames(df)[i],"';", sep="")
@@ -153,8 +153,6 @@ write.csv(full2x2_list,'~/Desktop/subject_list_2x2.txt',row.names=F)
 #share pmod t-test
 list_share_pmod_ttest <- conn_summaryDF %>% filter(contrast %in% c("affect_share_pmod","neutral_share_pmod")) %>% group_by(id) %>% summarise(N=n()) %>% filter(N == 2) %>% select(id)
 write.csv(full2x2_list,'~/Desktop/subject_list_pmod_ttest.txt',row.names=F)
-
-
 
 #pmod 2x2
 list_2x2_pmod <- conn_summaryDF %>% filter(contrast %in% c("affect_share_pmod","neutral_share_pmod","affect_private_pmod","neutral_private_pmod")) %>% group_by(id) %>% summarise(N=n()) %>% filter(N == 4) %>% select(id)
@@ -240,7 +238,7 @@ cat("%-----------------------------------------------------------------------
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------")
 cat("\n")
-cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/sub-TAG",fid,"/SPM.mat'};",sep="")
+cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/fd0.7_N/pmod/sub-TAG",fid,"/SPM.mat'};",sep="")
 cat("\n")
 for(i in 1:length(df)){
 cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.name = '", colnames(df)[i],"';", sep="")
@@ -259,3 +257,35 @@ df2
 })
 
 connDF <- rbindlist(contrasts,fill=T)
+```
+
+#create summary - to be used for rx scripts
+```{r}
+conn_summaryDF <- connDF[!duplicated(connDF), ]
+conn_summaryDF <- conn_summaryDF %>% group_by(id) %>% mutate(number = 1:n()) %>%
+  select(id,contrast,number)
+```
+
+#create rx lists
+```{r}
+#state/dec/shareValue - 137 subjects - everyone present.
+affect_state <- conn_summaryDF %>% filter(contrast=="affect_state")
+affect_decision <- conn_summaryDF %>% filter(contrast=="affect_decision")
+affect_value_pmod <- conn_summaryDF %>% filter(contrast=="affect_value_pmod")
+
+#affect_dec_pmod - 100 subjects
+affect_dec_pmod <- conn_summaryDF %>% filter(contrast=="affect_dec_pmod")
+  #missing 
+  affect_dec_pmod_missing <- as.character(setdiff(affect_decision$id,affect_dec_pmod$id)) 
+
+#neutral_dec_pmod - 85 subjects
+neutral_dec_pmod <- conn_summaryDF %>% filter(contrast=="neutral_dec_pmod")
+  #missing 
+  neutral_dec_pmod_missing <- as.character(setdiff(affect_decision$id,neutral_dec_pmod$id))
+
+#both dec_pmod
+dec_pmod <- conn_summaryDF %>% filter(contrast %in% c("affect_dec_pmod","neutral_dec_pmod"))
+pmod_list <- dec_pmod %>% group_by(id) %>% summarise(N=n()) %>% filter(N==2) %>% select(id)
+
+###create pmod subject list
+write.csv(pmod_list,'~/Desktop/subject_list_pmod.txt',row.names=F)

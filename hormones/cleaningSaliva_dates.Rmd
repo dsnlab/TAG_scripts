@@ -37,7 +37,7 @@ overview <- overview %>%
 ###IMPORT SESSION DATES AND CALCULATE INTERVALS BETWEEN SALIVA SAMPLES
 ```{r, include=FALSE, message=FALSE}
 #import session 1 and 2 dates
-session_df <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Age/DOB_W1W2_SessionDates.xlsx'),1)
+session_df <- read.xlsx(paste0(cas_dir,'behavior/Demographics/Age/TAG_W1W2_DOB_SessionDates.xlsx'),1)
 
 session_dates <- session_df %>% 
   mutate(SID=gsub("[^0-9\\.]", "", TAG_ID)) %>%
@@ -48,7 +48,7 @@ session_dates <- session_df %>%
   filter(SID %in% overview$SID)
 
 #import saliva sample dates
-saliva_df <- read.csv(paste0(saliva_dir,'/W1_at_home_saliva_overview.csv'))
+saliva_df <- read.csv(paste0(saliva_dir,'/TAG_W1_at_home_saliva_overview.csv'))
 
 saliva_dates <- saliva_df %>% 
   mutate(SID=gsub("[^0-9\\.]", "", subject_spit_id)) %>%

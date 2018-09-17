@@ -835,9 +835,31 @@ corr_heatmap_overall <- corrplot(corr_plot, p.mat = res1$p, method = "color", ty
 
 ###SAVE SALIVA CONCENTRATIONS
 ```{r}
-Saliva_basal <- Saliva_basal %>% select(-grp) 
+#save raw saliva concentrations (clean up variable names first)
+Saliva <- Saliva %>% rename(completed_form = complete,
+                            form_date = doc,
+                            medcode_1 = code_1,
+                            medcode_13 = code_13,
+                            medcode_16 = code_16,
+                            medcode_17 = code_17,
+                            medcode_18 = code_18,
+                            medcode_19 = code_19,
+                            medcode_2 = code_2,
+                            medcode_20 = code_20,
+                            medcode_3 = code_3,
+                            medcode_5 = code_5,
+                            medcode_6 = code_6,
+                            medcode_7 = code_7,
+                            medcode_yn = meds,
+                            sample_date = sample,
+                            interval_priorsample = interval)
+write.csv(Saliva,paste0(saliva_dir,'/TAG_W1_Saliva_processed.csv'),row.names=F)
 
-write.csv(Saliva_basal,paste0(saliva_dir,'/TAG_W1_Saliva_processed.csv'),row.names=F)
+#save basal concentrations
+Saliva_basal <- Saliva_basal %>% select(-grp) 
+write.csv(Saliva_basal,paste0(saliva_dir,'/TAG_W1_Saliva_basalestimates.csv'),row.names=F)
+
+#save workspace
 save.image(paste0(saliva_dir,"/TAG_W1_Saliva.RData"))
 ```
 

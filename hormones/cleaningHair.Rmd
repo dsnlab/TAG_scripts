@@ -1,4 +1,4 @@
----
+rm---
 title: "TAG Cleaning Hair Hormone Data"
 author: "Nandi"
 date: "28 March 2018"
@@ -319,7 +319,11 @@ kable_styling(full_width = F, position = "left", font_size = 12)
 ```{r}
 confounds <- read.csv(paste0(hair_dir,'/TAG_W1_Hair_questionnaire_coded.csv'))
 confounds$SID <- as.factor(confounds$SID)
-Hair_long <- Hair_long %>% left_join(.,confounds)
+Hair_long <- Hair_long %>% left_join(.,confounds) %>%
+  mutate(colour_6mn = as.factor(colour_6mn),
+         perm_6mn = as.factor(perm_6mn),
+         curly = as.factor(curly),
+         sweat = as.numeric(sweat))
 
 summary(lm(concentration_ln ~ colour_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_DHEA_pgmg")))
 summary(lm(concentration_ln ~ colour_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_TEST_pgmg")))
@@ -329,12 +333,20 @@ summary(lm(concentration_ln ~ perm_6mn, data = subset(Hair_long,Hair_long$hormon
 summary(lm(concentration_ln ~ perm_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_TEST_pgmg")))
 summary(lm(concentration_ln ~ perm_6mn, data = subset(Hair_long,Hair_long$hormone=="hair_EST_pgug")))
 
-#no effects of coloring or perming hair. did not use the "hair treatment" info as girls seem to have interpreted this as straightening or curling their hair on occassion.
+summary(lm(concentration_ln ~ curly, data = subset(Hair_long,Hair_long$hormone=="hair_DHEA_pgmg")))
+summary(lm(concentration_ln ~ curly, data = subset(Hair_long,Hair_long$hormone=="hair_TEST_pgmg")))
+summary(lm(concentration_ln ~ curly, data = subset(Hair_long,Hair_long$hormone=="hair_EST_pgug")))
+
+summary(lm(concentration_ln ~ sweat, data = subset(Hair_long,Hair_long$hormone=="hair_DHEA_pgmg")))
+summary(lm(concentration_ln ~ sweat, data = subset(Hair_long,Hair_long$hormone=="hair_TEST_pgmg")))
+summary(lm(concentration_ln ~ sweat, data = subset(Hair_long,Hair_long$hormone=="hair_EST_pgug")))
+
+#no effects of coloring or perming hair, or curlyr hair. did not use the "hair treatment" info as girls seem to have interpreted this as straightening or curling their hair on occassion.
 ```
 
 ###SAVE HAIR CONCENTRATIONS
 ```{r}
-Hair_long <- Hair_long %>% select(-colour,-colour_6mn,-perm_6mn)
+Hair_long <- Hair_long %>% select(-colour,-colour_6mn,-perm_6mn,-curly,-sweat)
 write.csv(Hair_long,paste0(hair_dir,'/TAG_W1_Hair_processed.csv'),row.names=F)
 save.image(paste0(hair_dir,"/TAG_W1_Hair.RData"))
 ```

@@ -18,7 +18,7 @@ output: html_document
 
 #Load packages and set directories
 ```{r, include=FALSE}
-packages <- c("nlme", "ggplot2", "tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan",    "stringi")
+packages <- c("nlme", "ggplot2", "tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan", "stringi")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
@@ -41,7 +41,7 @@ ids <- as.vector(unique(input_df$sid))
 
 #Format multiconds for 2x2 and save output
 ```{r}
-multicondsDF <- lapply(X=ids, df=input_df, FUN=function(id, df) {
+multicondsDF <- lapply(X=ids[1:length(ids)], df=input_df, FUN=function(id, df) {
   
 df <- df %>% filter(sid==id)
   
@@ -98,25 +98,120 @@ if(nrow(df %>% filter(run==1)) > 0 & nrow(df %>% filter(run==2)) > 0) {
              sid=id) %>% select(-contains("cond_"))
   
     df_long <- df_long %>% left_join(.,multicondDF)
-    
+
+###SAVE SPM FILES
+
   #update pmods to NA if 1) only one instance of that event or 2) all instances of that event have same pmod value
    pmod_check <- df_long %>% group_by(run,name,pmod) %>% summarise(n=n()) %>% filter(name >2) %>%
       group_by(run,name) %>% summarise(n=n()) %>% filter(n==1) %>% mutate(run_name = paste0(run,'_',name))
   
-    df_long <- df_long %>% 
+    df_long_spm <- df_long %>% 
       mutate(run_name = paste0(run,'_',name),
              pmod = ifelse(run_name %in% pmod_check$run_name, NA, pmod)) %>%
       select(-run_name)
   
-  #save models
-    saveDF <- df_long %>% group_by(run) %>%
-      do({
-        ungroup(.) 
+    #saveDF <- df_long_spm %>% group_by(run) %>%
+    #  do({
+    #    ungroup(.) 
         #write.csv(.,file=paste0(out_dir,'2x2/tag_',fid,'_DSD',.$run[[1]],'summary.csv'),row.names=F,na = "",)
-        data.frame()
-        })
+    #    data.frame()
+    #    })
+  
+###SAVE AFNI FILES 
 
-    df_long
+    #update pmods across run 
+    pmod_check <- df_long %>% group_by(name,pmod) %>% summarise(n=n()) %>% filter(name >2) %>%
+      group_by(name) %>% summarise(n=n()) %>% filter(n==1) 
+  
+    df_long_afni <- df_long %>% 
+      mutate(pmod = ifelse(name %in% pmod_check$name, NA, pmod))
+
+    #save afni main model stim files
+    saveAFNI <- lapply(X=levels(as.factor(df_long$name)), adf=df_long_afni, FUN=function(cid, adf) {
+    
+    outdf <- adf %>% group_by(run) %>% filter(name==cid) %>% 
+    mutate(trial=row_number())  %>% 
+    select(run,trial,onset) %>% 
+    spread(trial,onset) %>% ungroup() 
+    
+    run1 <- outdf %>% filter(run==1) %>% select_if(~ !any(is.na(.))) %>% select(-run)
+    run2 <- outdf %>% filter(run==2) %>% select_if(~ !any(is.na(.))) %>% select(-run)
+    
+    if (cid == 1) {
+      cond="affSTATE"
+    } else if (cid ==2 ) {
+      cond="neutSTATE"
+    } else if (cid ==3 ) {
+      cond="affSH"
+    } else if (cid ==4 ) {
+      cond="neutSH"
+    } else if (cid ==5 ) {
+      cond="affPRI"
+    } else if (cid ==6 ) {
+      cond="neutPRI" 
+    } else if (cid ==7 ) {
+      cond="missing" }
+    
+    if ((nrow(run1)==1) | (nrow(run2)==1)) {      
+    sink(paste0(out_dir,'2x2/AFNI/sub-TAG',fid,'_',cond,'.txt'))
+    if (nrow(run1)==1) {
+       write.table(run1,col.names=F,row.names=F,sep = " ",quote=F)
+    } else { cat("*") 
+             cat("\n")}
+    if (nrow(run2)==1) {
+       write.table(run2,col.names=F,row.names=F,sep = " ",quote=F)
+    } else { cat("*") } 
+    sink() }
+    
+    rm(run1)
+    rm(run2)
+    rm(cond)
+    
+    })
+  
+    #save afni pmod model stim files
+    X=levels(as.factor(df_long$name))
+    X=X[!X %in% c("1","2","7")]
+
+    saveAFNIp <- lapply(X, adf=df_long_afni, FUN=function(cid, adf) {
+    
+    outdf <- adf %>% group_by(run) %>% filter(name==cid) %>% 
+    mutate(trial=row_number())  %>% 
+    select(run,trial,onset,pmod) %>% 
+    mutate(onset=paste0(onset,'*',pmod)) %>% select(-pmod) %>%
+    spread(trial,onset) %>% 
+      ungroup() 
+    
+    run1 <- outdf %>% filter(run==1) %>% select_if(~ !any(is.na(.))) %>% select(-run) %>% filter(!grepl("NA",`1`))
+    run2 <- outdf %>% filter(run==2) %>% select_if(~ !any(is.na(.))) %>% select(-run) %>% filter(!grepl("NA",`1`))
+    
+    if (cid ==3 ) {
+      cond="affSHp"
+    } else if (cid ==4 ) {
+      cond="neutSHp"
+    } else if (cid ==5 ) {
+      cond="affPRIp"
+    } else if (cid ==6 ) {
+      cond="neutPRIp" } 
+
+    if ((nrow(run1)==1) | (nrow(run2)==1)) {
+    sink(paste0(out_dir,'2x2/AFNI/sub-TAG',fid,'_',cond,'.txt'))
+    if (nrow(run1)==1) {
+       write.table(run1,col.names=F,row.names=F,sep = " ",quote=F)
+    } else { cat("*") 
+            cat("\n")}
+    if (nrow(run2)==1) {
+       write.table(run2,col.names=F,row.names=F,sep = " ",quote=F)
+    } else { cat("*") } 
+    sink() }
+    
+    rm(run1)
+    rm(run2)
+    rm(cond)
+    
+    })
+
+    df_long <- df_long_afni
 
 } else {
   
@@ -217,6 +312,58 @@ summary_constrasts_bin <- summary_constrasts %>%
   select(-contains("cond"))
 
 write.csv(summary_constrasts_bin, paste0(out_dir,'2X2/summary_contrasts.csv'),row.names=F) #this output is used in "createContrasts.Rmd"
+
+#as above, but across runs
+summary_constrasts <- comp_DF %>% filter(name %in% c(3,4,5,6,7)) %>%
+  mutate(name=as.factor(paste0('cond_',name))) %>%
+  group_by(sid,name) %>% 
+  summarise(N = n(), pmod_na=sum(is.na(pmod))) %>%
+  gather(var,value,N:pmod_na) %>%
+  arrange(sid,var) %>%
+  mutate(name=paste0(name,'_',var)) %>% select(-var) 
+summary_constrasts$name <- as.factor(summary_constrasts$name)
+summary_constrasts <- summary_constrasts %>%
+  complete(name, fill = list(N = 0)) %>% 
+  spread(key=name,value=value)
+
+#as above, but binarized - note this output is used in "createContrasts.Rmd"
+summary_constrasts_bin <- summary_constrasts %>% 
+  select(-cond_7_pmod_na) %>%
+  mutate(affect_share = ifelse(is.na(cond_3_N), 0, 1),
+         affect_share_pmod = ifelse(is.na(cond_3_pmod_na),0,
+                                 ifelse(cond_3_pmod_na>0,0,1)),
+         neutral_share = ifelse(is.na(cond_4_N), 0, 1),
+         neutral_share_pmod = ifelse(is.na(cond_4_pmod_na),0,
+                                 ifelse(cond_4_pmod_na>0,0,1)),
+         affect_private = ifelse(is.na(cond_5_N), 0, 1),
+         affect_private_pmod = ifelse(is.na(cond_5_pmod_na),0,
+                                 ifelse(cond_5_pmod_na>0,0,1)),
+         neutral_private = ifelse(is.na(cond_6_N), 0, 1),
+         neutral_private_pmod = ifelse(is.na(cond_6_pmod_na),0,
+                                 ifelse(cond_6_pmod_na>0,0,1)),
+         missing = ifelse(is.na(cond_7_N), 0, 1)) %>%
+  select(-contains("cond"))
+
+write.csv(summary_constrasts_bin, paste0(out_dir,'2X2/summary_contrasts_acrossRun.csv'),row.names=F) #this output is used in "createContrasts.Rmd"
+
+#find subject lists for AFNI
+main_list_nomiss <- summary_constrasts_bin %>% filter(affect_share==1 & neutral_share==1 & affect_private==1 & neutral_private==1 & missing==0) %>% select(sid)
+main_list_miss <- summary_constrasts_bin %>% filter(affect_share==1 & neutral_share==1 & affect_private==1 & neutral_private==1 & missing==1) %>% select(sid)
+
+main_list <- rbind(main_list_nomiss,main_list_miss)
+
+summary_constrasts_bin <- summary_constrasts_bin %>% filter(sid %in% main_list$sid) %>% 
+  mutate(format = ifelse(affect_private_pmod==1 & neutral_private_pmod==1 & missing==0, 1,
+                  ifelse(affect_private_pmod==1 & neutral_private_pmod==1 & missing==1, 2,
+                  ifelse(affect_private_pmod==1 & neutral_private_pmod==0 & missing==0, 3,
+                  ifelse(affect_private_pmod==1 & neutral_private_pmod==0 & missing==1, 4,        
+                  ifelse(affect_private_pmod==0 & neutral_private_pmod==0 & missing==0, 5,  
+                  ifelse(affect_private_pmod==0 & neutral_private_pmod==0 & missing==1, 6, NA)))))))  
+
+pmod_affSH_missing <- summary_constrasts_bin %>% filter(affect_share_pmod == 0) %>% select(sid)
+pmod_neutSH_missing <- summary_constrasts_bin %>% filter(neutral_share_pmod == 0) %>% select(sid)
+pmod_affPRI_missing <- summary_constrasts_bin %>% filter(affect_private_pmod == 0) %>% select(sid)
+pmod_neutPRI_missing <- summary_constrasts_bin %>% filter(neutral_private_pmod == 0) %>% select(sid)
 ```
 
 #Identify subjects with 5 or more events of each type in each run (note - this ends up giving us the same number of subjects as if we choose 4 as minimum number of events)
