@@ -7,14 +7,13 @@ outdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/masks/
 
 SUBJLIST=`cat maskSubjects.txt`
 
-for subj in $SUBJLIST
+#for subj in $SUBJLIST
 
-do
+#do
 
-fslmaths "${indir}"'sub-'"${subj}"'/ses-wave1/anat/sub-'"${subj}"'_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' -s 6 "${outdir}"'ssub-'"${subj}"'_ses-wave1_T1w_space-
-MNI152NLin2009cAsym_brainmask.nii.gz'
+#fslmaths "${indir}"'sub-'"${subj}"'/ses-wave1/anat/sub-'"${subj}"'_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' -s 6 "${outdir}"'ssub-'"${subj}"'_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz'
 
-done
+#done
 
 cd $outdir
 
@@ -87,8 +86,8 @@ d 'ssub-TAG233_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' -add 's
 w_space-MNI152NLin2009cAsym_brainmask.nii.gz' -add 'ssub-TAG243_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' -add 'ssub-TAG244_ses-wave1_T1w_space-MNI152NLin2009cAsym
 _brainmask.nii.gz' -add 'ssub-TAG247_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' -add 'ssub-TAG250_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' -add 'ss
 ub-TAG252_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' -add 'ssub-TAG253_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' -add 'ssub-TAG261_ses-wave1_T1w_spa
-ce-MNI152NLin2009cAsym_brainmask.nii.gz' -add 'ssub-TAG266_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' groupMask.nii.gz
+ce-MNI152NLin2009cAsym_brainmask.nii.gz' -add 'ssub-TAG266_ses-wave1_T1w_space-MNI152NLin2009cAsym_brainmask.nii.gz' groupMask_unthresh.nii.gz
 
 #create thresholded mask, binarized to 15% (also 25 subjects out of 164).
-fslmaths groupMask.nii.gz -thr 25 -bin groupMask.nii.gz
-gunzip groupMask.nii.gz
+#fslmaths groupMask.nii.gz -thr 25 -bin groupMask.nii.gz
+#gunzip groupMask.nii.gz
