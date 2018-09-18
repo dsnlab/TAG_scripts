@@ -195,9 +195,9 @@ state=c(state1,0,0,0,0,0,state2,0,0,0,0,0)
 
 df <- data.frame(state,affect_state,neutral_state)
 
-contrasts <- c("affect_state","neutral_state","affect_decision","neutral_decision","affect_value_pmod","neutral_value_pmod","affect_dec_pmod","neutral_dec_pmod","missing")
+contrasts <- c("state","affect_state","neutral_state","affect_decision","neutral_decision","affect_value_pmod","neutral_value_pmod","affect_dec_pmod","neutral_dec_pmod","missing","decision_aff_neut","decision_neut_aff","valueP_aff_neut","valueP_neut_aff","decisionP_aff_neut","decisionP_neut_aff")
 
-for (i in 3:length(contrasts)) {
+for (i in 4:10) {
   
   conn=contrasts[i]
     
@@ -228,6 +228,19 @@ for (i in 3:length(contrasts)) {
   rm(conn1)
   rm(conn2)
   }
+
+df <- df %>% 
+  mutate(decision_aff_neut = affect_decision-neutral_decision,
+         decision_neut_aff = neutral_decision-affect_decision,
+         valueP_aff_neut = affect_value_pmod-neutral_value_pmod,
+         valueP_neut_aff = neutral_value_pmod-affect_value_pmod)
+
+if(("affect_dec_pmod" %in% colnames(df)) & ("neutral_dec_pmod" %in% colnames(df))) {
+  
+  df <- df %>% 
+    mutate(decisionP_aff_neut = affect_dec_pmod-neutral_dec_pmod,
+           decisionP_neut_aff = neutral_dec_pmod-affect_dec_pmod) 
+}
 
 fid = stri_pad_left(id, 3, 0)
 
