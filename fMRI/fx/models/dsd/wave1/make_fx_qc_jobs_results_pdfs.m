@@ -19,9 +19,9 @@ for subCount = 1:300;
     end
     
         
-    fn1 = ['/Volumes/psych-cog/dsnlab/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/',subID,'/SPM.mat'];
+    fn1 = ['/Volumes/psych-cog/dsnlab/tag/nonbids_data/fMRI/fx/models/dsd/wave1/MLmotion/pmod/',subID,'/SPM.mat'];
     if exist(fn1, 'file')
-        matlabbatch{1}.spm.stats.results.spmmat = {['/Volumes/psych-cog/dsnlab/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/',subID,'/SPM.mat']};
+        matlabbatch{1}.spm.stats.results.spmmat = {['/Volumes/psych-cog/dsnlab/tag/nonbids_data/fMRI/fx/models/dsd/wave1/MLmotion/pmod/',subID,'/SPM.mat']};
         matlabbatch{1}.spm.stats.results.conspec.titlestr = 'statement';
         matlabbatch{1}.spm.stats.results.conspec.contrasts = 1;
         matlabbatch{1}.spm.stats.results.conspec.threshdesc = 'none';
@@ -38,9 +38,9 @@ for subCount = 1:300;
 		clear matlabbatch; 
     end
     
-    fn1 = ['/Volumes/psych-cog/dsnlab/tag/nonbids_data/fMRI/fx/models/dsd/wave1/2x2/',subID,'/SPM.mat'];
+    fn1 = ['/Volumes/psych-cog/dsnlab/tag/nonbids_data/fMRI/fx/models/dsd/wave1/MLmotion/2x2/',subID,'/SPM.mat'];
     if exist(fn1, 'file')
-        matlabbatch{1}.spm.stats.results.spmmat = {['/Volumes/psych-cog/dsnlab/tag/nonbids_data/fMRI/fx/models/dsd/wave1/2x2/',subID,'/SPM.mat']};
+        matlabbatch{1}.spm.stats.results.spmmat = {['/Volumes/psych-cog/dsnlab/tag/nonbids_data/fMRI/fx/models/dsd/wave1/MLmotion/2x2/',subID,'/SPM.mat']};
         matlabbatch{1}.spm.stats.results.conspec.titlestr = 'statement';
         matlabbatch{1}.spm.stats.results.conspec.contrasts = [1 1];
         matlabbatch{1}.spm.stats.results.conspec.threshdesc = 'none';
