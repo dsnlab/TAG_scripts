@@ -240,6 +240,12 @@ if(("affect_dec_pmod" %in% colnames(df)) & ("neutral_dec_pmod" %in% colnames(df)
   df <- df %>% 
     mutate(decisionP_aff_neut = affect_dec_pmod-neutral_dec_pmod,
            decisionP_neut_aff = neutral_dec_pmod-affect_dec_pmod) 
+} else {}
+
+df <- df %>% select(state,affect_state,neutral_state,affect_decision,neutral_decision,decision_aff_neut,decision_neut_aff,affect_value_pmod,neutral_value_pmod,valueP_aff_neut,valueP_neut_aff,everything())
+
+if ("missing" %in% colnames(df)) {
+  df <- df %>% select(-missing,everything())
 }
 
 fid = stri_pad_left(id, 3, 0)
