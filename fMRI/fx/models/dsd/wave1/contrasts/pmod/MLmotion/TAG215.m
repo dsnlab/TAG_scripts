@@ -40,4 +40,4 @@ matlabbatch{1}.spm.stats.con.consess{11}.tcon.sessrep = 'none';
 matlabbatch{1}.spm.stats.con.consess{12}.tcon.name = 'valueP_neut_aff';
 matlabbatch{1}.spm.stats.con.consess{12}.tcon.weights = [0 0 0 -1 0 0 1 0 0 0 0 0 0 0 0 -1 0 1 0 0 0 0 0 ];
 matlabbatch{1}.spm.stats.con.consess{12}.tcon.sessrep = 'none';
-matlabbatch{1}.spm.stats.con.delete = 0;
+matlabbatch{1}.spm.stats.con.delete = 1;

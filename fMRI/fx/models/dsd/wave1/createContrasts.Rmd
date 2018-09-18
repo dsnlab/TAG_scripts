@@ -260,7 +260,7 @@ cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.weights = [",noquote(paste
 cat("\n")
 cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.sessrep = 'none';",sep="")
 cat("\n") }
-cat("matlabbatch{1}.spm.stats.con.delete = 0;")
+cat("matlabbatch{1}.spm.stats.con.delete = 1;")
 sink()
 
 rows <- names(df)
