@@ -1,9 +1,9 @@
-%-----------------------------------------------------------------------
+%--------------------------------------------`---------------------------
 % Job saved on 01-Jul-2018 22:03:53 by cfg_util (rev $Rev: 6460 $)
 % spm SPM - SPM12 (6906)
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------
-matlabbatch{1}.cfg_basicio.file_dir.dir_ops.cfg_mkdir.parent = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/MLmotion/pmod'};
+matlabbatch{1}.cfg_basicio.file_dir.dir_ops.cfg_mkdir.parent = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_AR'};
 matlabbatch{1}.cfg_basicio.file_dir.dir_ops.cfg_mkdir.name = 'sub-TAG001';
 matlabbatch{2}.cfg_basicio.file_dir.file_ops.file_fplist.dir = {'/projects/dsnlab/shared/tag/bids_data/derivatives/fmriprep/sub-TAG001/ses-wave1/func/'};
 matlabbatch{2}.cfg_basicio.file_dir.file_ops.file_fplist.filter = '^sub-TAG001_ses-wave1_task-DSD_run-01_bold_space-MNI152NLin2009cAsym_preproc.nii.gz';
@@ -53,8 +53,8 @@ matlabbatch{10}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
 matlabbatch{10}.spm.stats.fmri_spec.volt = 1;
 matlabbatch{10}.spm.stats.fmri_spec.global = 'None';
 matlabbatch{10}.spm.stats.fmri_spec.mthresh = -Inf;
-matlabbatch{10}.spm.stats.fmri_spec.mask = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/masks/groupMask_dsd_40.nii,1'};
-matlabbatch{10}.spm.stats.fmri_spec.cvi = 'FAST';
+matlabbatch{10}.spm.stats.fmri_spec.mask = {''};
+matlabbatch{10}.spm.stats.fmri_spec.cvi = 'AR(1)';
 matlabbatch{11}.spm.stats.fmri_est.spmmat(1) = cfg_dep('fMRI model specification: SPM.mat File', substruct('.','val', '{}',{10}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
 matlabbatch{11}.spm.stats.fmri_est.write_residuals = 1;
 matlabbatch{11}.spm.stats.fmri_est.method.Classical = 1;
