@@ -11,15 +11,18 @@ if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 lapply(packages, library, character.only = TRUE)
-
-# read input file from
-input_file <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/pmod/summary_contrasts.csv'
-
-# directory to save output. make sure folder is created.
-out_dir <- '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/models/dsd/wave1/contrasts/pmod/MLmotion/'
 ```
 
+###2x2###
+```{r}
+# read input file from
+input_file <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/2x2/summary_contrasts.csv'
 
+# directory to save output. make sure folder is created.
+out_dir <- '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/models/dsd/wave1/contrasts/2x2/MLmotion/'
+```
+
+#create 2x2 contrasts
 ```{r}
 conDF <- read.csv(input_file)
 
@@ -159,6 +162,16 @@ list_2x2_pmod <- conn_summaryDF %>% filter(contrast %in% c("affect_share_pmod","
 write.csv(full2x2_list,'~/Desktop/subject_list_2x2.txt',row.names=F)
 ```
 
+###PMOD###
+```{r}
+# read input file from
+input_file <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/pmod/summary_contrasts.csv'
+
+# directory to save output. make sure folder is created.
+out_dir <- '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/models/dsd/wave1/contrasts/pmod/MLmotion_AR_nomask/'
+```
+
+#create pmod contrasts
 ```{r}
 conDF <- read.csv(input_file)
 
@@ -257,7 +270,7 @@ cat("%-----------------------------------------------------------------------
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------")
 cat("\n")
-cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/MLmotion/pmod/sub-TAG",fid,"/SPM.mat'};",sep="")
+cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_AR_nomask/sub-TAG",fid,"/SPM.mat'};",sep="")
 cat("\n")
 for(i in 1:length(df)){
 cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.name = '", colnames(df)[i],"';", sep="")
@@ -302,9 +315,12 @@ neutral_dec_pmod <- conn_summaryDF %>% filter(contrast=="neutral_dec_pmod")
   #missing 
   neutral_dec_pmod_missing <- as.character(setdiff(affect_decision$id,neutral_dec_pmod$id))
 
-#both dec_pmod
-dec_pmod <- conn_summaryDF %>% filter(contrast %in% c("affect_dec_pmod","neutral_dec_pmod"))
-pmod_list <- dec_pmod %>% group_by(id) %>% summarise(N=n()) %>% filter(N==2) %>% select(id)
+#decisionP_aff_neut 
+decisionP_aff_neut <- conn_summaryDF %>% filter(contrast=="decisionP_aff_neut")
+  #missing 
+  decisionP_aff_neut_missing <- as.character(setdiff(affect_decision$id,decisionP_aff_neut$id))
 
+decisionP_aff_neut_list <- as.character(decisionP_aff_neut$id)
+  
 ###create pmod subject list
-write.csv(pmod_list,'~/Desktop/subject_list_pmod.txt',row.names=F)
+write.csv(decisionP_aff_neut_list,'~/Desktop/subject_list_decisionP_aff_neut.txt',row.names=F,quote=F)
