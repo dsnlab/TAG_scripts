@@ -3,7 +3,7 @@
 % spm SPM - SPM12 (6906)
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------
-matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_AR_nomask/sub-TAG166/SPM.mat'};
+matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST/sub-TAG166/SPM.mat'};
 matlabbatch{1}.spm.stats.con.consess{1}.tcon.name = 'state';
 matlabbatch{1}.spm.stats.con.consess{1}.tcon.weights = [1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 ];
 matlabbatch{1}.spm.stats.con.consess{1}.tcon.sessrep = 'none';

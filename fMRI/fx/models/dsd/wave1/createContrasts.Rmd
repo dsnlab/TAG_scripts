@@ -310,10 +310,18 @@ affect_dec_pmod <- conn_summaryDF %>% filter(contrast=="affect_dec_pmod")
   #missing 
   affect_dec_pmod_missing <- as.character(setdiff(affect_decision$id,affect_dec_pmod$id)) 
 
+affect_dec_pmod_list <- as.character(affect_dec_pmod$id)
+
+write.csv(affect_dec_pmod_list,'~/Desktop/subject_list_decisionP_aff.txt',row.names=F,quote=F)
+
 #neutral_dec_pmod - 85 subjects
 neutral_dec_pmod <- conn_summaryDF %>% filter(contrast=="neutral_dec_pmod")
   #missing 
   neutral_dec_pmod_missing <- as.character(setdiff(affect_decision$id,neutral_dec_pmod$id))
+
+neutral_dec_pmod_list <- as.character(paste0(neutral_dec_pmod$id,'_',neutral_dec_pmod$number))
+
+write.csv(neutral_dec_pmod_list,'~/Desktop/subject_list_decisionP_neut.txt',row.names=F,quote=F)
 
 #decisionP_aff_neut 
 decisionP_aff_neut <- conn_summaryDF %>% filter(contrast=="decisionP_aff_neut")
@@ -323,4 +331,5 @@ decisionP_aff_neut <- conn_summaryDF %>% filter(contrast=="decisionP_aff_neut")
 decisionP_aff_neut_list <- as.character(decisionP_aff_neut$id)
   
 ###create pmod subject list
+
 write.csv(decisionP_aff_neut_list,'~/Desktop/subject_list_decisionP_aff_neut.txt',row.names=F,quote=F)
