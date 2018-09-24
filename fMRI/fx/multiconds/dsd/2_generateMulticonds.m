@@ -19,7 +19,7 @@ save_pmods = true;
 
 % setting directory and listing csv files in matlab directory
 f = '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fmri/fx/multiconds/dsd/wave1/Summary/pmod/';
-g = '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fmri/fx/multiconds/dsd/wave1/NOD/pmod/';
+g = '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fmri/fx/multiconds/dsd/wave1/NOD/pmod_RT/';
 d = dir(fullfile(f,'*summary.csv'));
 
 %% READ RAW DATA 
@@ -175,7 +175,7 @@ end
 %% READ RAW DATA 
 
 % for each subject and run
-for k=1:242 %245:length(d)
+for k=244:length(d)
     
 cd (f)
 
@@ -236,9 +236,9 @@ end
 durations = cellfun(@cell2mat, durations, 'UniformOutput', false)
 
 %changing durations to 0
-for j=1:length(names)
-    durations{1,j}(:)=0 
-end
+%for j=1:length(names)
+%    durations{1,j}(:)=0 
+%end
 
 % CREATE OTRH
 

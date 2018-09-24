@@ -319,7 +319,7 @@ neutral_dec_pmod <- conn_summaryDF %>% filter(contrast=="neutral_dec_pmod")
   #missing 
   neutral_dec_pmod_missing <- as.character(setdiff(affect_decision$id,neutral_dec_pmod$id))
 
-neutral_dec_pmod_list <- as.character(paste0(neutral_dec_pmod$id,'_',neutral_dec_pmod$number))
+neutral_dec_pmod_list <- as.character(paste0(neutral_dec_pmod$id,',con_00',neutral_dec_pmod$number))
 
 write.csv(neutral_dec_pmod_list,'~/Desktop/subject_list_decisionP_neut.txt',row.names=F,quote=F)
 
