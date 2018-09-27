@@ -1,0 +1,136 @@
+---
+title: "update_manualQC"
+author: "Nandi"
+date: "29 June 2018"
+output: html_document
+---
+
+This is the final motion script for DSD, which updates the automated trash regressor with manual QC that was completed for participants with 15-25% trash regressors.
+
+###LOAD PACKAGES AND SET DIRECTORIES
+```{r, include=FALSE}
+packages <- c("dplyr","tidyr","data.table","tibble","stringr")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+#Set variables
+study = 'TAG'
+subPattern = 'sub-TAG([0-9]{3})'
+wavePattern = 'ses-wave([0-9]{1})'
+taskPattern = 'task-(DSD|SVC)'
+runPattern = 'run-([0-9]{2})'
+
+#Set scripts directory
+scriptDir = '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/motion/'
+
+#Set motion directories
+motionDir = '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/'
+rptxtDir = paste0(motionDir,'rp_txt/')
+classDir = paste0(motionDir,'classification/')
+#Set output directory to save final motion regressors (with euclidean and artifact regressors). Make sure this folder exists
+outputDir = paste0(motionDir,'DSDwith_manualEdits/')
+```
+
+###IMPORT "ALL MOTION" CSV SAVED BY PRIOR AUTO-MOTION-FMRIPREP SCRIPT 
+```{r}
+if (!file.exists(paste0(rptxtDir,'DSD_auto_motion_fullDF.csv'))) {
+  
+  file_list = list.files(rptxtDir, pattern = 'DSD', recursive = TRUE)
+  
+  for (file in file_list){
+    
+      if (!exists('dataset')) {
+        
+        dataset <- read.table(paste0(rptxtDir, file)) %>%
+          mutate(file = file) %>%
+          separate(file, c('junk', 'Subject', 'wave','task','run')) %>%
+          rename(eucTrans=V1, eucRot=V2, eucTransDer=V3, eucRotDer=V4,artefact=V5) %>%
+          mutate(volume = row_number()) %>%
+          select(-junk)
+        
+      } else {
+        
+          tmp <- read.table(paste0(rptxtDir, file)) %>%
+          mutate(file = file) %>%
+          separate(file, c('junk', 'Subject', 'wave','task','run')) %>%
+          rename(eucTrans=V1, eucRot=V2, eucTransDer=V3, eucRotDer=V4,artefact=V5) %>%
+          mutate(volume = row_number()) %>%
+          select(-junk)
+        
+          dataset = bind_rows(dataset, tmp)
+          rm(tmp)
+      } }
+  
+  write.csv(dataset, paste0(rptxtDir,'DSD_auto_motion_fullDF.csv'), row.names = FALSE)
+
+} else {
+  
+  dataset = read.csv(paste0(rptxtDir,'DSD_auto_motion_fullDF.csv'), stringsAsFactors = FALSE)
+
+  }
+
+motion <- dataset %>% 
+  mutate(SID = as.numeric(gsub("TAG","",Subject)),
+         sub.run.vol = paste(SID, task, run, volume, sep = "_")) %>%
+  filter(task == "DSD")
+```
+
+###IMPORT MANUAL MOTION QC
+```{r}
+coded = read.csv(paste0(classDir,'DSD_motionQC.csv'))
+
+coded <- coded %>%
+  extract("Run", c("task", "run"), "([A-Z]{3})([0-9]{1})") %>%
+  mutate(run = as.integer(run),
+         SID = as.integer(gsub("[^0-9\\.]", "", Subject)),
+         volume = Volume+1) %>%
+  mutate(sub.run.vol = paste(SID, task, run, volume, sep = "_")) %>%
+  mutate(manual_artefact = 1,
+         manual_artefact = as.factor(manual_artefact))
+```
+
+###UPDATE "ALL MOTION" DF BASED ON MANUAL QC 
+```{r}
+motion <- motion %>% 
+  mutate(artefact2 = ifelse(sub.run.vol %in% coded$sub.run.vol, 1, artefact))
+```
+
+###PRINT MOTION FILES
+```{r}
+subjectList <- as.character(unique(motion$SID))
+
+motion_final <- lapply(X=subjectList, df=motion, FUN=function(sid, df) {
+                           
+  adf <- motion %>% filter(SID == as.integer(sid)) %>% 
+    select(SID, task, run, volume, eucTrans, eucRot, eucTransDer, eucRotDer, artefact2) %>%
+    group_by(task,run) %>%
+    do({
+      ungroup(.) 
+      saveDF <- select(.,eucTrans, eucRot, eucTransDer, eucRotDer, artefact2)
+      write.table(saveDF, file=paste0(outputDir,'rp_',str_pad(sid,3,pad="0"),'_',.$task[[1]],.$run[[1]],'.txt'), sep='\t', row.name=F, quote=F, col.names=F)
+      data.frame()
+      }) })
+```
+
+
+###TBD....
+
+###PRINT DSD MOTION SUMMARY
+```{r}
+#summarise artifacts in each subject in DSD. first load DSD overview and limit sample to 146 participants with DSD pre motion.
+
+dsd_overview <- read.csv('~/Desktop/dsd_overview.csv',header=T)
+
+DSDids <- dsd_overview %>% filter(Withdrawn_W1==0) %>% filter(W1S2_Completed==1) %>% filter(!check_mri_completed.2.partial.1.full.0.none.==0) %>% filter(dsd_completed==2) %>% filter(is.na(technical_missing)) %>% filter(is.na(participant_error)) %>% mutate(subjectID=SID) %>% select(subjectID)
+
+summaryDF_dsd <- joined %>% filter(SID %in% DSDids$subjectID) %>% filter(task=="DSD") %>%
+  select(SID,run,artifact,artifact_N) %>% group_by(SID) %>% 
+  summarise(artifact=100*(sum(artifact)/n()),
+            artifact_N=100*(sum(artifact_N/n())),
+            N = n()) %>%
+  arrange(-artifact)
+
+write.csv(summaryDF_dsd,paste0(motionDir,'summary_DSD_Motion.csv'))
+```

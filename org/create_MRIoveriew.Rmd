@@ -5,7 +5,7 @@ date: "25 March 2018"
 output: html_document
 ---
 This script creates an MRI overview document that reports who completed MRIs, which sequences were completed, the size of sequences, and any duplicated scans.
-Line 244 onwards will need to be edited for waves 2 and 3.
+Line 85 onwards will need to be edited for waves 2 and 3.
 
 ###LOAD PACKAGES AND SET DIRECTORIES
 ```{r, include=FALSE}
@@ -188,21 +188,5 @@ overview <- overview %>% full_join(.,freesurfer) %>% full_join(.,fmriprep) %>%
   select(-mri_notes,everything())
   #If mri was not completed at wave 1, change all MRI fields are NA (sometimes not NA if subject skipped wave 1, but did wave 2 - because wave 2 would be coded as wave 1 on bids_data in these situations).  
 
-write.csv(overview,file=paste0(cas_dir,'behavior/MRI/wave1/MRI_W1overview.csv'),row.names=F,quote=T)
+write.csv(overview,file=paste0(cas_dir,'behavior/MRI/wave1/MRI_W1_overview.csv'),row.names=F,quote=T)
 ```
-
-###EXTRA
-```{r}
-bids <- read.csv("bids.csv",header=F)
-free <- read.csv("freesurfer.csv",header=F)
-fmri <- read.csv("fmriprep.csv",header=F)
-bidsL <- as.vector(bids$V1)
-freeL <- as.vector(free$V1)
-fmriL <- as.vector(fmri$V1)
-
-todo <- setdiff(freeL,fmriL)
-todo
-
-bids <- bids %>% mutate(SID = sub('TAG','',SID), bids_id = sub('TAG','',bids_id))
-free <- free %>% mutate(SID = sub('TAG','',SID), free_id = sub('TAG','',free_id))
-fmri <- fmri %>% mutate(SID = sub('TAG','',SID), fmri_id = sub('TAG','',fmri_id))
