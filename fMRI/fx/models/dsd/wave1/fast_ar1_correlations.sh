@@ -11,17 +11,19 @@ cd $fast
 
 for sub in sub-TAG*; do
 	
+	touch correlations/${sub}.txt
+
 	cd $sub
 
 	for con in con*; do
 
-		3ddot -docor $con $ar1/$sub/$con > ${fast}/correlations/${sub}_${con}.txt
+		echo $sub $con `3ddot -docor $con $ar1/$sub/$con` >> correlations/${sub}.txt
 
 	done
 
 	for res in Res_*; do
 
-		3ddot -docor $con $ar1/$sub/$res > ${fast}/correlations/${sub}_${res}.txt
+		echo $sub $res `3ddot -docor $res $ar1/$sub/$res` >> correlations/${sub}.txt
 
 	done
 
