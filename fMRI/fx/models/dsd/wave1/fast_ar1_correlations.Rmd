@@ -1,0 +1,114 @@
+---
+title: "comparing spm FAST & AR(1) fx models"
+author: "Nandi"
+date: "29 Sep 2018"
+output: html_document
+---
+
+```{r}
+packages <- c("tidyr", "stringr","data.table", "dplyr","stringi")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+options(digits=5)
+```
+
+#final DSD subject list & motion data
+```{r}
+finalList <-
+  
+motion <- 
+
+```
+
+#import correlations between AR(1) and FAST
+```{r}
+fileDir='/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST_RT/correlations/'
+
+file_list = list.files(fileDir)
+
+files <- lapply(file_list, FUN=function(file) {
+  
+  dataset <- read.table(paste0(fileDir, file)) %>%
+    rename(sid = V1,
+           var = V2,
+           cor = V3)
+  
+})
+
+files <- rbindlist(files) %>%
+  mutate(sid = as.numeric(gsub("sub-TAG","",sid))) %>%
+  filter(sid %in% finalList) #limit FX models to final dsd list (i.e. excluding those with bad motion)
+```
+
+#calculate summaries & plot data for contrasts
+```{r}
+cons <- files %>% filter(grepl("con",var))
+
+#only doing it for main contrasts
+conSummary_subj <- cons %>% 
+  filter(grepl("0002|0003|0004|0005",var)) %>%
+  mutate(sid=as.factor(sid)) %>%
+  filter(!sid %in% c("62","27")) %>%
+  spread(var, cor) %>%
+  arrange(con_0002.nii) 
+
+conSummary <- cons %>% 
+  filter(grepl("0002|0003|0004|0005",var)) %>%
+  mutate(sid=as.factor(sid)) %>%
+  filter(!sid %in% c("62","27")) %>%
+  group_by(var) %>%
+  summarise(mean = mean(cor),
+            sd = sd(cor),
+            min = min(cor),
+            max = max(cor))
+
+pdf("~/Desktop/dsd_CONcorr.pdf", 7, 5)
+
+cons_plot <- cons %>%
+  filter(grepl("0002|0003|0004|0005",var)) 
+
+ggplot(cons_plot, aes(cor, group=var)) +
+  geom_histogram() + 
+  facet_wrap(~var)
+
+dev.off()
+```
+
+#calculate summaries & plot data for residuals
+```{r}
+res <- files %>% filter(grepl("Res",var)) %>%
+  mutate(sid=as.factor(sid))
+
+resSummary <- res %>% 
+  summarise(mean = mean(cor),
+            sd = sd(cor),
+            min = min(cor),
+            max = max(cor))
+
+#create subject specific residual summaries and also add info on number of motion artefacts
+resSummary_subj <- res %>% 
+  group_by(sid) %>%
+  summarise(resMean = mean(cor),
+            resSD = sd(cor),
+            resMin = min(cor),
+            resMax = max(cor)) %>%
+  arrange(resMean) %>%
+  mutate(SID=as.numeric(as.character(sid))) %>%
+  left_join(.,motion) %>%
+  arrange(resMin)
+
+res$sid = factor(res$sid, levels=unique(res$sid[order(res$cor)]), ordered=TRUE)
+
+pdf("~/Desktop/dsd_REScorr.pdf", 7, 5)
+for (i in seq(1, length(unique(res$sid)), 16)) {
+  print(ggplot(res[res$sid %in% levels(res$sid)[i:(i+15)], ], 
+               aes(cor)) + 
+          geom_histogram(bins=10) +
+          facet_wrap(~ sid))
+}
+dev.off()
+```
+
