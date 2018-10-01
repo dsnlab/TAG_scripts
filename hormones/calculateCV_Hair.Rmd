@@ -1,0 +1,357 @@
+---
+title: "calculateCV_hair"
+author: "Nandi"
+date: "25 September 2018"
+output: html_document
+---
+
+```{r, include=FALSE}
+#LOAD PACKAGES AND SET DIRECTORIES
+
+packages <- c("ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx","DescTools")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
+hair_dir <- paste0(cas_dir,'behavior/Puberty/Hair/Wave1')
+options(digits=3)
+```
+
+###IMPORT TAG OVERVIEW DOC FROM CAS
+```{r, include = F}
+#import "overview" document so that we can filter analyses to subjects that were not excluded
+
+overview <- read.xlsx(paste0(cas_dir,'behavior/Overview/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
+
+#removing everyone who withdrew at W1 (exclusionary withdrawals & Withdrawn_W1)
+overview <- overview %>% 
+  rename(SID = TAG_ID) %>%
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>% 
+  arrange(Exclusionary_Withdrawl) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
+  filter(Exclusionary_Withdrawl==0) %>%
+  filter(Withdrawn_W1==0)
+```
+
+###CALCULATE INTRA-ASSAY CVS
+```{r, include=FALSE}
+
+#batch 1
+#import files
+Hair_DHEA_CV_1 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_Master_File.xlsx'), sheet=1)
+Hair_TEST_CV_1 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_Master_File.xlsx'), sheet=4)
+Hair_EST_CV_1 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_Master_File.xlsx'), sheet=7)
+
+#clean and calculate interassay CV for concentrations and optical densities
+Hair_DHEA_CV_1 <- Hair_DHEA_CV_1 %>% 
+  rename(ID = Name,
+         Conc = `[Concentration]`,
+         OD = `450`) %>%
+  mutate(Conc = as.numeric(Conc),
+         OD = as.numeric(OD),
+         Conc_2 = lead(Conc),
+         OD_2 = lead(OD)) %>% 
+  select(ID,Conc,Conc_2,OD,OD_2) %>%
+  filter(!is.na(ID)) %>%
+  rowwise() %>%
+  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+         Conc_sd = sd(c(Conc,Conc_2),na.rm=T),
+         OD_mean = mean(c(OD,OD_2),na.rm=T),
+         OD_sd = sd(c(OD,OD_2),na.rm=T)) %>%
+  mutate(DHEA_Conc_CV = 100*(Conc_sd/Conc_mean),
+         DHEA_Conc_CV = round(as.numeric(DHEA_Conc_CV),3),
+         DHEA_OD_CV = 100*(OD_sd/OD_mean),
+         DHEA_OD_CV = round(as.numeric(DHEA_OD_CV),3),
+         SID = as.factor(round(as.numeric(ID),2))) %>%
+  select(SID,DHEA_Conc_CV,DHEA_OD_CV) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID)) %>%
+  select(-week) %>%
+  filter(!is.na(SID)) %>%
+  arrange(SID) 
+  
+Hair_TEST_CV_1 <- Hair_TEST_CV_1 %>% 
+  rename(ID = Name,
+         Conc = `[Concentration]`,
+         OD = `450`) %>%
+  mutate(Conc = as.numeric(Conc),
+         OD = as.numeric(OD),
+         Conc_2 = lead(Conc),
+         OD_2 = lead(OD)) %>% 
+  select(ID,Conc,Conc_2,OD,OD_2) %>%
+  filter(!is.na(ID)) %>%
+  rowwise() %>%
+  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+         Conc_sd = sd(c(Conc,Conc_2),na.rm=T),
+         OD_mean = mean(c(OD,OD_2),na.rm=T),
+         OD_sd = sd(c(OD,OD_2),na.rm=T)) %>%
+  mutate(TEST_Conc_CV = 100*(Conc_sd/Conc_mean),
+         TEST_Conc_CV = round(as.numeric(TEST_Conc_CV),3),
+         TEST_OD_CV = 100*(OD_sd/OD_mean),
+         TEST_OD_CV = round(as.numeric(TEST_OD_CV),3),
+         SID = as.factor(round(as.numeric(ID),2))) %>%
+  select(SID,TEST_Conc_CV,TEST_OD_CV) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID)) %>%
+  select(-week) %>%
+  filter(!is.na(SID)) %>%
+  arrange(SID) 
+
+Hair_EST_CV_1 <- Hair_EST_CV_1 %>% 
+  rename(ID = Name,
+         Conc = `[Concentration]`,
+         OD = `450`) %>%
+  mutate(Conc = as.numeric(Conc),
+         OD = as.numeric(OD),
+         Conc_2 = lead(Conc),
+         OD_2 = lead(OD)) %>% 
+  select(ID,Conc,Conc_2,OD,OD_2) %>%
+  filter(!is.na(ID)) %>%
+  rowwise() %>%
+  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+         Conc_sd = sd(c(Conc,Conc_2),na.rm=T),
+         OD_mean = mean(c(OD,OD_2),na.rm=T),
+         OD_sd = sd(c(OD,OD_2),na.rm=T)) %>%
+  mutate(EST_Conc_CV = 100*(Conc_sd/Conc_mean),
+         EST_Conc_CV = round(as.numeric(EST_Conc_CV),3),
+         EST_OD_CV = 100*(OD_sd/OD_mean),
+         EST_OD_CV = round(as.numeric(EST_OD_CV),3),
+         SID = as.factor(round(as.numeric(ID),2))) %>%
+  select(SID,EST_Conc_CV,EST_OD_CV) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID)) %>%
+  select(-week) %>%
+  filter(!is.na(SID)) %>%
+  arrange(SID) 
+
+#batch 2
+#import files
+Hair_DHEA_CV_2 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_2nd_Run_Master_Sheet.xlsx'), sheet=1)
+Hair_TEST_CV_2 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_2nd_Run_Master_Sheet.xlsx'), sheet=4)
+Hair_EST_CV_2 <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_2nd_Run_Master_Sheet.xlsx'), sheet=7)
+
+#clean and calculate interassay CV for concentrations and optical densities
+Hair_DHEA_CV_2 <- Hair_DHEA_CV_2 %>% 
+  rename(ID = Name,
+         Conc = `[Concentration]`,
+         OD = `450`) %>%
+  mutate(Conc = as.numeric(Conc),
+         OD = as.numeric(OD),
+         Conc_2 = lead(Conc),
+         OD_2 = lead(OD)) %>% 
+  select(ID,Conc,Conc_2,OD,OD_2) %>%
+  filter(!is.na(ID)) %>%
+  rowwise() %>%
+  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+         Conc_sd = sd(c(Conc,Conc_2),na.rm=T),
+         OD_mean = mean(c(OD,OD_2),na.rm=T),
+         OD_sd = sd(c(OD,OD_2),na.rm=T)) %>%
+  mutate(DHEA_Conc_CV = 100*(Conc_sd/Conc_mean),
+         DHEA_Conc_CV = round(as.numeric(DHEA_Conc_CV),3),
+         DHEA_OD_CV = 100*(OD_sd/OD_mean),
+         DHEA_OD_CV = round(as.numeric(DHEA_OD_CV),3)) %>%
+  separate(ID,into=c("SID","week")) %>%
+  mutate(SID = as.factor(round(as.numeric(SID),2))) %>%
+  select(SID,DHEA_Conc_CV,DHEA_OD_CV) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID)) %>%
+  select(-week) %>%
+  filter(!is.na(SID)) %>%
+  filter(!SID %in% c("024","179","202","077")) %>%
+  arrange(SID) 
+  
+Hair_TEST_CV_2 <- Hair_TEST_CV_2 %>% 
+  rename(ID = Name,
+         Conc = `[Concentration]`,
+         OD = `450`) %>%
+  mutate(Conc = as.numeric(Conc),
+         OD = as.numeric(OD),
+         Conc_2 = lead(Conc),
+         OD_2 = lead(OD)) %>% 
+  select(ID,Conc,Conc_2,OD,OD_2) %>%
+  filter(!is.na(ID)) %>%
+  rowwise() %>%
+  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+         Conc_sd = sd(c(Conc,Conc_2),na.rm=T),
+         OD_mean = mean(c(OD,OD_2),na.rm=T),
+         OD_sd = sd(c(OD,OD_2),na.rm=T)) %>%
+  mutate(TEST_Conc_CV = 100*(Conc_sd/Conc_mean),
+         TEST_Conc_CV = round(as.numeric(TEST_Conc_CV),3),
+         TEST_OD_CV = 100*(OD_sd/OD_mean),
+         TEST_OD_CV = round(as.numeric(TEST_OD_CV),3)) %>%
+  separate(ID,into=c("SID","week")) %>%
+  mutate(SID = as.factor(round(as.numeric(SID),2))) %>%
+  select(SID,TEST_Conc_CV,TEST_OD_CV) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID)) %>%
+  select(-week) %>%
+  filter(!is.na(SID)) %>%
+  filter(!SID %in% c("024","179","202","077")) %>%
+  arrange(SID) 
+  
+Hair_EST_CV_2 <- Hair_EST_CV_2 %>% 
+  rename(ID = Name,
+         Conc = `[Concentration]`,
+         OD = `450`) %>%
+  mutate(Conc = as.numeric(Conc),
+         OD = as.numeric(OD),
+         Conc_2 = lead(Conc),
+         OD_2 = lead(OD)) %>% 
+  select(ID,Conc,Conc_2,OD,OD_2) %>%
+  filter(!is.na(ID)) %>%
+  rowwise() %>%
+  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+         Conc_sd = sd(c(Conc,Conc_2),na.rm=T),
+         OD_mean = mean(c(OD,OD_2),na.rm=T),
+         OD_sd = sd(c(OD,OD_2),na.rm=T)) %>%
+  mutate(EST_Conc_CV = 100*(Conc_sd/Conc_mean),
+         EST_Conc_CV = round(as.numeric(EST_Conc_CV),3),
+         EST_OD_CV = 100*(OD_sd/OD_mean),
+         EST_OD_CV = round(as.numeric(EST_OD_CV),3),
+         SID = as.factor(round(as.numeric(ID),2))) %>%
+  select(SID,EST_Conc_CV,EST_OD_CV) %>%
+  filter(!SID == "0.1") %>%
+  separate(SID, into =c("SID","week")) %>%
+  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
+  mutate(SID = as.factor(SID)) %>%
+  select(-week) %>%
+  filter(!is.na(SID)) %>%
+  arrange(SID) 
+
+#combine two batches and create master df
+Hair_DHEA_CV <- rbind(Hair_DHEA_CV_1,Hair_DHEA_CV_2)
+Hair_TEST_CV <- rbind(Hair_TEST_CV_1,Hair_TEST_CV_2)
+Hair_EST_CV <- rbind(Hair_EST_CV_1,Hair_EST_CV_2)
+
+Hair_CV <- Hair_DHEA_CV %>% full_join(.,Hair_TEST_CV) %>% 
+  full_join(.,Hair_EST_CV) %>% arrange(SID) %>% 
+  filter(SID %in% overview$SID)
+
+#create long format master df
+Hair_CV_long <- Hair_CV %>%
+  gather(variable,value,DHEA_Conc_CV:EST_OD_CV,-SID) %>%
+  separate(variable, into=c("hormone","variable"), by="_") %>%
+  spread(variable, value)
+
+#summarise intra-assay CVs
+Hair_CV_summary <- Hair_CV_long %>% 
+  group_by(hormone) %>%
+  summarise(mean_ConcCV = mean(Conc,na.rm=T),
+            sd_ConcCV = sd(Conc,na.rm=T),
+            min_ConcCV = min(Conc,na.rm=T),
+            max_ConcCV = max(Conc,na.rm=T),
+            mean_odCV = mean(OD,na.rm=T),
+            sd_odCV = sd(OD,na.rm=T),
+            min_odCV = min(OD,na.rm=T),
+            max_odCV = max(OD,na.rm=T))
+
+#plot distribution of intra-assay CVs
+ConcCV_plot <- Hair_CV_long %>% 
+  ggplot(aes(x = Conc)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ hormone, scales="free")
+
+ConcCV_plot
+
+odCV_plot <- Hair_CV_long %>% filter(OD < 100) %>%
+  ggplot(aes(x = OD)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ hormone, scales="free")
+
+odCV_plot
+```
+
+###CALCULATE INTER-ASSAY CVS
+```{r}
+
+#import file of highs and lows
+Hair_DHEA_interCV <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_HighsLows_interassayCV.xlsx'), sheet=1)
+Hair_TEST_interCV <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_HighsLows_interassayCV.xlsx'), sheet=2)
+Hair_EST_interCV <- read_xlsx(paste0(hair_dir,'/TAG_W1_Hair_HighsLows_interassayCV.xlsx'), sheet=3)
+
+#clean and calculate interassay CV for concentrations and optical densities
+Hair_DHEA_interCV <- Hair_DHEA_interCV %>% 
+  rename(ID = `Well ID`,
+         Conc = `[Concentration]`,
+         OD = `450`) %>%
+  mutate(Conc = as.numeric(Conc),
+         OD = as.numeric(OD),
+         Conc_2 = lead(Conc),
+         OD_2 = lead(OD)) %>% 
+  filter(!is.na(ID)) %>%
+  select(ID,Conc,Conc_2,OD,OD_2) %>%
+  rowwise() %>%
+  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+         OD_mean = mean(c(OD,OD_2),na.rm=T)) %>%
+  group_by(ID) %>%
+  summarise(ConcCV_mean = mean(Conc_mean),
+            ConcCV_sd = sd(Conc_mean),
+            ConcCV = 100*(ConcCV_sd/ConcCV_mean),
+            odCV_mean = mean(OD_mean),
+            odCV_sd = sd(OD_mean),
+            odCV = 100*(odCV_sd/odCV_mean)) %>%
+  group_by() %>%
+  summarise(ConcCV = mean(ConcCV),
+            odCV = mean(odCV))
+
+Hair_TEST_interCV <- Hair_TEST_interCV %>% 
+  rename(ID = `Well ID`,
+         Conc = `[Concentration]`,
+         OD = `450`) %>%
+  mutate(Conc = as.numeric(Conc),
+         OD = as.numeric(OD),
+         Conc_2 = lead(Conc),
+         OD_2 = lead(OD)) %>% 
+  filter(!is.na(ID)) %>%
+  select(ID,Conc,Conc_2,OD,OD_2) %>%
+  rowwise() %>%
+  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+         OD_mean = mean(c(OD,OD_2),na.rm=T)) %>%
+  group_by(ID) %>%
+  summarise(ConcCV_mean = mean(Conc_mean),
+            ConcCV_sd = sd(Conc_mean),
+            ConcCV = 100*(ConcCV_sd/ConcCV_mean),
+            odCV_mean = mean(OD_mean),
+            odCV_sd = sd(OD_mean),
+            odCV = 100*(odCV_sd/odCV_mean)) %>%
+  group_by() %>%
+  summarise(ConcCV = mean(ConcCV),
+            odCV = mean(odCV))
+
+Hair_EST_interCV <- Hair_EST_interCV %>% 
+  rename(ID = `Well ID`,
+         Conc = `[Concentration]`,
+         OD = `450`) %>%
+  mutate(Conc = as.numeric(Conc),
+         OD = as.numeric(OD),
+         Conc_2 = lead(Conc),
+         OD_2 = lead(OD)) %>% 
+  filter(!is.na(ID)) %>%
+  select(ID,Conc,Conc_2,OD,OD_2) %>%
+  rowwise() %>%
+  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+         OD_mean = mean(c(OD,OD_2),na.rm=T)) %>%
+  group_by(ID) %>%
+  summarise(ConcCV_mean = mean(Conc_mean),
+            ConcCV_sd = sd(Conc_mean),
+            ConcCV = 100*(ConcCV_sd/ConcCV_mean),
+            odCV_mean = mean(OD_mean),
+            odCV_sd = sd(OD_mean),
+            odCV = 100*(odCV_sd/odCV_mean)) %>%
+  group_by() %>%
+  summarise(ConcCV = mean(ConcCV),
+            odCV = mean(odCV))
