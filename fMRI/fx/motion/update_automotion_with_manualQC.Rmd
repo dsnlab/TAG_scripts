@@ -94,7 +94,9 @@ coded <- coded %>%
 ###UPDATE "ALL MOTION" DF BASED ON MANUAL QC 
 ```{r}
 motion <- motion %>% 
-  mutate(artefact2 = ifelse(sub.run.vol %in% coded$sub.run.vol, 1, artefact))
+  mutate(aretefact_qc = ifelse(sub.run.vol %in% coded$sub.run.vol, 1, artefact))
+
+write.csv(motion, '~/Desktop/DSD_auto_motion_withQC.csv', row.names=F)
 ```
 
 ###PRINT MOTION FILES
@@ -104,33 +106,43 @@ subjectList <- as.character(unique(motion$SID))
 motion_final <- lapply(X=subjectList, df=motion, FUN=function(sid, df) {
                            
   adf <- motion %>% filter(SID == as.integer(sid)) %>% 
-    select(SID, task, run, volume, eucTrans, eucRot, eucTransDer, eucRotDer, artefact2) %>%
+    select(SID, task, run, volume, eucTrans, eucRot, eucTransDer, eucRotDer, aretefact_qc) %>%
     group_by(task,run) %>%
     do({
       ungroup(.) 
-      saveDF <- select(.,eucTrans, eucRot, eucTransDer, eucRotDer, artefact2)
+      saveDF <- select(.,eucTrans, eucRot, eucTransDer, eucRotDer, aretefact_qc)
       write.table(saveDF, file=paste0(outputDir,'rp_',str_pad(sid,3,pad="0"),'_',.$task[[1]],.$run[[1]],'.txt'), sep='\t', row.name=F, quote=F, col.names=F)
       data.frame()
       }) })
 ```
 
-
-###TBD....
-
-###PRINT DSD MOTION SUMMARY
+###CALCULATE MOTION SUMMARIES
 ```{r}
-#summarise artifacts in each subject in DSD. first load DSD overview and limit sample to 146 participants with DSD pre motion.
+#summarise artifacts in each subject in DSD.
+motionSummary <- motion %>% group_by(SID) %>% 
+  summarise(artefactN = sum(artefact_qc), 
+            artefactPerc = 100*(sum(artefact_qc)/n())) %>%
+  arrange(-artefactPerc) %>% 
+  mutate(SID = as.numeric(SID),
+         motionExc = 1)
 
+write.csv(motionSummary, '~/Desktop/DSD_summaryMotion_withQC.csv', row.names=F)
+
+motionExc <- motionSummary %>%
+  filter(artefactPerc > 20) %>%
+  select(-artefactN, -artefactPerc)
+```  
+
+###FINAL DSD LIST 
+```{r}
 dsd_overview <- read.csv('~/Desktop/dsd_overview.csv',header=T)
 
-DSDids <- dsd_overview %>% filter(Withdrawn_W1==0) %>% filter(W1S2_Completed==1) %>% filter(!check_mri_completed.2.partial.1.full.0.none.==0) %>% filter(dsd_completed==2) %>% filter(is.na(technical_missing)) %>% filter(is.na(participant_error)) %>% mutate(subjectID=SID) %>% select(subjectID)
+dsd_overview <- dsd_overview %>% filter(Withdrawn_W1==0) %>% filter(W1S2_Completed==1) %>% filter(!check_mri_completed.2.partial.1.full.0.none.==0) %>% filter(dsd_completed==2) %>% filter(is.na(technical_missing)) %>% filter(is.na(participant_error)) %>% filter(is.na(fx_QC_problem)) %>% filter(is.na(too_much_missing))
 
-summaryDF_dsd <- joined %>% filter(SID %in% DSDids$subjectID) %>% filter(task=="DSD") %>%
-  select(SID,run,artifact,artifact_N) %>% group_by(SID) %>% 
-  summarise(artifact=100*(sum(artifact)/n()),
-            artifact_N=100*(sum(artifact_N/n())),
-            N = n()) %>%
-  arrange(-artifact)
+dsd_overview <- dsd_overview %>% 
+  left_join(., motionExc, by="SID") %>%
+  filter(is.na(motionExc))
 
-write.csv(summaryDF_dsd,paste0(motionDir,'summary_DSD_Motion.csv'))
+finalList <- dsd_overview$SID
 ```
+
