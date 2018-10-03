@@ -168,7 +168,7 @@ write.csv(full2x2_list,'~/Desktop/subject_list_2x2.txt',row.names=F)
 input_file <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/pmod/summary_contrasts.csv'
 
 # directory to save output. make sure folder is created.
-out_dir <- '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/models/dsd/wave1/contrasts/pmod/MLmotion_FAST/'
+out_dir <- '/Volumes/StorEDGE/WORK/DSN/TAG/TAG_scripts/fMRI/fx/models/dsd/wave1/contrasts/pmod/MLmotion_FAST_RT/'
 ```
 
 #create pmod contrasts
@@ -246,7 +246,9 @@ df <- df %>%
   mutate(decision_aff_neut = affect_decision-neutral_decision,
          decision_neut_aff = neutral_decision-affect_decision,
          valueP_aff_neut = affect_value_pmod-neutral_value_pmod,
-         valueP_neut_aff = neutral_value_pmod-affect_value_pmod)
+         valueP_neut_aff = neutral_value_pmod-affect_value_pmod,
+         affect_dec_state = affect_decision - state,
+         neutral_dec_state = neutral_decision - state)
 
 if(("affect_dec_pmod" %in% colnames(df)) & ("neutral_dec_pmod" %in% colnames(df))) {
   
@@ -255,32 +257,32 @@ if(("affect_dec_pmod" %in% colnames(df)) & ("neutral_dec_pmod" %in% colnames(df)
            decisionP_neut_aff = neutral_dec_pmod-affect_dec_pmod) 
 } else {}
 
-df <- df %>% select(state,affect_state,neutral_state,affect_decision,neutral_decision,decision_aff_neut,decision_neut_aff,affect_value_pmod,neutral_value_pmod,valueP_aff_neut,valueP_neut_aff,everything())
+df <- df %>% select(state,affect_state,neutral_state,affect_decision,neutral_decision,decision_aff_neut,decision_neut_aff,affect_value_pmod,neutral_value_pmod,valueP_aff_neut,valueP_neut_aff,affect_dec_state,neutral_dec_state,everything())
 
 if ("missing" %in% colnames(df)) {
   df <- df %>% select(-missing,everything())
 }
 
-#fid = stri_pad_left(id, 3, 0)
+fid = stri_pad_left(id, 3, 0)
 
-# sink(paste0(out_dir,"TAG",fid,".m",sep=""))
-# cat("%-----------------------------------------------------------------------
-# % Job saved on 01-Jul-2018 20:22:20 by cfg_util (rev $Rev: 6460 $)
-# % spm SPM - SPM12 (6906)
-# % cfg_basicio BasicIO - Unknown
-# %-----------------------------------------------------------------------")
-# cat("\n")
-# cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST/sub-TAG",fid,"/SPM.mat'};",sep="")
-# cat("\n")
-# for(i in 1:length(df)){
-# cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.name = '", colnames(df)[i],"';", sep="")
-# cat("\n")
-# cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.weights = [",noquote(paste0(df[,i],sep=" ")),"];",sep="")
-# cat("\n")
-# cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.sessrep = 'none';",sep="")
-# cat("\n") }
-# cat("matlabbatch{1}.spm.stats.con.delete = 1;")
-# sink()
+sink(paste0(out_dir,"TAG",fid,".m",sep=""))
+cat("%-----------------------------------------------------------------------
+% Job saved on 01-Jul-2018 20:22:20 by cfg_util (rev $Rev: 6460 $)
+% spm SPM - SPM12 (6906)
+% cfg_basicio BasicIO - Unknown
+%-----------------------------------------------------------------------")
+cat("\n")
+cat("matlabbatch{1}.spm.stats.con.spmmat = {'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST/sub-TAG",fid,"/SPM.mat'};",sep="")
+cat("\n")
+for(i in 1:length(df)){
+cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.name = '", colnames(df)[i],"';", sep="")
+cat("\n")
+cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.weights = [",noquote(paste0(df[,i],sep=" ")),"];",sep="")
+cat("\n")
+cat("matlabbatch{1}.spm.stats.con.consess{",i,"}.tcon.sessrep = 'none';",sep="")
+cat("\n") }
+cat("matlabbatch{1}.spm.stats.con.delete = 1;")
+sink()
 
 rows <- names(df)
 df2 <- transpose(df) %>% mutate(contrast = names(df), id=id) %>% select(id, contrast, everything())
