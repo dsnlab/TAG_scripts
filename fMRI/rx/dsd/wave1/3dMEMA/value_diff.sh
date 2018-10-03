@@ -2,8 +2,8 @@
 #--------------------------------------------------------------
 #
 #SBATCH --job-name=DSD_3dMEMA
-#SBATCH --output=output/DSD_3dMEMA_valueDiff_MLmotion_AR_RT.log
-#SBATCH --error=output/DSD_3dMEMA_valueDiff_MLmotion_AR_RT.log
+#SBATCH --output=output/DSD_3dMEMA_valueDiff_MLmotion_FAST_RT.log
+#SBATCH --error=output/DSD_3dMEMA_valueDiff_MLmotion_FAST_RT.log
 #SBATCH --cpus-per-task=25
 #SBATCH --ntasks=1
 #SBATCH --mem-per-cpu=4000
@@ -13,8 +13,8 @@
 module load prl
 module load afni
 
-fxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_AR_RT
-rxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_AR_RT
+fxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST_RT
+rxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_FAST_RT
 
 echo $fxdir
 
@@ -130,7 +130,6 @@ sub-TAG175 $fxdir/sub-TAG175/con_0010.nii    $fxdir/sub-TAG175/spmT_0010.nii \
 sub-TAG179 $fxdir/sub-TAG179/con_0010.nii    $fxdir/sub-TAG179/spmT_0010.nii \
 sub-TAG180 $fxdir/sub-TAG180/con_0010.nii    $fxdir/sub-TAG180/spmT_0010.nii \
 sub-TAG181 $fxdir/sub-TAG181/con_0010.nii    $fxdir/sub-TAG181/spmT_0010.nii \
-sub-TAG186 $fxdir/sub-TAG186/con_0010.nii    $fxdir/sub-TAG186/spmT_0010.nii \
 sub-TAG200 $fxdir/sub-TAG200/con_0010.nii    $fxdir/sub-TAG200/spmT_0010.nii \
 sub-TAG202 $fxdir/sub-TAG202/con_0010.nii    $fxdir/sub-TAG202/spmT_0010.nii \
 sub-TAG203 $fxdir/sub-TAG203/con_0010.nii    $fxdir/sub-TAG203/spmT_0010.nii \

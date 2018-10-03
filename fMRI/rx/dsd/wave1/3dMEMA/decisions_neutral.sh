@@ -2,8 +2,8 @@
 #--------------------------------------------------------------
 #
 #SBATCH --job-name=DSD_3dMEMA
-#SBATCH --output=output/DSD_3dMEMA_decisionsNeut.log
-#SBATCH --error=output/DSD_3dMEMA_decisionsNeut.log
+#SBATCH --output=output/DSD_3dMEMA_decisionsNeut_MLmotion_FAST_RT_out.log
+#SBATCH --error=output/DSD_3dMEMA_decisionsNeut_MLmotion_FAST_RT_err.log
 #SBATCH --cpus-per-task=25
 #SBATCH --ntasks=1
 #SBATCH --mem-per-cpu=4000
@@ -12,18 +12,19 @@
 module load prl
 module load afni
 
-fxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST_nomask
-rxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_FAST_nomask
+fxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST_RT
+rxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_FAST_RT
 
 echo $fxdir
 
 cd $rxdir/decisions_neutral
 
 3dMEMA -prefix decisions_neutral -jobs 2       		 \
+-max_zeros 0.25 						 \
 -missing_data 0                        				 \
--HKtest 											 \
--model_outliers 									 \
--residual_Z                 		 				 \
+-HKtest 							 \
+-model_outliers 						 \
+-residual_Z            		 				 \
 -set decision_neutral 								 \
 sub-TAG001 $fxdir/sub-TAG001/con_0005.nii    $fxdir/sub-TAG001/spmT_0005.nii \
 sub-TAG005 $fxdir/sub-TAG005/con_0005.nii    $fxdir/sub-TAG005/spmT_0005.nii \
@@ -128,7 +129,6 @@ sub-TAG175 $fxdir/sub-TAG175/con_0005.nii    $fxdir/sub-TAG175/spmT_0005.nii \
 sub-TAG179 $fxdir/sub-TAG179/con_0005.nii    $fxdir/sub-TAG179/spmT_0005.nii \
 sub-TAG180 $fxdir/sub-TAG180/con_0005.nii    $fxdir/sub-TAG180/spmT_0005.nii \
 sub-TAG181 $fxdir/sub-TAG181/con_0005.nii    $fxdir/sub-TAG181/spmT_0005.nii \
-sub-TAG186 $fxdir/sub-TAG186/con_0005.nii    $fxdir/sub-TAG186/spmT_0005.nii \
 sub-TAG200 $fxdir/sub-TAG200/con_0005.nii    $fxdir/sub-TAG200/spmT_0005.nii \
 sub-TAG202 $fxdir/sub-TAG202/con_0005.nii    $fxdir/sub-TAG202/spmT_0005.nii \
 sub-TAG203 $fxdir/sub-TAG203/con_0005.nii    $fxdir/sub-TAG203/spmT_0005.nii \

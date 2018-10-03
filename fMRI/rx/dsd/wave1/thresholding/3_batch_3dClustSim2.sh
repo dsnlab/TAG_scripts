@@ -3,7 +3,7 @@
 module load afni
 module load prl
 
-rx_path=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_FAST_RT
+rx_path=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_AR_RT
 cd $rx_path
 
 #cd decisions_diff
@@ -23,7 +23,7 @@ cd $rx_path
 #for i in {0..3};
 #	do
 #	cd $rx_path/${rx_list[i]}
-3dClustSim -mask /projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/masks/wave1/groupMask_thresh10_bin_2mm.nii -acf 0.73527 4.6591 12.53 > threshold.txt
+3dClustSim -mask /projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/masks/wave1/groupMask_thresh10_bin_2mm.nii -acf 0.73478 4.6649 12.535 > threshold.txt
 #	3dClustSim -mask mask.nii -acf ${means_list[@]:$((3*($i))):3} > threshlog_${rx_list[i]}.txt # starting from the 3*(i-1)th position, take three acf values, log it all with the rx folders
 #	echo "----"
 #done
