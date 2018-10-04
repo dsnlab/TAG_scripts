@@ -243,12 +243,22 @@ for (i in 4:10) {
   }
 
 df <- df %>% 
-  mutate(decision_aff_neut = affect_decision-neutral_decision,
+  mutate(affect_neutral = (affect_state+affect_decision) - (neutral_state+neutral_decision),
+         neutral_affect = (neutral_state+neutral_decision) - (affect_state+affect_decision),
+         decision_aff_neut = affect_decision-neutral_decision,
          decision_neut_aff = neutral_decision-affect_decision,
+         state_aff_neut = affect_state - neutral_state,
+         state_neut_aff = neutral_state - affect_state,
+         state_dec = (affect_state+neutral_state) - (affect_decision+neutral_decision),
+         dec_state = (affect_decision+neutral_decision) - (affect_state+neutral_state),
+         affect_dec_state = affect_decision - affect_state,
+         neutral_dec_state = neutral_decision - neutral_state,
+         affect_state_dec = affect_state - affect_decision,
+         neutral_state_dec = neutral_state - neutral_decision,
+         interaction1 = 1*affect_state + -1*affect_decision + -1*neutral_state + 1*neutral_decision,
+         interaction2 = -1*affect_state + 1*affect_decision + 1*neutral_state + -1*neutral_decision,
          valueP_aff_neut = affect_value_pmod-neutral_value_pmod,
-         valueP_neut_aff = neutral_value_pmod-affect_value_pmod,
-         affect_dec_state = affect_decision - state,
-         neutral_dec_state = neutral_decision - state)
+         valueP_neut_aff = neutral_value_pmod-affect_value_pmod)
 
 if(("affect_dec_pmod" %in% colnames(df)) & ("neutral_dec_pmod" %in% colnames(df))) {
   
@@ -257,7 +267,7 @@ if(("affect_dec_pmod" %in% colnames(df)) & ("neutral_dec_pmod" %in% colnames(df)
            decisionP_neut_aff = neutral_dec_pmod-affect_dec_pmod) 
 } else {}
 
-df <- df %>% select(state,affect_state,neutral_state,affect_decision,neutral_decision,decision_aff_neut,decision_neut_aff,affect_value_pmod,neutral_value_pmod,valueP_aff_neut,valueP_neut_aff,affect_dec_state,neutral_dec_state,everything())
+df <- df %>% select(state,affect_state,neutral_state,affect_decision,neutral_decision,affect_neutral,neutral_affect,decision_aff_neut,decision_neut_aff,state_aff_neut,state_neut_aff,state_dec,dec_state,affect_dec_state,neutral_dec_state,affect_state_dec,neutral_state_dec,interaction1,interaction2,affect_value_pmod,neutral_value_pmod,valueP_aff_neut,valueP_neut_aff,everything())
 
 if ("missing" %in% colnames(df)) {
   df <- df %>% select(-missing,everything())
