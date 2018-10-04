@@ -4,6 +4,7 @@ author: "Nandi"
 date: "29 September 2018"
 output: html_document
 ---
+#This script inputs the ACF estimates for each volume of each subject, and calculates an average per subject, and then an average for the group.
 
 ```{r}
 packages <- c("tidyr", "stringr","data.table", "dplyr","stringi")
@@ -15,19 +16,7 @@ lapply(packages, library, character.only = TRUE)
 options(digits=5)
 ```
 
-#final DSD subject list
-```{r}
-dsd_overview <- read.csv('~/Desktop/dsd_overview.csv',header=T)
-
-dsd_overview <- dsd_overview %>% filter(Withdrawn_W1==0) %>% filter(W1S2_Completed==1) %>% filter(!check_mri_completed.2.partial.1.full.0.none.==0) %>% filter(dsd_completed==2) %>% filter(is.na(technical_missing)) %>% filter(is.na(participant_error)) %>% filter(is.na(fx_QC_problem)) %>% filter(is.na(too_much_missing))
-
-dsd_overview <- dsd_overview %>% 
-  left_join(., motionExc, by="SID") %>%
-  filter(is.na(motionExc))
-
-finalList <- dsd_overview$SID
-```
-
+#import individual ACF estimates from FX models
 ```{r}
 fileDir='/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_AR_RT/'
 
@@ -43,11 +32,20 @@ files <- lapply(file_list, FUN=function(file) {
               Y = mean(V7,na.rm=T),
               Z = mean(V8,na.rm=T)) %>%
     mutate(sid = sid) }) 
-  
-files <- rbindlist(files) %>%
-  mutate(sid = as.numeric(gsub("sub-TAG","",sid))) %>%
-  filter(sid %in% finalList) #limit FX models to final dsd list (i.e. excluding those with bad motion)
 
+files <- rbindlist(files) %>%
+  mutate(sid = as.numeric(gsub("sub-TAG","",sid)))
+```
+
+#import final DSD subject list and limit ACF estimates to these subjects 
+```{r}
+dsd_overview <- read.csv('~/Desktop/dsd_overview.csv',header=T)
+dsd_overview <- dsd_overview %>% filter(final_sample==1)
+files <- files %>% filter(sid %in% dsd_overview$SID) #limit FX models to final dsd list (i.e. excluding those with bad motion)
+```
+
+# calculate group-level ACF summary
+```{r}
 summaryACF <- files %>% group_by() %>%
     summarise(Xmean = mean(X,na.rm=T),
               Ymean = mean(Y,na.rm=T),
@@ -55,6 +53,7 @@ summaryACF <- files %>% group_by() %>%
               Xmedian = median(X,na.rm=T),
               Ymedian = median(Y,na.rm=T),
               Zmedian = median(Z,na.rm=T))
+```
 
 #SPM FAST: 
 #Xmean	Ymean	Zmean	Xmedian	Ymedian	Zmedian
@@ -63,3 +62,4 @@ summaryACF <- files %>% group_by() %>%
 #SPM AR: 
 #Xmean	Ymean	Zmean	Xmedian	Ymedian	Zmedian
 #0.73478	4.6649	12.535	0.7304	4.636	12.33
+
