@@ -14,7 +14,7 @@ module load afni
 
 fxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST_RT
 rxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_FAST_RT
-mask=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/masks/wave1/dsd_groupMask_25perc.nii
+mask=/projects/dsnlab/shared/tag/nonbids_data/fMRI/templates/masks/groupStruct_25perc_filled.nii.gz 
 
 echo $fxdir
 
