@@ -35,17 +35,16 @@ for i = 1:numel(subjectID)
             %% Pull onsets for experimental conditions
             % Exclude trials where no response is given
             for b = 1:length(names)
-                idxs = find(task.output.raw(:,2) == b & ~isnan(task.output.raw(:,5)));
+                idxs = find(task.output.raw(:,2) == b & ~isnan(task.output.raw(:,4)));
                 onsets(b)={task.output.raw(idxs,3)};
             end
             
             %% Create durations vector for experimental conditions
             for c = 1:length(names)
-                idxs = find(task.output.raw(:,2) == c & ~isnan(task.output.raw(:,5)));
+                idxs = find(task.output.raw(:,2) == c & ~isnan(task.output.raw(:,4)));
                 durations(c)={task.output.raw(idxs,4)};
             end
 
-            
             %% Pull onsets and durations for instructions
             % Every fifth trial - 4.7s
             onsets(7)={task.output.raw(1:5:50,3)-4.7};
@@ -54,9 +53,9 @@ for i = 1:numel(subjectID)
             %% Pull onsets and durations for missed responses (if any)
             colNum = length(names) + 1;
 
-            if(sum(isnan(task.output.raw(:,5))) > 0)
+            if(sum(isnan(task.output.raw(:,4))) > 0)
                 names{colNum} = 'noResponse';
-                idxs = find(isnan(task.output.raw(:,5)));
+                idxs = find(isnan(task.output.raw(:,4)));
                 onsets(colNum) = {task.output.raw(idxs,3)};
                 durations(colNum) = {repelem(4.7, length(idxs))};
             end 
