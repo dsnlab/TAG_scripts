@@ -1,10 +1,9 @@
 %-----------------------------------------------------------------------
-% Job saved on 19-Aug-2018 23:52:55 by cfg_util (rev $Rev: 6942 $)
-% spm SPM - SPM12 (7219)
-% cfg_basicio BasicIO - Unknown
+% Job saved on 03-Nov-2018 18:50:14 by cfg_util (rev $Rev: 6460 $)
+% spm SPM - SPM12 (6906)
 %-----------------------------------------------------------------------
 matlabbatch{1}.spm.stats.fmri_est.spmmat = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/svc/wave1/event/sub-TAG001/SPM.mat'};
-matlabbatch{1}.spm.stats.fmri_est.write_residuals = 0;
+matlabbatch{1}.spm.stats.fmri_est.write_residuals = 1;
 matlabbatch{1}.spm.stats.fmri_est.method.Classical = 1;
 matlabbatch{2}.spm.stats.con.spmmat(1) = cfg_dep('Model estimation: SPM.mat File', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
 matlabbatch{2}.spm.stats.con.consess{1}.tcon.name = 'Self Prosocial > Rest';
@@ -53,22 +52,22 @@ matlabbatch{2}.spm.stats.con.consess{15}.tcon.name = 'Self Antisocial > Change A
 matlabbatch{2}.spm.stats.con.consess{15}.tcon.weights = [0 0 1 0 0 -1];
 matlabbatch{2}.spm.stats.con.consess{15}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{16}.tcon.name = 'Self Prosocial > Self Withdrawn + Antisocial';
-matlabbatch{2}.spm.stats.con.consess{16}.tcon.weights = [1 -.5 -.5 0 0 0];
+matlabbatch{2}.spm.stats.con.consess{16}.tcon.weights = [1 -0.5 -0.5 0 0 0];
 matlabbatch{2}.spm.stats.con.consess{16}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{17}.tcon.name = 'Self Withdrawn > Self Prosocial + Antisocial';
-matlabbatch{2}.spm.stats.con.consess{17}.tcon.weights = [-.5 1 -.5 0 0 0];
+matlabbatch{2}.spm.stats.con.consess{17}.tcon.weights = [-0.5 1 -0.5 0 0 0];
 matlabbatch{2}.spm.stats.con.consess{17}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{18}.tcon.name = 'Self Antisocial > Self Prosocial + Withdrawn';
-matlabbatch{2}.spm.stats.con.consess{18}.tcon.weights = [-.5 -.5 1 0 0 0];
+matlabbatch{2}.spm.stats.con.consess{18}.tcon.weights = [-0.5 -0.5 1 0 0 0];
 matlabbatch{2}.spm.stats.con.consess{18}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{19}.tcon.name = 'Change Prosocial > Change Withdrawn + Antisocial';
-matlabbatch{2}.spm.stats.con.consess{19}.tcon.weights = [0 0 0 1 -.5 -.5 ];
+matlabbatch{2}.spm.stats.con.consess{19}.tcon.weights = [0 0 0 1 -0.5 -0.5];
 matlabbatch{2}.spm.stats.con.consess{19}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{20}.tcon.name = 'Change Withdrawn > Change Prosocial + Antisocial';
-matlabbatch{2}.spm.stats.con.consess{20}.tcon.weights = [0 0 0 -.5 1 -.5];
+matlabbatch{2}.spm.stats.con.consess{20}.tcon.weights = [0 0 0 -0.5 1 -0.5];
 matlabbatch{2}.spm.stats.con.consess{20}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{21}.tcon.name = 'Change Antisocial > Change Prosocial + Withdrawn';
-matlabbatch{2}.spm.stats.con.consess{21}.tcon.weights = [0 0 0 -.5 -.5 1];
+matlabbatch{2}.spm.stats.con.consess{21}.tcon.weights = [0 0 0 -0.5 -0.5 1];
 matlabbatch{2}.spm.stats.con.consess{21}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{22}.tcon.name = 'Self Prosocial > Self Withdrawn';
 matlabbatch{2}.spm.stats.con.consess{22}.tcon.weights = [1 -1 0 0 0 0];
@@ -89,15 +88,15 @@ matlabbatch{2}.spm.stats.con.consess{27}.tcon.name = 'Change Withdrawn > Change 
 matlabbatch{2}.spm.stats.con.consess{27}.tcon.weights = [0 0 0 0 1 -1];
 matlabbatch{2}.spm.stats.con.consess{27}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{28}.tcon.name = 'Self Antisocial > Self Prosocial + Withdrawn';
-matlabbatch{2}.spm.stats.con.consess{28}.tcon.weights = [-.5 -.5 1 0 0 0];
+matlabbatch{2}.spm.stats.con.consess{28}.tcon.weights = [-0.5 -0.5 1 0 0 0];
 matlabbatch{2}.spm.stats.con.consess{28}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{29}.tcon.name = 'Change Prosocial > Change Withdrawn + Antisocial';
-matlabbatch{2}.spm.stats.con.consess{29}.tcon.weights = [0 0 0 1 -.5 -.5 ];
+matlabbatch{2}.spm.stats.con.consess{29}.tcon.weights = [0 0 0 1 -0.5 -0.5];
 matlabbatch{2}.spm.stats.con.consess{29}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{30}.tcon.name = 'Change Withdrawn > Change Prosocial + Antisocial';
-matlabbatch{2}.spm.stats.con.consess{30}.tcon.weights = [0 0 0 -.5 1 -.5];
+matlabbatch{2}.spm.stats.con.consess{30}.tcon.weights = [0 0 0 -0.5 1 -0.5];
 matlabbatch{2}.spm.stats.con.consess{30}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.consess{31}.tcon.name = 'Change Antisocial > Change Prosocial + Withdrawn';
-matlabbatch{2}.spm.stats.con.consess{31}.tcon.weights = [0 0 0 -.5 -.5 1];
+matlabbatch{2}.spm.stats.con.consess{31}.tcon.weights = [0 0 0 -0.5 -0.5 1];
 matlabbatch{2}.spm.stats.con.consess{31}.tcon.sessrep = 'repl';
 matlabbatch{2}.spm.stats.con.delete = 0;
