@@ -38,9 +38,9 @@ OUTPUTDIR=${STUDY}/fMRI/fx/shell/schedule_spm_jobs/svc/wave1/event/output
 # N runs for residual calculation
 RUNS=(1 2)
 
-# Specify residuals for each run
-RUN1=$(echo $(printf "Res_%04d.nii " {1..180}))
-RUN2=$(echo $(printf "Res_%04d.nii " {181..357}))
+# Make text file with residual files for each run
+echo $(printf "Res_%04d.nii\n" {1..180}) > residuals_run1.txt
+echo $(printf "Res_%04d.nii\n" {181..357}) > residuals_run2.txt
 
 # Set processor
 # use "qsub" for HPC
@@ -61,7 +61,7 @@ if [ "${PROCESS}" == "slurm" ]; then
 	for SUB in $SUBJLIST
 	do
 	 echo "submitting via qsub"
-	 sbatch --export ALL,REPLACESID=$REPLACESID,SCRIPT=$SCRIPT,SUB=$SUB,SPM_PATH=$SPM_PATH,PROCESS=$PROCESS,RUNS=$RUNS,RUN1=$RUN1,RUN2=$RUN2  \
+	 sbatch --export ALL,REPLACESID=$REPLACESID,SCRIPT=$SCRIPT,SUB=$SUB,SPM_PATH=$SPM_PATH,PROCESS=$PROCESS,RUNS=$RUNS  \
 		 --job-name=${RESULTS_INFIX} \
 		 -o "${OUTPUTDIR}"/"${SUB}"_${RESULTS_INFIX}.log \
 		 --cpus-per-task=${cpuspertask} \

@@ -60,6 +60,7 @@ echo "Merging residuals"
 echo -------------------------------------------------------------------------------
 
 module load fsl
+script_dir=`dirname $SCRIPT`
 res_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/svc/wave1/event/sub-TAG${SUB}
 cd ${res_dir}
 
