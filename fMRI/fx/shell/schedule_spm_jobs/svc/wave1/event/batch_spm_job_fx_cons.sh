@@ -66,7 +66,7 @@ if [ "${PROCESS}" == "slurm" ]; then
 		 -o "${OUTPUTDIR}"/"${SUB}"_${RESULTS_INFIX}.log \
 		 --cpus-per-task=${cpuspertask} \
 		 --mem-per-cpu=${mempercpu} \
-		 spm_job.sh
+		 spm_job_residuals.sh
 	 sleep .25
 	done
 
@@ -78,5 +78,5 @@ elif [ "${PROCESS}" == "local" ]; then
 	done
 
 elif [ "${PROCESS}" == "parlocal" ]; then 
-	parallel --verbose --results "${OUTPUTDIR}"/{}_${RESULTS_INFIX}_output -j${MAXJOBS} bash spm_job.sh ${REPLACESID} ${SCRIPT} :::: subject_list.txt
+	parallel --verbose --results "${OUTPUTDIR}"/{}_${RESULTS_INFIX}_output -j${MAXJOBS} bash spm_job_residuals.sh ${REPLACESID} ${SCRIPT} :::: subject_list.txt
 fi
