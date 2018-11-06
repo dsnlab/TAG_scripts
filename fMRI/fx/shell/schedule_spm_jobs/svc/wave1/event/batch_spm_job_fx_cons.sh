@@ -43,7 +43,7 @@ echo $(printf "Res_%04d.nii\n" {1..180}) > residuals_run1.txt
 echo $(printf "Res_%04d.nii\n" {181..357}) > residuals_run2.txt
 
 # Set processor
-# use "qsub" for HPC
+# use "sbatch" for HPC
 # use "local" for local machine
 # use "parlocal" for local parallel processing
 
@@ -60,8 +60,8 @@ mempercpu=8G
 if [ "${PROCESS}" == "slurm" ]; then 
 	for SUB in $SUBJLIST
 	do
-	 echo "submitting via qsub"
-	 sbatch --export ALL,REPLACESID=$REPLACESID,SCRIPT=$SCRIPT,SUB=$SUB,SPM_PATH=$SPM_PATH,PROCESS=$PROCESS,RUNS=$RUNS  \
+	 echo "submitting via sbatch"
+	 sbatch --export ALL,REPLACESID=$REPLACESID,SCRIPT=$SCRIPT,SUB=$SUB,SPM_PATH=$SPM_PATH,PROCESS=$PROCESS  \
 		 --job-name=${RESULTS_INFIX} \
 		 -o "${OUTPUTDIR}"/"${SUB}"_${RESULTS_INFIX}.log \
 		 --cpus-per-task=${cpuspertask} \
