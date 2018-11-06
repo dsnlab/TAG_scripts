@@ -62,8 +62,13 @@ echo ---------------------------------------------------------------------------
 module load fsl
 res_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/svc/wave1/event/sub-${SUB}
 cd ${res_dir}
-fslmerge -t residuals Res_*
-rm Res_*
+
+for i in ${RUNS[@]}; 
+	do echo residuals_run${i}
+	fslmerge -t residuals_run${i} eval "echo $(printf "\$RUN%d" ${i})"
+	rm eval "echo $(printf "\$RUN%d" $i)"
+done
+
 
 # run 3dFWHMx
 echo -------------------------------------------------------------------------------
@@ -71,4 +76,9 @@ echo "Calculating ACF parameters"
 echo -------------------------------------------------------------------------------
 
 module load afni
-3dFWHMx -acf -mask mask.nii residuals.nii.gz > ACFparameters.txt
+for i in ${RUNS[@]}; 
+	3dFWHMx -acf -mask mask.nii residuals_run${i}.nii.gz >> ACFparameters.txt
+done
+
+# average ACF parameters
+3dTstat -mean -prefix - ACFparameters.txt'{1..$(2)}'\' >> ACFparameters_average.txt

@@ -23,7 +23,7 @@ SUBJLIST=`cat subject_list_test.txt`
 # Which SID should be replaced?
 REPLACESID='001'
 
-#SPM Path
+# SPM Path
 SPM_PATH=/projects/dsnlab/shared/SPM12
 
 # Set MATLAB script path
@@ -35,6 +35,13 @@ RESULTS_INFIX=fx_event_cons
 # Set output dir
 OUTPUTDIR=${STUDY}/fMRI/fx/shell/schedule_spm_jobs/svc/wave1/event/output
 
+# N runs for residual calculation
+RUNS=(1 2)
+
+# Specify residuals for each run
+RUN1=$(echo $(printf "Res_%04d.nii " {1..180}))
+RUN2=$(echo $(printf "Res_%04d.nii " {181..357}))
+
 # Set processor
 # use "qsub" for HPC
 # use "local" for local machine
@@ -45,7 +52,7 @@ PROCESS=slurm
 # Max jobs only matters for par local
 MAXJOBS=8
 
-#Only matters for slurm
+# Only matters for slurm
 cpuspertask=1
 mempercpu=8G
 
@@ -54,7 +61,7 @@ if [ "${PROCESS}" == "slurm" ]; then
 	for SUB in $SUBJLIST
 	do
 	 echo "submitting via qsub"
-	 sbatch --export ALL,REPLACESID=$REPLACESID,SCRIPT=$SCRIPT,SUB=$SUB,SPM_PATH=$SPM_PATH,PROCESS=$PROCESS  \
+	 sbatch --export ALL,REPLACESID=$REPLACESID,SCRIPT=$SCRIPT,SUB=$SUB,SPM_PATH=$SPM_PATH,PROCESS=$PROCESS,RUNS=$RUNS,RUN1=$RUN1,RUN2=$RUN2  \
 		 --job-name=${RESULTS_INFIX} \
 		 -o "${OUTPUTDIR}"/"${SUB}"_${RESULTS_INFIX}.log \
 		 --cpus-per-task=${cpuspertask} \
