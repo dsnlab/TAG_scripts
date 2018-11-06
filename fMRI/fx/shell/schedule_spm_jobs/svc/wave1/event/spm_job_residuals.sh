@@ -60,7 +60,7 @@ echo "Merging residuals"
 echo -------------------------------------------------------------------------------
 
 module load fsl
-res_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/svc/wave1/event/sub-${SUB}
+res_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/svc/wave1/event/sub-TAG${SUB}
 cd ${res_dir}
 
 for i in ${RUNS[@]}; 
