@@ -60,14 +60,15 @@ echo "Merging residuals"
 echo -------------------------------------------------------------------------------
 
 module load fsl
-script_dir=`dirname $SCRIPT`
+script_dir=$(pwd)
 res_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/svc/wave1/event/sub-TAG${SUB}
 cd ${res_dir}
 
 for i in ${RUNS[@]}
 	do echo residuals_run${i}
-	fslmerge -t residuals_run${i} $(eval "echo $(printf "\$RUN%d" ${i})")
-	#rm $(eval "echo $(printf "\$RUN%d" ${i})")
+	residual_files=`cat ${script_dir}/residuals_run${i}.txt`
+	fslmerge -t residuals_run${i} ${residual_files}
+	#rm ${residual_files}
 done
 
 
