@@ -6,7 +6,7 @@
 #	* Executes batch job
 #	* Merges residuals for each run separately
 #	* Calculates ACF parameters for each run separately
-#	* Averages ACF parameters and saves in ACFparameters_average.txt
+#	* Averages ACF parameters and saves in ACFparameters_average.1D
 #
 # D.Cos 2018.11.06
 #--------------------------------------------------------------
@@ -61,4 +61,4 @@ done
 echo -------------------------------------------------------------------------------
 echo "Averaging ACF parameters"
 echo -------------------------------------------------------------------------------
-3dTstat -mean -prefix - ACFparameters.1D'{1..$(2)}'\' >> ACFparameters_average.txt
+3dTstat -mean -prefix - ACFparameters.1D'{1..$(2)}'\' >> ACFparameters_average.1D
