@@ -802,7 +802,7 @@ PDS<-left_join(filter(cleaned_survey_data, grepl("PDS",item)) %>%
                  select(tagid, sa_date, sb_date, dob),by="tagid")
 
 #NV: Load in info about menstruation to update missing PDS_F6
-Menstruation <- read.csv(paste0(workdir,'Puberty/Puberty_Followup/Menstruation.csv'), header=T)
+Menstruation <- read.csv(paste0(workdir,'Puberty/Questionnaires/Puberty_Followup/Menstruation.csv'), header=T)
 
 Menstruation <- Menstruation %>%
   select(tagid,menstruation_by_Wave1SB.before.wave.1) %>%
@@ -4483,8 +4483,131 @@ rm(together,part2,part3,panas_df_header,panas_temp,panas_temp_df,PANAS,PANAS_Wav
 
 Prepare SCS-C # Do not submit to RDOC
 ```{r}
-                           
+SCSC_Roles <- left_join(filter(cleaned_survey_data, grepl("^SCS_C_Roles",item)) %>%
+                 mutate(value=as.character(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+SCSC_Adj <- left_join(filter(cleaned_survey_data, grepl("^SCS_C",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+#Change this if anyone endorses adjective "bad" in subsequent waves
+SCSC_Adj$SCS_C_1_9 <- NA
+
+SCSC <- left_join(SCSC_Roles, SCSC_Adj)
+
+if (length(SCSC$tagid) == length(unique(SCSC$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+SCSC_Wave1<-left_join(SCSC,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                            ))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(SCS_C_Roles_1_TEXT=ifelse(is.na(SCS_C_Roles_1_TEXT),0,1),
+         SCS_C_Roles_2_TEXT=ifelse(is.na(SCS_C_Roles_2_TEXT),0,1),
+         SCS_C_Roles_3_TEXT=ifelse(is.na(SCS_C_Roles_3_TEXT),0,1),
+         SCS_C_Roles_4_TEXT=ifelse(is.na(SCS_C_Roles_4_TEXT),0,1),
+         SCS_C_Roles_5_TEXT=ifelse(is.na(SCS_C_Roles_5_TEXT),0,1),
+         SCS_C_Roles_6_TEXT=ifelse(is.na(SCS_C_Roles_6_TEXT),0,1),
+         SCS_C_Roles_7_TEXT=ifelse(is.na(SCS_C_Roles_7_TEXT),0,1),
+         SCS_C_Roles_8_TEXT=ifelse(is.na(SCS_C_Roles_8_TEXT),0,1),
+         SCS_C_Roles_9_TEXT=ifelse(is.na(SCS_C_Roles_9_TEXT),0,1),
+         SCS_C_Roles_10_TEXT=ifelse(is.na(SCS_C_Roles_10_TEXT),0,1),
+         SCS_C_NASPECTS=rowSums(cbind(SCS_C_Roles_1_TEXT, SCS_C_Roles_2_TEXT,
+                                      SCS_C_Roles_3_TEXT, SCS_C_Roles_4_TEXT,
+                                      SCS_C_Roles_5_TEXT, SCS_C_Roles_6_TEXT,
+                                      SCS_C_Roles_7_TEXT, SCS_C_Roles_8_TEXT,
+                                      SCS_C_Roles_9_TEXT, SCS_C_Roles_10_TEXT), na.rm = F)) %>% 
+  mutate(SCS_C_Group_Happy=as.character(paste0(SCS_C_1_1, SCS_C_2_1, SCS_C_3_1, SCS_C_4_1, SCS_C_5_1,
+                                  SCS_C_6_1, SCS_C_7_1, SCS_C_8_1, SCS_C_9_1, SCS_C_10_1)),
+         SCS_C_Group_Smart=as.character(paste0(SCS_C_1_2, SCS_C_2_2, SCS_C_3_2, SCS_C_4_2, SCS_C_5_2,
+                                  SCS_C_6_2, SCS_C_7_2, SCS_C_8_2, SCS_C_9_2, SCS_C_10_2)),
+         SCS_C_Group_Brave=as.character(paste0(SCS_C_1_3, SCS_C_2_3, SCS_C_3_3, SCS_C_4_3, SCS_C_5_3,
+                                  SCS_C_6_3, SCS_C_7_3, SCS_C_8_3, SCS_C_9_3, SCS_C_10_3)),
+         SCS_C_Group_Helpful=as.character(paste0(SCS_C_1_4, SCS_C_2_4, SCS_C_3_4, SCS_C_4_4, SCS_C_5_4,
+                                  SCS_C_6_4, SCS_C_7_4, SCS_C_8_4, SCS_C_9_4, SCS_C_10_4)),
+         SCS_C_Group_Nice=as.character(paste0(SCS_C_1_5, SCS_C_2_5, SCS_C_3_5, SCS_C_4_5, SCS_C_5_5,
+                                  SCS_C_6_5, SCS_C_7_5, SCS_C_8_5, SCS_C_9_5, SCS_C_10_5)),
+         SCS_C_Group_Angry=as.character(paste0(SCS_C_1_6, SCS_C_2_6, SCS_C_3_6, SCS_C_4_6, SCS_C_5_6,
+                                  SCS_C_6_6, SCS_C_7_6, SCS_C_8_6, SCS_C_9_6, SCS_C_10_6)),
+         SCS_C_Group_Lonely=as.character(paste0(SCS_C_1_7, SCS_C_2_7, SCS_C_3_7, SCS_C_4_7, SCS_C_5_7,
+                                  SCS_C_6_7, SCS_C_7_7, SCS_C_8_7, SCS_C_9_7, SCS_C_10_7)),
+         SCS_C_Group_Lazy=as.character(paste0(SCS_C_1_8, SCS_C_2_8, SCS_C_3_8, SCS_C_4_8, SCS_C_5_8,
+                                  SCS_C_6_8, SCS_C_7_8, SCS_C_8_8, SCS_C_9_8, SCS_C_10_8)),
+         SCS_C_Group_Bad=as.character(paste0(SCS_C_1_9, SCS_C_2_9, SCS_C_3_9, SCS_C_4_9, SCS_C_5_9,
+                                  SCS_C_6_9, SCS_C_7_9, SCS_C_8_9, SCS_C_9_9, SCS_C_10_9)),
+         SCS_C_Group_Scared=as.character(paste0(SCS_C_1_10, SCS_C_2_10, SCS_C_3_10, SCS_C_4_10, SCS_C_5_10,
+                                  SCS_C_6_10, SCS_C_7_10, SCS_C_8_10, SCS_C_9_10, SCS_C_10_10)),
+         SCS_C_Group_Responsible=as.character(paste0(SCS_C_1_11, SCS_C_2_11, SCS_C_3_11, SCS_C_4_11, SCS_C_5_11,
+                                  SCS_C_6_11, SCS_C_7_11, SCS_C_8_11, SCS_C_9_11, SCS_C_10_11)),
+         SCS_C_Group_Confident=as.character(paste0(SCS_C_1_12, SCS_C_2_12, SCS_C_3_12, SCS_C_4_12, SCS_C_5_12,
+                                  SCS_C_6_12, SCS_C_7_12, SCS_C_8_12, SCS_C_9_12, SCS_C_10_12)),
+         SCS_C_Group_Kind=as.character(paste0(SCS_C_1_13, SCS_C_2_13, SCS_C_3_13, SCS_C_4_13, SCS_C_5_13,
+                                  SCS_C_6_13, SCS_C_7_13, SCS_C_8_13, SCS_C_9_13, SCS_C_10_13)),
+         SCS_C_Group_Calm=as.character(paste0(SCS_C_1_14, SCS_C_2_14, SCS_C_3_14, SCS_C_4_14, SCS_C_5_14,
+                                  SCS_C_6_14, SCS_C_7_14, SCS_C_8_14, SCS_C_9_14, SCS_C_10_14)),
+         SCS_C_Group_Funny=as.character(paste0(SCS_C_1_15, SCS_C_2_15, SCS_C_3_15, SCS_C_4_15, SCS_C_5_15,
+                                  SCS_C_6_15, SCS_C_7_15, SCS_C_8_15, SCS_C_9_15, SCS_C_10_15)),
+         SCS_C_Group_Ugly=as.character(paste0(SCS_C_1_16, SCS_C_2_16, SCS_C_3_16, SCS_C_4_16, SCS_C_5_16,
+                                  SCS_C_6_16, SCS_C_7_16, SCS_C_8_16, SCS_C_9_16, SCS_C_10_16)),
+         SCS_C_Group_Sad=as.character(paste0(SCS_C_1_17, SCS_C_2_17, SCS_C_3_17, SCS_C_4_17, SCS_C_5_17,
+                                  SCS_C_6_17, SCS_C_7_17, SCS_C_8_17, SCS_C_9_17, SCS_C_10_17)),
+         SCS_C_Group_Shy=as.character(paste0(SCS_C_1_18, SCS_C_2_18, SCS_C_3_18, SCS_C_4_18, SCS_C_5_18,
+                                  SCS_C_6_18, SCS_C_7_18, SCS_C_8_18, SCS_C_9_18, SCS_C_10_18)),
+         SCS_C_Group_Confused=as.character(paste0(SCS_C_1_19, SCS_C_2_19, SCS_C_3_19, SCS_C_4_19, SCS_C_5_19,
+                                  SCS_C_6_19, SCS_C_7_19, SCS_C_8_19, SCS_C_9_19, SCS_C_10_19)),
+         SCS_C_Group_Careless=as.character(paste0(SCS_C_1_20, SCS_C_2_20, SCS_C_3_20, SCS_C_4_20, SCS_C_5_20,
+                                  SCS_C_6_20, SCS_C_7_20, SCS_C_8_20, SCS_C_9_20, SCS_C_10_20)))
+
+SCSC_Groups <- SCSC_Wave1 %>% select(SCS_C_Group_Happy, SCS_C_Group_Smart, SCS_C_Group_Brave, SCS_C_Group_Helpful, 
+                                     SCS_C_Group_Nice, SCS_C_Group_Angry, SCS_C_Group_Lonely, SCS_C_Group_Lazy, 
+                                     SCS_C_Group_Bad, SCS_C_Group_Scared, SCS_C_Group_Responsible, SCS_C_Group_Confident, 
+                                     SCS_C_Group_Kind, SCS_C_Group_Calm, SCS_C_Group_Funny, SCS_C_Group_Ugly, 
+                                     SCS_C_Group_Sad, SCS_C_Group_Shy, SCS_C_Group_Confused, SCS_C_Group_Careless)
+SCSC_Groups$patterncount <- apply(SCSC_Groups, 1, function(x)length(unique(x)))
+  
 ```
+           mutate(SCS_C_HTotal=log2(20)-((xi(log2(xi))/20)))
+           # %>%
+
+  mutate(SCC_N=10,
+         SCC_missing=rowSums(is.na(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12))),
+         SCC_total=rowSums(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=F),
+         SCC_mean=rowMeans(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=T))
+
+## Save it
+write.csv(SCC_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SCC_Wave1.csv"))
+
+## Graph it
+SCC_Wave1_total<-SCC_Wave1 %>%
+  select(tagid,SCC_total) %>%
+  gather('item','value',2:length(.)) 
+SCC_Wave1_total_graph<-ggplot(SCC_Wave1_total, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Self-Concept Clarity total score for ",length(unique(SCC_Wave1$tagid[!is.na(SCC_Wave1$SCC_total)]))," participants"))
+
+SCC_Wave1_mean<-SCC_Wave1 %>%
+  select(tagid,SCC_mean)%>%
+  gather('item','value',2:length(.)) 
+SCC_Wave1_mean_graph<-ggplot(SCC_Wave1_mean, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Self-Concept Clarity mean score for ",length(unique(SCC_Wave1$tagid[!is.na(SCC_Wave1$SCC_mean)]))," participants"))
+    
 
 Prepare PSQI_MEQ # Do not submit to RDOC
 ```{r}
@@ -4519,10 +4642,6 @@ YRBS_Wave1_outdf <- YRBS_Wave1 %>% filter(!grepl("W2|W3",survey_name))
 write.csv(YRBS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/YRBS_Wave1.csv"))
 
 
-```
-
-Prepare HAIR # Do not submit to RDOC
-```{r}
 ```
 
 Prepare Parent CBCL
@@ -4923,16 +5042,65 @@ write.csv(PDS_parent_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/P
 
 Prepare Parent-report CES_D 
 ```{r}
-qualtricsData_raw_parent_cesd <-filter(qualtricsData_raw_long, grepl("Parent",survey_name)) %>% 
-  filter(grepl("CES_D",item)) %>%
-  mutate(value=as.numeric(value)) %>% 
-  filter(!is.na(value)) %>% 
-  distinct(tagid,item,value,.keep_all = TRUE) %>% 
-  spread(item,value)
+CESD_parent<-left_join(filter(cleaned_survey_data, grepl("CES_D_",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value),redcap_cleaned %>%
+                   filter(!is.na(dob),!is.na(sa_date)) %>%
+                   select(tagid, sa_date, sb_date, dob),by="tagid")
 
-qualtricsData_raw_parent_cesd<-left_join(qualtricsData_raw_parent_cesd,survey_date, by = c("tagid", "survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = FALSE) %>%
-  mutate(survey_date=value) %>% select(-item, -value)
+CESD_parent_Wave1<-left_join(CESD_parent,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>% 
+  select(-value) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                          ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                          ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(CES_D_4=ifelse(CES_D_4==0,3,
+                         ifelse(CES_D_4==1,2,
+                                ifelse(CES_D_4==2,1,
+                                       ifelse(CES_D_4==3,0,
+                                              NA)))),
+         CES_D_8=ifelse(CES_D_8==0,3,
+                         ifelse(CES_D_8==1,2,
+                                ifelse(CES_D_8==2,1,
+                                       ifelse(CES_D_8==3,0,
+                                              NA)))),
+         CES_D_12=ifelse(CES_D_12==0,3,
+                          ifelse(CES_D_12==1,2,
+                                 ifelse(CES_D_12==2,1,
+                                        ifelse(CES_D_12==3,0,
+                                               NA)))),
+         CES_D_16=ifelse(CES_D_16==0,3,
+                          ifelse(CES_D_16==1,2,
+                                 ifelse(CES_D_16==2,1,
+                                        ifelse(CES_D_16==3,0,
+                                               NA))))) %>%
+  mutate(
+    CES_D_C=20,
+    CES_D_missing=rowSums(is.na(cbind(CES_D_1,CES_D_2,CES_D_3,CES_D_4,CES_D_5,CES_D_6,CES_D_7,CES_D_8,CES_D_9,CES_D_10,CES_D_11,CES_D_12,CES_D_13,CES_D_14,CES_D_15,CES_D_16,CES_D_17,CES_D_18,CES_D_19,CES_D_20))),
+    CES_D_missing_perc=100*(rowSums(is.na(cbind(CES_D_1,CES_D_2,CES_D_3,CES_D_4,CES_D_5,CES_D_6,CES_D_7,CES_D_8,CES_D_9,CES_D_10,CES_D_11,CES_D_12,CES_D_13,CES_D_14,CES_D_15,CES_D_16,CES_D_17,CES_D_18,CES_D_19,CES_D_20)))/20),
+    CES_D_mean=rowMeans(cbind(CES_D_1,CES_D_2,CES_D_3,CES_D_4,CES_D_5,CES_D_6,CES_D_7,CES_D_8,CES_D_9,CES_D_10,CES_D_11,CES_D_12,CES_D_13,CES_D_14,CES_D_15,CES_D_16,CES_D_17,CES_D_18,CES_D_19,CES_D_20), na.rm=T),
+    CES_D_total=rowSums(cbind(CES_D_1,CES_D_2,CES_D_3,CES_D_4,CES_D_5,CES_D_6,CES_D_7,CES_D_8,CES_D_9,CES_D_10,CES_D_11,CES_D_12,CES_D_13,CES_D_14,CES_D_15,CES_D_16,CES_D_17,CES_D_18,CES_D_19,CES_D_20), na.rm=F)) %>%
+  mutate(CES_D_total_75perc=ifelse(CES_D_missing_perc <= 25,CES_D_mean*20,NA))
+
+## Save it
+CESD_parent_Wave1_outdf <- CESD_parent_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(CESD_parent_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/CESD_parent_Wave1.csv"))
+
+## Graph it
+CESD_parent_Wave1_totals_graph<-ggplot(CESD_parent_Wave1, aes(x=CES_D_total, colour="deeppink")) +
+  geom_density(alpha=.3,show.legend = FALSE)+
+  ggtitle(paste0("CESD-Parent total scores for ",length(CESD_parent_Wave1$CES_D_total[!is.na(CESD_parent_Wave1$CES_D_total)])," Wave 1 participants"))
+
+CESD_parent_Wave1_means_graph<-ggplot(CESD_parent_Wave1, aes(x=CES_D_mean, colour="dodgerblue")) +
+  geom_density(alpha=.3, show.legend = FALSE)+
+  ggtitle(paste0("CESD-Parent mean scores for ",length(CESD_parent_Wave1$CES_D_mean[!is.na(CESD_parent_Wave1$CES_D_mean)])," Wave 1 participants"))
+
 ```
 
 Prepare Parent-report DEM/SES
