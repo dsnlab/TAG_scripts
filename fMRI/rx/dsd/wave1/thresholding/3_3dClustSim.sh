@@ -19,4 +19,4 @@ rx_path=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion
 mask=/projects/dsnlab/shared/tag/nonbids_data/fMRI/templates/masks/groupStruct_25perc_filled.nii.gz
 
 # Run 3dClustSim using the average acf outputs from the script "2_average_incACF.Rmd"
-3dClustSim -mask $mask -acf 0.73527 4.6591 12.53 > ${rx_path}/threshold.txt
+3dClustSim -mask $mask -acf 0.70619 4.5667 11.217 > ${rx_path}/threshold_11132018.txt
