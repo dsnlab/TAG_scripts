@@ -24,7 +24,7 @@ from datetime import datetime
 # and can be commented out if not needed.
 group = "dsnlab"
 study = "tag"
-parent_dir = "bids-conversion/bidsQC/conversion"
+parent_dir = "conversion"
 
 
 # Set directories
@@ -32,7 +32,7 @@ parent_dir = "bids-conversion/bidsQC/conversion"
 # They need to exist prior to running the script (with the exception of `image` 
 # which can be set equal to "NA" if you are running the script locally)
 dicomdir = os.path.join(os.sep, "projects", "lcni", "dcm", "dsnlab", "Pfeifer", "TAG")
-codedir = os.path.join(os.sep, "projects", group, "shared", study, "TAG_scripts", "org", parent_dir)  # Contains subject_list.txt, config file, and dcm2bids_batch.py
+codedir = os.path.join(os.sep, "projects", group, "shared", study, "TAG_scripts", "org", "bidsQC", parent_dir)  # Contains subject_list.txt, config file, and dcm2bids_batch.py
 configfile = os.path.join(codedir, "study_config.json")  # path to and name of config file
 image = os.path.join(os.sep, "projects", group, "shared", "BIDS", ,"SingularityContainers", "Dcm2Bids-master.simg")
 
