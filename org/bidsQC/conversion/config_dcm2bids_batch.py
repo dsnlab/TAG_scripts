@@ -38,14 +38,14 @@ image = os.path.join(os.sep, "projects", group, "shared", "BIDS", ,"SingularityC
 
 # These variables are also used in the main script and need to be defined here.
 # If they don't exist, they will be created by the script
-niidir = os.path.join(os.sep, "projects", group, "shared", study, "bids_data") # Where the niftis will be put
+niidir = os.path.join(os.sep, "projects", group, "shared", study, "bids_data_test") # Where the niftis will be put
 logdir = os.path.join(codedir, "logs_dcm2bids")
 outputlog = os.path.join(logdir, "outputlog_dcmn2bids" + datetime.now().strftime("%Y%m%d-%H%M") + ".txt")
 errorlog = os.path.join(logdir, "errorlog_dcm2bids" + datetime.now().strftime("%Y%m%d-%H%M") + ".txt")
 
 
 # Source the subject list (needs to be in your current working directory)
-subjectlist = "subject_list.txt"
+subjectlist = "subject_list_test.txt"
 
 
 # Run on local machine (run_local = True) or high performance cluster with slurm (run_local = False)
