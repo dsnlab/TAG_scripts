@@ -34,7 +34,7 @@ parent_dir = "conversion"
 dicomdir = os.path.join(os.sep, "projects", "lcni", "dcm", "dsnlab", "Pfeifer", "TAG")
 codedir = os.path.join(os.sep, "projects", group, "shared", study, "TAG_scripts", "org", "bidsQC", parent_dir)  # Contains subject_list.txt, config file, and dcm2bids_batch.py
 configfile = os.path.join(codedir, "study_config.json")  # path to and name of config file
-image = os.path.join(os.sep, "projects", group, "shared", "BIDS", ,"SingularityContainers", "Dcm2Bids-master.simg")
+image = os.path.join(os.sep, "projects", group, "shared", "BIDS", "SingularityContainers", "Dcm2Bids-master.simg")
 
 # These variables are also used in the main script and need to be defined here.
 # If they don't exist, they will be created by the script
