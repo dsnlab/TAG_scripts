@@ -30,7 +30,7 @@ outputlog = os.path.join(logdir, "outputlog_helper.txt")
 errorlog = os.path.join(logdir, "errorlog_helper.txt")
 
 # Test subject
-test_subject = "TAG074_20171013" # Name of a directory that contains DICOMS for one participant
+test_subject = "TAG048_20180702_130143" # Name of a directory that contains DICOMS for one participant
 
 # Run on local machine (run_local = True) or high performance cluster with slurm (run_local = False)
 run_local = False
