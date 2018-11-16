@@ -36,4 +36,4 @@ test_subject = "TAG048_20180702_130143" # Name of a directory that contains DICO
 run_local = False
 
 # If false, set the singularity image. Else, set to "NA"
-singularity_image =  os.path.join(os.sep, "projects", group, "shared", "BIDS", ,"SingularityContainers", "Dcm2Bids-master.simg")
+singularity_image =  os.path.join(os.sep, "projects", group, "shared", "BIDS", "SingularityContainers", "Dcm2Bids-master.simg")
