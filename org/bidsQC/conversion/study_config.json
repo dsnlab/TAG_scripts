@@ -4,20 +4,13 @@
             "dataType": "anat",
             "modalityLabel": "T1w",
             "criteria": {
-                "SeriesDescription": "mprage1*"
-            }
-        },
-        {
-            "dataType": "anat",
-            "modalityLabel": "T1w",
-            "criteria": {
-                "SeriesDescription": "mprage2*"
+                "SeriesDescription": "mprage_p2*"
             }
         },
         {
             "dataType": "func",
             "modalityLabel": "bold",
-            "customLabels": "task-svc1",
+            "customLabels": "task-SVC_run-01",
             "criteria": {
                 "SeriesDescription": "SVC_1*"
             }
@@ -25,7 +18,7 @@
          {
             "dataType": "func",
             "modalityLabel": "bold",
-            "customLabels": "task-rest1",
+            "customLabels": "task-rest_run-01",
             "criteria": {
                 "SeriesDescription": "Resting_1*"
             }
@@ -33,7 +26,7 @@
         {
             "dataType": "func",
             "modalityLabel": "bold",
-            "customLabels": "task-svc2",
+            "customLabels": "task-SVC_run-02",
             "criteria": {
                 "SeriesDescription": "SVC_2*"
             }
@@ -41,7 +34,7 @@
                  {
             "dataType": "func",
             "modalityLabel": "bold",
-            "customLabels": "task-rest2",
+            "customLabels": "task-rest_run-02",
             "criteria": {
                 "SeriesDescription": "Resting_2*"
             }
@@ -49,7 +42,7 @@
         {
             "dataType": "func",
             "modalityLabel": "bold",
-            "customLabels": "task-dsd1",
+            "customLabels": "task-DSD_run-01",
             "criteria": {
                 "SeriesDescription": "DSD_1*"
             }
@@ -57,7 +50,7 @@
         {
             "dataType": "func",
             "modalityLabel": "bold",
-            "customLabels": "task-dsd2",
+            "customLabels": "task-DSD_run-02",
             "criteria": {
                 "SeriesDescription": "DSD_2*"
             }
@@ -67,8 +60,8 @@
             "modalityLabel": "phasediff",
             "customLabels": "",
             "criteria": {
-                "SidecarFilename": "*fieldmap1_*_e2*",
-                "ProtocolName": "fieldmap1",
+                "SidecarFilename": "*fieldmap_*_e2*",
+                "ProtocolName": "fieldmap_2mm",
                 "ImageType": "P"
             }
         },
@@ -77,8 +70,8 @@
             "modalityLabel": "magnitude2",
             "customLabels": "",
             "criteria": {
-                "SidecarFilename": "*fieldmap1_*_e2*",
-                "ProtocolName": "fieldmap1",
+                "SidecarFilename": "*fieldmap_*_e2*",
+                "ProtocolName": "fieldmap_2mm",
                 "EchoNumber": 2,
                 "EchoTime": 0.00683,
                 "ImageType": "M"
@@ -89,18 +82,9 @@
             "modalityLabel": "magnitude1",
             "customLabels": "",
             "criteria": {
-                "ProtocolName": "fieldmap1",
+                "ProtocolName": "fieldmap_2mm",
                 "EchoTime": 0.00437,
                 "ImageType": "M"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phasediff",
-            "customLabels": "",
-            "criteria": {
-                "ProtocolName": "fieldmap2",
-                "ImageType": "P"
             }
         },
         {
@@ -108,80 +92,10 @@
             "modalityLabel": "magnitude2",
             "customLabels": "",
             "criteria": {
-                "ProtocolName": "fieldmap2",
+                "ProtocolName": "*fieldmap_*_e2*",
                 "EchoNumber": 2,
                 "EchoTime": 0.00683,
-                "ImageType": "M"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude1",
-            "customLabels": "",
-            "criteria": {
-                "ProtocolName": "fieldmap2",
-                "EchoTime": 0.00437,
-                "ImageType": "M"
-            }
-        },
-                {
-            "dataType": "fmap",
-            "modalityLabel": "phasediff",
-            "customLabels": "",
-            "criteria": {
-                "ProtocolName": "fieldmap3",
                 "ImageType": "P"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude2",
-            "customLabels": "",
-            "criteria": {
-                "ProtocolName": "fieldmap3",
-                "EchoNumber": 2,
-                "EchoTime": 0.00683,
-                "ImageType": "M"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude1",
-            "customLabels": "",
-            "criteria": {
-                "ProtocolName": "fieldmap3",
-                "EchoTime": 0.00437,
-                "ImageType": "M"
-            }
-        },
-                {
-            "dataType": "fmap",
-            "modalityLabel": "phasediff",
-            "customLabels": "",
-            "criteria": {
-                "ProtocolName": "fieldmap4",
-                "ImageType": "P"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude2",
-            "customLabels": "",
-            "criteria": {
-                "ProtocolName": "fieldmap4",
-                "EchoNumber": 2,
-                "EchoTime": 0.00683,
-                "ImageType": "M"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude1",
-            "customLabels": "",
-            "criteria": {
-                "ProtocolName": "fieldmap4",
-                "EchoTime": 0.00437,
-                "ImageType": "M"
             }
         }
     ]

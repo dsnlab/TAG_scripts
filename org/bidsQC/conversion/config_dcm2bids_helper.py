@@ -19,10 +19,10 @@ study = "tag"
 # They need to exist prior to running the script
 
 # Directories
-parentdir = os.path.join(os.sep, "projects", "dsnlab", "shared", "tag") # folder that contains bidsdir and codedir
-dicomdir = os.path.join(os.sep, "projects", "lcni", "dcm", "dsnlab", "Pfeifer", "TAG")
+parentdir = os.path.join(os.sep, "projects", group, "shared", study) # folder that contains bidsdir and codedir
+dicomdir = os.path.join(os.sep, "projects", "lcni", "dcm", group, "Pfeifer", "TAG")
 bidsdir = os.path.join(parentdir, "bids_data") # where the niftis will be put
-codedir = os.path.join(parentdir, "TAG_scripts", "org", "bids-conversion") # Contains subject_list.txt, config file, and dcm2bids_batch.py
+codedir = os.path.join(parentdir, "TAG_scripts", "org", "bidsQC", "conversion") # Contains subject_list.txt, config file, and dcm2bids_batch.py
 logdir = os.path.join(codedir, "logs_helper")
 
 # Log files
