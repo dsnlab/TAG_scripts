@@ -23,8 +23,9 @@ bidsdir = os.path.join(os.sep, 'projects', group, 'shared', study, 'bids_data') 
 sequence1 = Sequence('func', {'SVC_run-01':1, 'SVC_run-02':1, 'DSD_run-01':1, 'DSD_run-02':1})
 sequence3 = Sequence('anat', {'T1w':1})
 sequence4 = Sequence('fmap', {'magnitude1':1, 'magnitude2':1, "phasediff":1})
+timepoint1 = TimePoint('ses-wave1', [sequence1, sequence3, sequence4])
 timepoint2 = TimePoint('ses-wave2', [sequence1, sequence3, sequence4])
-expected_timepoints = [timepoint2]
+expected_timepoints = [timepoint1, timepoint2]
 
 
 # Files g-zipped or not? 
