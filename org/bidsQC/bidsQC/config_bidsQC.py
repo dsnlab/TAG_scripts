@@ -20,11 +20,11 @@ bidsdir = os.path.join(os.sep, 'projects', group, 'shared', study, 'bids_data') 
 
 # Create a dictionary (the thing below) for each timepoint in your study where the pairs are 'sequence_directory_name' : 'expected_number_runs'
 # Each unique version of a sequence gets its own entry, e.g. 'gng_acq-1' and 'gng_acq-2'
-sequence1 = Sequence('func', {'task1_acq-1':1, 'task1_acq-2':1, 'task2_acq-1':1, 'task2_acq-2':1})
+sequence1 = Sequence('func', {'SVC_run-01':1, 'SVC_run-02':1, 'DSD_run-01':1, 'DSD_run-02':1})
 sequence3 = Sequence('anat', {'T1w':1})
-sequence4 = Sequence('fmap', {'dir-ap':1, 'dir-pa':1})
-timepoint1 = TimePoint('ses-wave2', [sequence1, sequence3, sequence4])
-expected_timepoints = [timepoint1]
+sequence4 = Sequence('fmap', {'magnitude1':1, 'magnitude2':1, "phasediff":1})
+timepoint2 = TimePoint('ses-wave2', [sequence1, sequence3, sequence4])
+expected_timepoints = [timepoint2]
 
 
 # Files g-zipped or not? 
@@ -36,8 +36,8 @@ gzipped = True
 # Do we want runs based on sequence order? Yes = True
 # This is for tasks that use counterbalancing (of e.g. stimulus blocks) anf for which we want to identify the content
 # with the 'acq-' label and order administered with the 'task-' label.
-order_sequences = True
-tasks_to_order = 'task1', 'task2'
+order_sequences = False
+#tasks_to_order = 'SVC_run-01', 'SVC_run-02', 'DSD_run-01', 'DSD_run-02'
 
 
 # Paths that are required and that should not be changed
