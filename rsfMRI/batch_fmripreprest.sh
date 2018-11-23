@@ -15,7 +15,8 @@ container=BIDS/SingularityContainers/poldracklab_fmriprep_latest-2017-12-07-ba92
 study="tag"
 
 # Set subject list
-SUBJLIST=`cat sublist_restw2_n84.txt`
+#SUBJLIST=`cat sublist_restw2_n82.txt`
+SUBJLIST=`cat test.txt`
 
 # 
 for SUBJ in $SUBJLIST; do
@@ -23,6 +24,6 @@ for SUBJ in $SUBJLIST; do
 #SUBID=`echo $SUBJ|awk '{print $1}' FS=","`
 #SESSID=`echo $SUBJ|awk '{print $2}' FS=","`
 	
-sbatch --export ALL,subid=${SUBJ},group_dir=${group_dir},study=${study},container=${container} --job-name fmripreprest --partition=short --time=0-20:00:00 --mem=100G -o "${group_dir}"/"${study}"/TAG_scripts/rsfMRI/output/"${SUBJ}"_fmripreprest_output.txt -e "${group_dir}"/"${study}"/TAG_scripts/rsfMRI/output/"${SUBJ}"_fmripreprest_error.txt job_fmripreprest.sh
+sbatch --export ALL,subid=${SUBJ},group_dir=${group_dir},study=${study},container=${container} --job-name fmripreprest --partition=short --time=0-20:00:00 --mem=8G -o "${group_dir}"/"${study}"/TAG_scripts/rsfMRI/output/"${SUBJ}"_fmripreprest_output.txt -e "${group_dir}"/"${study}"/TAG_scripts/rsfMRI/output/"${SUBJ}"_fmripreprest_error.txt job_fmripreprest.sh
 	
 done
