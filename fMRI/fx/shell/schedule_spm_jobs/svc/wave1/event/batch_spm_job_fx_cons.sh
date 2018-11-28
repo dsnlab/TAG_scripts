@@ -1,16 +1,10 @@
 #!/bin/bash
 #--------------------------------------------------------------
-# Inputs:
-#	* STUDY = study name
-#	* SUBJLIST = subject_list.txt
-#	* SCRIPT = MATLAB script to create and execute batch job
-#	* PROCESS = running locally, via qsub, or on the Mac Pro
-#	* Edit output and error paths
-#
-# Outputs:
-#	* Executes spm_job.sh for $SUB and $SCRIPT
-#
-# D.Cos 2017.3.7
+# This script should be used to run FX con jobs and then 
+# calculate ACF parameters. It executes spm_job_residuals.sh
+# for $SUB and matlab FX $SCRIPT
+#	
+# D.Cos 2018.11.06
 #--------------------------------------------------------------
 
 
@@ -23,53 +17,43 @@ SUBJLIST=`cat subject_list_test.txt`
 # Which SID should be replaced?
 REPLACESID='001'
 
-#SPM Path
+# SPM Path
 SPM_PATH=/projects/dsnlab/shared/SPM12
 
 # Set MATLAB script path
 SCRIPT=${STUDY}/fMRI/fx/models/svc/wave1/fx_event_cons.m
 
+# Set shell script to execute
+SHELL_SCRIPT=spm_job_residuals.sh
+
 # Tag the results files
 RESULTS_INFIX=fx_event_cons
 
-# Set output dir
+# Set output dir and make it if it doesn't exist
 OUTPUTDIR=${STUDY}/fMRI/fx/shell/schedule_spm_jobs/svc/wave1/event/output
 
-# Set processor
-# use "qsub" for HPC
-# use "local" for local machine
-# use "parlocal" for local parallel processing
+if [ ! -d ${OUTPUTDIR} ]; then
+	mkdir -p ${OUTPUTDIR}
+fi
 
-PROCESS=slurm
+# N runs for residual calculation
+RUNS=(1 2)
 
-# Max jobs only matters for par local
-MAXJOBS=8
+# Make text file with residual files for each run
+echo $(printf "Res_%04d.nii\n" {1..180}) > residuals_run1.txt
+echo $(printf "Res_%04d.nii\n" {181..357}) > residuals_run2.txt
 
-#Only matters for slurm
+# Set job parameters
 cpuspertask=1
 mempercpu=8G
 
 # Create and execute batch job
-if [ "${PROCESS}" == "slurm" ]; then 
-	for SUB in $SUBJLIST
-	do
-	 echo "submitting via qsub"
-	 sbatch --export=REPLACESID=$REPLACESID,SCRIPT=$SCRIPT,SUB=$SUB,SPM_PATH=$SPM_PATH,PROCESS=$PROCESS  \
-		 --job-name=${RESULTS_INFIX} \
-		 -o "${OUTPUTDIR}"/"${SUB}"_${RESULTS_INFIX}.log \
-		 --cpus-per-task=${cpuspertask} \
-		 --mem-per-cpu=${mempercpu} \
-		 spm_job.sh
-	 sleep .25
-	done
-
-elif [ "${PROCESS}" == "local" ]; then 
-	for SUB in $SUBJLIST
-	do
-	 echo "submitting locally"
-	 bash spm_job.sh ${REPLACESID} ${SCRIPT} ${SUB} > "${OUTPUTDIR}"/"${SUBJ}"_${RESULTS_INFIX}_output.txt 2> /"${OUTPUTDIR}"/"${SUBJ}"_${RESULTS_INFIX}_error.txt
-	done
-
-elif [ "${PROCESS}" == "parlocal" ]; then 
-	parallel --verbose --results "${OUTPUTDIR}"/{}_${RESULTS_INFIX}_output -j${MAXJOBS} bash spm_job.sh ${REPLACESID} ${SCRIPT} :::: subject_list.txt
-fi
+for SUB in $SUBJLIST; do
+		sbatch --export ALL,REPLACESID=$REPLACESID,SCRIPT=$SCRIPT,SUB=$SUB,SPM_PATH=$SPM_PATH  \
+			--job-name=${RESULTS_INFIX} \
+		 	-o ${OUTPUTDIR}/${SUB}_${RESULTS_INFIX}.log \
+		 	--cpus-per-task=${cpuspertask} \
+		 	--mem-per-cpu=${mempercpu} \
+		 	${SHELL_SCRIPT}
+			sleep .25
+done
