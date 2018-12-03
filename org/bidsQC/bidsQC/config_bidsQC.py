@@ -20,8 +20,8 @@ bidsdir = os.path.join(os.sep, 'projects', group, 'shared', study, 'bids_data') 
 
 # Create a dictionary (the thing below) for each timepoint in your study where the pairs are 'sequence_directory_name' : 'expected_number_runs'
 # Each unique version of a sequence gets its own entry, e.g. 'gng_acq-1' and 'gng_acq-2'
-sequence1 = Sequence('func', {'SVC_run-01':1, 'SVC_run-02':1, 'DSD_run-01':1, 'DSD_run-02':1, 'rest_run-01':2, 'rest_run-02':1})
-sequence3 = Sequence('anat', {'T1w':2)
+sequence1 = Sequence('func', {'SVC_run-01':1, 'SVC_run-02':1, 'DSD_run-01':1, 'DSD_run-02':1, 'rest_run-01':2, 'rest_run-02':1, 'rest_run-03':1})
+sequence3 = Sequence('anat', {'T1w':1})
 sequence4 = Sequence('fmap', {'magnitude1':1, 'magnitude2':1, "phasediff":1})
 timepoint1 = TimePoint('ses-wave1', [sequence1, sequence3, sequence4])
 timepoint2 = TimePoint('ses-wave2', [sequence1, sequence3, sequence4])
