@@ -13,7 +13,7 @@ Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
 #You should set this to the behavioral directory on the TAG file server 
-workdir='/Volumes/psych-cog/dsnlab/TAG/behavior/' #"I:/TAG/behavior/" (for Sam)
+workdir='/Volumes/psych-cog/dsnlab/TAG/behavior/' #workdir="I:/TAG/behavior/" #(for Sam)
 ```
 
 Load required packages
@@ -32,7 +32,7 @@ rm(packages)
 
 Extract qualtrics data from website
 ```{r Extract Qualtrics, message=FALSE, warning=FALSE, include=FALSE}
-credsFile<-file.path(workdir,"Questionnaires/Confidential/credentials.yaml.DEFAULT", fsep="")
+credsFile<-file.path(workdir,"Questionnaires/RDOC/Confidential/credentials.yaml.DEFAULT", fsep="")
 creds<-creds_from_file(credsFile)
 
 exclude_survey=c("NV","GUT","TEST","Appointment","Newsletter","SOS","Sharing Task")
@@ -105,6 +105,7 @@ cleaned_survey_data[, SID := NULL]
 cleaned_survey_data <- cleaned_survey_data[!(tagid %in% c('TAG000', 'TAG999'))]
 cleaned_survey_data[tagid == '013 ', tagid := 'TAG013']
 cleaned_survey_data[tagid == '70', tagid := 'TAG070']
+cleaned_survey_data[tagid == 'TAG255', tagid := 'TAG225'] #SJC updated
 cleaned_survey_data[tagid == 'home', tagid := "TAG244"] #NV updated
 cleaned_survey_data[tagid == '541695411', tagid := "TAG040"] #NV updated
 cleaned_survey_data[tagid == "TAGHVU", tagid := "TAG070"] #NV updated
@@ -115,14 +116,10 @@ cleaned_survey_data <- as.data.frame(cleaned_survey_data)
 
 IDs<-unique(cleaned_survey_data$tagid)
 
-#Not sure what to do about the missing ID data
-missingID<-cleaned_survey_data %>%
-  filter(tagid=="")
-
 # Need to fix the IDs of participants
 # who showed an error with their qualtrics
 # home questionnaires
-misIDkey<-read.csv(paste0(workdir,"Questionnaires/Confidential/qidkey.csv"))
+misIDkey<-read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/qidkey.csv"))
 TAGHomeQ<-sortbyqid_data
 for (i in 1:length(misIDkey$qid)){
   TAGHomeQ <- TAGHomeQ %>%
@@ -143,7 +140,7 @@ cleaned_survey_data3<-cleaned_survey_data2 %>% distinct(tagid,item,value,survey_
 #Remove missing data and the duplicated data from the embedded ID home questionnaires
 cleaned_survey_data<-cleaned_survey_data3 %>% 
   filter(!tagid=="") %>% 
-  filter(!tagid=="SV_eqvWqPtsOO4uqPP") %>%
+  filter(!tagid=="SV_eqvWqPtsOO4uqPP") %>% 
   filter(grepl('TAG', tagid))
 
 # Change the one participant with a ghost SID
@@ -171,7 +168,7 @@ rm(surveyed)
 
 Load and clean redcap info
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
-redcapData <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
+redcapData <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
   # filter(!grepl("wave_2",redcap_event_name))
 redcapData_dob<-redcapData %>%
   select(dob,subject_spit_id) %>%
@@ -191,7 +188,7 @@ rm(redcapData_dob,redcapData,redcapData_sessiondates)
 
 Configure anthro information
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
-redcap_anthro <- read.csv(paste0(workdir,"Questionnaires/Confidential/redcap_anthro.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
+redcap_anthro <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_anthro.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
   filter(!anthro_doc=="") %>%
   extract(redcap_event_name, c('wave'), 'wave_([\\d]).*') %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
@@ -232,7 +229,7 @@ anthro<- left_join(anthro, anthro %>%
 
 anthro<-anthro %>% 
   filter(!is.na(anthro_doc)) %>%
-  mutate(age=round((interval(start =dob, end = anthro_doc) / duration(num = 1, units = "years")),2)) %>%
+  mutate(age=round((interval(start = dob, end = anthro_doc) / duration(num = 1, units = "years")),2)) %>%
   select(-sa_date,-sb_date,-contains("waist_"),-contains("height_"),-contains("weight_"),-dob)
 
 heights_graph<-ggplot(anthro, aes(x=height)) +
@@ -500,6 +497,12 @@ write.table(together,file =paste0(workdir,"RDoCdb/output/may2017/ndar_subject01.
 rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
 ```
 
+Modified Answers
+```{r}
+mod_df <- read.csv(paste0(workdir, "Questionnaires/Modified_Answers.csv"))
+
+```
+
 Prepare BFI-10
 ```{r}
 BFI10<-left_join(filter(cleaned_survey_data, grepl("BFI",item)) %>% 
@@ -580,7 +583,7 @@ BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 BFI10_Wave1_outdf <- BFI10_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(BFI10_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/BFI10_Wave1.csv"))
+write.csv(BFI10_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/BFI10_Wave1.csv"))
 
 ## Graph it
 BFI10_Wave1_totals<-BFI10_Wave1 %>%
@@ -738,7 +741,7 @@ CAMM_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 CAMM_Wave1_outdf <- CAMM_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(CAMM_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/CAMM_Wave1.csv"))
+write.csv(CAMM_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CAMM_Wave1.csv"))
 
 ## Graph it
 CAMM_Wave1_total_graph<-ggplot(CAMM_Wave1, aes(x=CAMM_total, colour="deeppink")) +
@@ -901,7 +904,7 @@ PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>% #NV: Th
 
 ## Save it
 PDS_Wave1_outdf <- PDS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) #NV: given comment above, I'm now saving another filtered PDS_wave1 document for saving output.
-write.csv(PDS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/PDS_Wave1.csv"))
+write.csv(PDS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PDS_Wave1.csv"))
 
 ## Graph it
 PDS_Wave1_pdss_graph<-ggplot(PDS_Wave1, aes(x=pdss, colour="deeppink")) +
@@ -993,7 +996,7 @@ PBIP_Wave1<-left_join(PBIP,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 PBIP_Wave1_outdf <- PBIP_Wave1 %>% filter(!grepl("W2|W3",survey_name)) #NV: Same comment as PDS re filtering to wave 1.
-write.csv(PBIP_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/PBIP_Wave1.csv"))
+write.csv(PBIP_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PBIP_Wave1.csv"))
 
 ## Graph it
 PBIP_Wave1_pbip_graph<-ggplot(PBIP_Wave1, aes(x=stage, colour="deeppink")) +
@@ -1001,7 +1004,7 @@ PBIP_Wave1_pbip_graph<-ggplot(PBIP_Wave1, aes(x=stage, colour="deeppink")) +
   ggtitle(paste0("Tanner stage for ",length(PBIP_Wave1$stage[!is.na(PBIP_Wave1$stage)])," Wave 1 participants"))
 
 options(scipen=999)
-PBIP_PDS_Wave1<-left_join(PBIP_Wave1,read.csv(paste0(workdir,"Questionnaires/Wave_1/PDS_Wave1.csv"),header=TRUE,stringsAsFactors = FALSE))
+PBIP_PDS_Wave1<-left_join(PBIP_Wave1,read.csv(paste0(workdir,"Questionnaires/Wave1/PDS_Wave1.csv"),header=TRUE,stringsAsFactors = FALSE))
 PBIP_Wave1_pbip_by_pds_graph<-ggplot(PBIP_PDS_Wave1, aes(x=pdss,y=stage)) +
   geom_point(show.legend = FALSE)+
   ggtitle(paste0("PDSS by age for ",length(PBIP_PDS_Wave1$stage[!is.na(PBIP_PDS_Wave1$stage)])," Wave 1 participants. r = ",
@@ -1103,7 +1106,7 @@ CARE_R_SOC_Wave1<-left_join(CARE_R_SOC,survey_date, by = c("tagid","survey_name"
 
 ## Save it
 CARE_R_SOC_Wave1_outdf <- CARE_R_SOC_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(CARE_R_SOC_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/CARE_R_SOC_Wave1.csv"))
+write.csv(CARE_R_SOC_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CARE_R_SOC_Wave1.csv"))
 
 ## Graph it
 CARE_R_SOC_Wave1_DO<-CARE_R_SOC_Wave1 %>%
@@ -1250,7 +1253,7 @@ CESDC_Wave1<-left_join(CESDC,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 CESDC_Wave1_outdf <- CESDC_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(CESDC_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/CESDC_Wave1.csv"))
+write.csv(CESDC_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CESDC_Wave1.csv"))
 
 ## Graph it
 CESDC_Wave1_totals_graph<-ggplot(CESDC_Wave1, aes(x=CES_DC_total, colour="deeppink")) +
@@ -1354,7 +1357,7 @@ CRQ_Wave1<-left_join(CRQ,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 CRQ_Wave1_outdf <- CRQ_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(CRQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CRQ_Wave1.csv"))
+write.csv(CRQ_Wave1, file = paste0(workdir,"Questionnaires/Wave1/CRQ_Wave1.csv"))
 
 ## Graph it
 CRQ_Wave1_totals<-CRQ_Wave1 %>%
@@ -1539,7 +1542,7 @@ CTQ_Wave1<-left_join(CTQ,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 CTQ_Wave1_outdf <- CTQ_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(CTQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/CTQ_Wave1.csv"))
+write.csv(CTQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CTQ_Wave1.csv"))
 
 ## Graph it
 CTQ_Wave1_totals<-CTQ_Wave1 %>%
@@ -1696,7 +1699,7 @@ DIT_Wave1<-left_join(DIT,survey_date, by = c("tagid","survey_name")) %>%
          DIT_group_mean=round(rowMeans(cbind(DIT_11,DIT_12,DIT_13,DIT_14), na.rm=T),3))
 
 ## Save it
-write.csv(DIT_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/DIT_Wave1.csv"))
+write.csv(DIT_Wave1, file = paste0(workdir,"Questionnaires/Wave1/DIT_Wave1.csv"))
 
 ## Graph it
 DIT_Wave1_totals<-DIT_Wave1 %>%
@@ -1809,9 +1812,13 @@ DSHI_Wave1<-left_join(DSHI,survey_date, by = c("tagid","survey_name")) %>%
                                           ))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob)
 
+# Changing W1 Items
+updates <- read.csv(paste0(workdir,"Questionnaires/Modified_Answers.csv"))
+#DSHI_Wave1_Updated <- left_join(DSHI_Wave1, )
+
 ## Save it
 DSHI_Wave1_outdf <- DSHI_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(DSHI_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/DSHI_Wave1.csv"))
+write.csv(DSHI_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/DSHI_Wave1.csv"))
 
 ## Make RDOC ready file
 ndar_dshi_data <- left_join(DSHI_Wave1,redcap_cleaned,by="tagid") %>%
@@ -2054,7 +2061,7 @@ EHI_Wave1<-left_join(EHI,survey_date, by = c("tagid","survey_name")) %>%
 EHI_Wave1_outdf <- EHI_Wave1 %>% filter(!grepl("W2|W3",survey_name)) %>% 
   mutate(EHI_1=EHI_1r,EHI_2=EHI_2r,EHI_3=EHI_3r,EHI_4=EHI_4r,EHI_5=EHI_5r,
          EHI_6=EHI_6r,EHI_7=EHI_7r,EHI_8=EHI_8r,EHI_9=EHI_9r,EHI_10=EHI_10r)
-write.csv(EHI_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/EHI_Wave1.csv"))
+write.csv(EHI_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/EHI_Wave1.csv"))
 
 ## Make RDOC ready file
 ndar_ehi_data <- left_join(EHI_Wave1,redcap_cleaned,by="tagid") %>%
@@ -2190,7 +2197,7 @@ ERQ_Wave1<-left_join(ERQ,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 ERQ_Wave1_outdf <- ERQ_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(ERQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/ERQ_Wave1.csv"))
+write.csv(ERQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/ERQ_Wave1.csv"))
 
 ## Graph it
 ERQ_Wave1_totals<-ERQ_Wave1 %>%
@@ -2328,7 +2335,7 @@ IFS_Wave1<-left_join(IFS,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 IFS_Wave1_outdf <- IFS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(IFS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/IFS_Wave1.csv"))
+write.csv(IFS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/IFS_Wave1.csv"))
 
 ## Graph it
 IFS_Wave1_totals<-IFS_Wave1 %>%
@@ -2529,7 +2536,7 @@ IRI_Wave1<-left_join(IRI,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 IRI_Wave1_outdf <- IRI_Wave1 %>% filter(!grepl("W2|W3",survey_name))
-write.csv(IRI_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/IRI_Wave1.csv"))
+write.csv(IRI_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/IRI_Wave1.csv"))
 
 ## Graph it
 IRI_Wave1_totals<-IRI_Wave1 %>%
@@ -2621,6 +2628,17 @@ rm(together,part2,part3,iri_df_header,iri_temp,iri_temp_df,IRI,IRI_Wave1,IRI_Wav
 
 Prepare K-SRQ 
 ```{r}
+#duplicate identifiers - needs to be fixed
+KSRQ <- left_join(filter(cleaned_survey_data, grepl("K_SRQ", item)) %>%
+                    mutate(value=as.numeric(value)) %>% 
+                    filter(!is.na(value)) %>%
+                    distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                    filter(survey_name!="W2S1 - Current V1") %>% 
+                    spread(item, value),
+                  redcap_cleaned %>%
+                  filter(!is.na(dob),!is.na(sa_date)) %>%
+                  select(tagid, sa_date, sb_date, dob),by="tagid")
+
 KSRQ<-left_join(filter(cleaned_survey_data, grepl("K_SRQ",item)) %>%
                   mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value)) %>%
@@ -2631,6 +2649,7 @@ KSRQ<-left_join(filter(cleaned_survey_data, grepl("K_SRQ",item)) %>%
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
                   select(tagid, sa_date, sb_date, dob),by="tagid")
+
 
 KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
@@ -2793,7 +2812,7 @@ MSPSS_Wave1<-left_join(MSPSS,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 MSPSS_Wave1_outdf <- MSPSS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(MSPSS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/MSPSS_Wave1.csv"))
+write.csv(MSPSS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/MSPSS_Wave1.csv"))
 
 ## Graph it
 MSPSS_Wave1_totals<-MSPSS_Wave1 %>%
@@ -2925,7 +2944,7 @@ PSS_Wave1<-left_join(PSS,survey_date, by = c("tagid","survey_name")) %>%
          PSS_mean=rowMeans(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=T))
   
 ## Save it
-write.csv(PSS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PSS_Wave1.csv"))
+write.csv(PSS_Wave1, file = paste0(workdir,"Questionnaires/Wave1/PSS_Wave1.csv"))
 
 ## Graph it
 PSS_Wave1_totals<-PSS_Wave1 %>%
@@ -3171,7 +3190,7 @@ RMET_Wave1<-left_join(RMET,survey_date, by = c("tagid","survey_name")) %>%
                                         RMET_25_correct,RMET_26_correct,
                                         RMET_27_correct,RMET_28_correct),na.rm = T)/RMET_1_numcompleted)*100)
 ## Save it
-write.csv(RMET_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/RMET_Wave1.csv"))
+write.csv(RMET_Wave1, file = paste0(workdir,"Questionnaires/Wave1/RMET_Wave1.csv"))
 
 ## Graph it
 RMET_Wave1_percentcorrect<-RMET_Wave1 %>%
@@ -3255,6 +3274,7 @@ rm(together,part2,part3,rmet_df_header,rmet_temp,rmet_temp_df,RMET,RMET_Wave1,RM
 
 Prepare R-SCS-C
 ```{r}
+#duplicate identifiers error - needs to be fixed
 RSCS<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
@@ -3486,7 +3506,7 @@ SAQ_Wave1<-left_join(SAQ,survey_date, by = c("tagid","survey_name")) %>%
          SAQ_avoidgoals_mean=rowMeans(cbind(SAQ_15,SAQ_16,SAQ_17,SAQ_18,SAQ_19,SAQ_20,SAQ_21), na.rm=T))
 
 ## Save it
-write.csv(SAQ_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SAQ_Wave1.csv"))
+write.csv(SAQ_Wave1, file = paste0(workdir,"Questionnaires/Wave1/SAQ_Wave1.csv"))
 
 ## Graph it
 SAQ_Wave1_totals<-SAQ_Wave1 %>%
@@ -3613,7 +3633,7 @@ SCARED_Wave1<-left_join(SCARED,survey_date, by = c("tagid","survey_name")) %>%
   
 
 ## Save it
-write.csv(SCARED_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SCARED_Wave1.csv"))
+write.csv(SCARED_Wave1, file = paste0(workdir,"Questionnaires/Wave1/SCARED_Wave1.csv"))
 
 ## Graph it
 SCARED_Wave1_totals<-SCARED_Wave1 %>%
@@ -3785,7 +3805,7 @@ SCC_Wave1<-left_join(SCC,survey_date, by = c("tagid","survey_name")) %>%
          SCC_mean=rowMeans(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=T))
 
 ## Save it
-write.csv(SCC_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SCC_Wave1.csv"))
+write.csv(SCC_Wave1, file = paste0(workdir,"Questionnaires/Wave1/SCC_Wave1.csv"))
 
 ## Graph it
 SCC_Wave1_total<-SCC_Wave1 %>%
@@ -4094,7 +4114,7 @@ SPPA_Wave1<-left_join(SPPA,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 SPPA_Wave1_outdf <- SPPA_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(SPPA_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/SPPA_Wave1.csv"))
+write.csv(SPPA_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/SPPA_Wave1.csv"))
 
 ## Graph it
 SPPA_Wave1_totals<-SPPA_Wave1 %>%
@@ -4279,7 +4299,7 @@ SSDS_Wave1<-left_join(SSDS,survey_date, by = c("tagid","survey_name")) %>%
   
 ## Save it
 SSDS_Wave1_outdf <- SSDS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(SSDS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/SSDS_Wave1.csv"))
+write.csv(SSDS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/SSDS_Wave1.csv"))
 
 ## Graph it
 SSDS_Wave1_totals<-SSDS_Wave1 %>%
@@ -4406,7 +4426,7 @@ PANAS_Wave1<-left_join(PANAS,survey_date, by = c("tagid","survey_name")) %>%
          PANAS_neg_mean=rowMeans(cbind(PANAS_C_2,PANAS_C_4,PANAS_C_6,PANAS_C_8,PANAS_C_10),na.rm=TRUE))
 
 ## Save it
-write.csv(PANAS_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/PANAS_Wave1.csv"))
+write.csv(PANAS_Wave1, file = paste0(workdir,"Questionnaires/Wave1/PANAS_Wave1.csv"))
 
 ## Graph it
 PANAS_Wave1_totals<-PANAS_Wave1 %>%
@@ -4639,7 +4659,7 @@ YRBS_Wave1<-left_join(YRBS,survey_date, by = c("tagid","survey_name")) %>%
 
 ## Save it
 YRBS_Wave1_outdf <- YRBS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(YRBS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/YRBS_Wave1.csv"))
+write.csv(YRBS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/YRBS_Wave1.csv"))
 
 
 ```
@@ -4675,7 +4695,7 @@ CBCL_Wave1<-left_join(CBCL,survey_date, by = c("tagid","survey_name")) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) 
 
 ## Save it
-write.csv(CBCL_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/CBCL_Wave1.csv"))
+write.csv(CBCL_Wave1, file = paste0(workdir,"Questionnaires/Wave1/CBCL_Wave1.csv"))
 
 
 ## Make RDOC ready file
@@ -5037,7 +5057,7 @@ PDS_parent_Wave1<-left_join(PDS_parent,survey_date, by = c("tagid","survey_name"
 
 ## Save it
 PDS_parent_Wave1_outdf <- PDS_parent_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(PDS_parent_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/PDS_parent_Wave1.csv"))
+write.csv(PDS_parent_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PDS_parent_Wave1.csv"))
 ```
 
 Prepare Parent-report CES_D 
@@ -5090,7 +5110,7 @@ CESD_parent_Wave1<-left_join(CESD_parent,survey_date, by = c("tagid","survey_nam
 
 ## Save it
 CESD_parent_Wave1_outdf <- CESD_parent_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
-write.csv(CESD_parent_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave_1/CESD_parent_Wave1.csv"))
+write.csv(CESD_parent_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CESD_parent_Wave1.csv"))
 
 ## Graph it
 CESD_parent_Wave1_totals_graph<-ggplot(CESD_parent_Wave1, aes(x=CES_D_total, colour="deeppink")) +
@@ -5105,6 +5125,7 @@ CESD_parent_Wave1_means_graph<-ggplot(CESD_parent_Wave1, aes(x=CES_D_mean, colou
 
 Prepare Parent-report DEM/SES
 ```{r}
+#Error-dataframe not found
 x <- c("^Sib","Ethn","Edu","Inc","Free_Lunch","Gender")
 qualtricsData_raw_dem <-filter(qualtricsData_raw_long, grepl("Parent",survey_name)) %>% 
   filter(grepl(paste(x, collapse = "|"),item)) %>%
