@@ -16,7 +16,7 @@ if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
 lapply(packages, library, character.only = TRUE)
 # Set directory
 getwd()
-workdir=as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
+# workdir=as.character(read.table((paste0(getwd(),"/org/workingdirectory.txt")))[[1]])
 ```
 
 Set graph/plot options
@@ -106,7 +106,7 @@ print(paste0(nrow(output.df%>%filter(viable=="yes"))," have at least 5 minutes o
 
 Load behavioral data
 ```{r Behavior, message=FALSE, warning=FALSE, include=FALSE}
-redcapData <- read.csv(paste0("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE)
+redcapData <- read.csv(paste0("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/RDOC/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE)
 redcapData_dob<-redcapData %>%
   select(dob,subject_spit_id) %>%
   filter(!dob=="")
@@ -120,38 +120,47 @@ redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
   mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
   select(-subject_spit_id)
 
-CESDC<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/CESDC_Wave1.csv")) %>%
-  mutate(sub=paste0("sub-",tagid)) %>%
-  select(sub, CES_DC_total, CES_DC_mean) %>%
+#redcapLocal <- write.csv(redcapData, "redcapData.csv")
+
+KSADS<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/wave2_Depression_addedGUT01.csv")) %>%
+  filter("Participated GUT" > 1)
+# remove <- KSADS[,(3:272)]
+KSADS_reduced <-KSADS[,c(1,2,273:338)] %>%
+  mutate(sub=paste0("sub-", ID)) %>%
 arrange(sub)
-# glimpse(SCARED)
-# class(SCARED)
-# names(SCARED)
-# summary(SCARED)
+
+#ksads_reduced_local <- write.csv(KSADS_reduced, "KSADS_reduced.csv")
+
+CESDC_wave2<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/CESDC_Wave12.csv")) %>%
+  mutate(sub=paste0("sub-",tagid)) %>%
+arrange(sub)
+
+# cesdc_wave2_local <- write.csv(CESDC_wave2, "CESDC_wave2.csv")
 # view(dfSummary(CESDC))
 
-SCARED<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/SCARED_Wave1.csv")) %>%
-  mutate(sub=paste0("sub-",tagid)) %>%
-  select(sub, SCARED_mean,	SCARED_ptsd_mean,	SCARED_anxiety_mean) %>%
-  arrange(sub)
-# glimpse(SCARED)
-# class(SCARED)
-# names(SCARED)
-# summary(SCARED)
-# view(dfSummary(SCARED))
 
 
-# CTQ<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/CTQ_Wave1.csv")) %>%
-#   mutate(sub=paste0("sub-",tagid)) %>%
-#   select(sub, c(73:84)) %>%
-#   arrange(sub)
-
+local_cesdc<-fread(paste0("~/Desktop/CESDC_wave2.csv"))
+local_ksads<-fread(paste0("~/Desktop/KSADS_reduced.csv"))
+####before joining, fix the names to be the same sub ID format. Changes to make sure TAG_001 is now TAG001
+local_ksads$ID<- str_replace_all(local_ksads$ID, "_", "")
+local_ksads$ID<- str_replace_all(local_ksads$ID, "-", "")
+local_ksads <- local_ksads[,-70]
+local_cesdc <- local_cesdc[, -(2:3)]
+local_ksads_sub <- local_ksads %>% mutate(sub=paste0("sub-",ID)) %>%
+arrange(sub)
+  
 library(purrr)
-Dep_Anx <- list(CESDC, SCARED) %>%
-  reduce(full_join, by= "sub") 
+KSADS_CESDC <- list(local_cesdc, local_ksads_sub) %>%
+  reduce(full_join, by= "sub") %>%
+  arrange(sub)
+ 
+cnames <- names(KSADS_CESDC)<-gsub("\\s","_",names(KSADS_CESDC))
+colnames(KSADS_CESDC) <- cnames
 
-
-
+KSADS_CESDC_gut <- KSADS_CESDC %>%
+  filter(Participated_GUT == 1)
+view(dfSummary(KSADS_CESDC_gut))
 ```
 
 #mock PCA
@@ -162,7 +171,7 @@ library("FactoMineR")
 library("factoextra")
 library(gplots)
 
-reduced_data <- na.omit(Dep_Anx)
+reduced_data <- na.omit(KSADS_CESDC_gut)
 reduced_data <- as_data_frame(reduced_data)
 
 #write.csv(reduced_data, "reduced_data.csv")
