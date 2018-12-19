@@ -6,7 +6,6 @@
 
 echo -e "\nSetting up AFNI"
 
-module use /projects/tau/packages/Modules/modulefiles/
 module load afni
 
 date
@@ -20,10 +19,10 @@ subj="${SUBID}"
 echo $subj
 group_id=tag
 echo $group_id
-pipeline=rsfMRI_preproc_noFDscrub_yesWBVR
+pipeline=rsfMRI_preproc_wave1
 
 # set data directories
-top_dir=/projects/dsnlab/"${group_id}"
+top_dir=/projects/dsnlab/shared/"${group_id}"
 echo $top_dir
 rsfMRI_output=$top_dir/bids_data/derivatives/$pipeline/$subj/$subj.results
 echo $rsfMRI_output

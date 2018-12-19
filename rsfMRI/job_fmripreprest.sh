@@ -14,9 +14,6 @@ echo -e "\nFmriprep on $subid"
 echo -e "\nContainer: $image"
 echo -e "\nSubject directory: $bids_dir"
 
-# Source task list 
-task="rest"
-
 # Load packages
 module load singularity
 
@@ -26,6 +23,9 @@ mkdir -p $working_dir
 # Run container using singularity
 cd $bids_dir
 
+#Source task list
+task="rest"
+
 #for task in $tasks; do
 
 echo -e "\nStarting on: $task"
@@ -33,7 +33,13 @@ echo -e "\n"
 
 export FS_LICENSE=/projects/dsnlab/shared/tag/TAG_scripts/sMRI/license.txt
 
-singularity run --bind "${group_dir}":"${group_dir}" $image $bids_dir $derivatives participant --participant_label $subid -w $working_dir -t $task --use-aroma --write-graph --output-space {'T1w','template','fsaverage5','fsnative'} --fs-license-file $FS_LICENSE
+singularity run --bind "${group_dir}":"${group_dir}" ${image} ${bids_dir} ${derivatives} participant \
+--participant_label ${subid} \
+ -w ${working_dir} \
+ -t ${task} --use-aroma --write-graph \
+--output-space {'T1w','template','fsaverage5','fsnative'} \
+--mem-mb 100000 \
+--fs-license-file $FS_LICENSE
 
 echo -e "\n"
 echo -e "\ndone"

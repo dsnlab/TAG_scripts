@@ -7,11 +7,10 @@
 #
 
 # Set your study
-STUDY=/projects/dsnlab/tag
+STUDY=/projects/dsnlab/shared/tag
 
 # Set subject list
-SUBJLIST=`cat subject_list.txt`
-#SUBJLIST=`cat alignment.txt`
+SUBJLIST=`cat sub_test.txt`
 
 
 for SUBJ in $SUBJLIST

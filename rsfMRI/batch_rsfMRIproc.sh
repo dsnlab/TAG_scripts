@@ -9,10 +9,10 @@
 STUDY=/projects/dsnlab/shared/tag
 
 # Set subject list
-SUBJLIST=`cat sub_test.txt`
+SUBJLIST=`cat redo_subs.txt`
 
 for SUBJ in $SUBJLIST
- do sbatch --export SUBID=${SUBJ} --job-name rsfMRIproc --partition=short --mem-per-cpu=6G --cpus-per-task=1 -o "${STUDY}"/TAG_scripts/rsfMRI/output/"${SUBJ}"_rsfMRIproc_output.txt -e "${STUDY}"/TAG_scripts/rsfMRI/output/"${SUBJ}"_rsfMRIproc_error.txt job_rsfMRIproc.tcsh
+ do sbatch --export SUBID=${SUBJ} --job-name rsfMRIproc --partition=short --mem-per-cpu=8G --cpus-per-task=1 -o "${STUDY}"/TAG_scripts/rsfMRI/output/"${SUBJ}"_rsfMRIproc_output.txt -e "${STUDY}"/TAG_scripts/rsfMRI/output/"${SUBJ}"_rsfMRIproc_error.txt job_rsfMRIproc.tcsh
 done
 
 
