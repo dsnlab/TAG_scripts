@@ -1,7 +1,7 @@
 ---
-title: "Flannery Depression Project"
+title: "Behav for Diss"
 author: "Kate & Jessica WITH JOHN"
-date: "August 16, 2018"
+date: "Dec 18, 2018"
 output: html_document
 ---
 
@@ -9,7 +9,7 @@ Load required packages
 ```{r Load Required Packages, message=FALSE, warning=FALSE, include=FALSE}
 ## Load required packages ##
 packages <-  c("lme4", "nlme", "ggplot2", "zoo", "dplyr", "tidyr", "knitr",
-              "parallel", "data.table", "lubridate", "data.table", "stringr", "summarytools")
+              "parallel", "data.table", "lubridate", "data.table", "stringr", "summarytools", "purrr")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
@@ -36,14 +36,87 @@ resave_plots=FALSE
 
 heatmap_color_palette <- colorRampPalette(c("#fde0dd", "#fa9fb5", "#c51b8a"))
 
-group_labels<-c("community"='Community', 
-                "foster"="Child Welfare Services")
-
 colour_labels=c("#fa9fb5", "#ae017e")
 
 purple_colours=c("#bcbddc","#756bb1","#54278f")
 
 group_colors <- c("community" = "#fa9fb5", "foster" = "#ae017e")
+```
+
+Load behavioral data
+```{r Behavior, message=FALSE, warning=FALSE, include=FALSE}
+redcapData <- read.csv(paste0("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/RDOC/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE)
+redcapData_dob<-redcapData %>%
+  select(dob,subject_spit_id) %>%
+  filter(!dob=="")
+redcapData_sessiondates<-redcapData %>%
+  select(sa_date,sb_date,subject_spit_id) %>%
+  filter(!sa_date=="")
+redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
+  mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
+  filter(!subject_spit_id=="TAG_001P") %>%
+  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid)) %>%
+  mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
+  select(-subject_spit_id)
+
+#redcapLocal <- write.csv(redcapData, "redcapData.csv")
+
+KSADS<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/wave2_Depression_addedGUT01.csv")) %>%
+  filter("Participated GUT" > 1)
+# remove <- KSADS[,(3:272)]
+KSADS_reduced <-KSADS[,c(1,2,273:338, 1111:1368)] 
+
+#ksads_reduced_local <- write.csv(KSADS_reduced, "KSADS_reduced.csv")
+
+CESDC_wave2<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/CESDC_Wave12.csv")) %>%
+  mutate(sub=paste0("sub-",tagid)) %>%
+arrange(sub)
+
+# cesdc_wave2_local <- write.csv(CESDC_wave2, "CESDC_wave2.csv")
+# view(dfSummary(CESDC))
+
+
+KSADS_reduced$ID<- str_replace_all(KSADS_reduced$ID, "_", "")
+KSADS_reduced$ID<- str_replace_all(KSADS_reduced$ID, "-", "")
+KSADS_wave2 <- KSADS_reduced %>% mutate(sub=paste0("sub-",ID)) %>%
+arrange(sub)
+
+CTQ<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/CTQ_Wave12.csv")) %>% 
+mutate(sub=paste0("sub-",tagid)) %>%
+arrange(sub)
+  CTQ_reduced <-CTQ[,-c(1,3:71)]  %>%
+  filter(grepl("W2", survey_name))
+  
+KSADS_CESDC_CTQ <- list(CESDC_wave2, KSADS_wave2, CTQ_reduced) %>%
+  reduce(full_join, by= "sub") %>%
+  arrange(sub)
+
+#because some were named with space in title!
+cnames <- names(KSADS_CESDC_CTQ)<-gsub("\\s","_",names(KSADS_CESDC_CTQ))
+colnames(KSADS_CESDC_CTQ) <- cnames
+
+KSADS_CESDC_CTQ_gut <- KSADS_CESDC_CTQ %>%
+  filter(Participated_GUT == 1)
+
+view(dfSummary(KSADS_CESDC_CTQ_gut[,c(29,30,35:36, 39:40,103:114)]))
+
+###for running locally (no connection to cas)###
+
+# local_cesdc<-fread(paste0("~/Desktop/CESDC_wave2.csv"))
+# local_ksads<-fread(paste0("~/Desktop/KSADS_reduced.csv"))
+####before joining, fix the names to be the same sub ID format. Changes to make sure TAG_001 is now TAG001
+# local_ksads$ID<- str_replace_all(local_ksads$ID, "_", "")
+# local_ksads$ID<- str_replace_all(local_ksads$ID, "-", "")
+# local_ksads <- local_ksads[,-70]
+# local_cesdc <- local_cesdc[, -(2:3)]
+# local_ksads_sub <- local_ksads %>% mutate(sub=paste0("sub-",ID)) %>%
+# arrange(sub)
+#   
+# KSADS_CESDC <- list(local_cesdc, local_ksads_sub) %>%
+#   reduce(full_join, by= "sub") %>%
+#   arrange(sub)
+ 
+
 ```
 
 Extract rsfcMRI preprocessing stats
@@ -103,161 +176,6 @@ sublist<-output.df %>%
 print(paste0(nrow(output.df%>%filter(viable=="yes"))," have at least 5 minutes of good data"))
 ```
 
-
-Load behavioral data
-```{r Behavior, message=FALSE, warning=FALSE, include=FALSE}
-redcapData <- read.csv(paste0("/Volumes/psych-cog/dsnlab/TAG/behavior/Questionnaires/RDOC/Confidential/redcap_dates.csv"), header = TRUE, stringsAsFactors = FALSE)
-redcapData_dob<-redcapData %>%
-  select(dob,subject_spit_id) %>%
-  filter(!dob=="")
-redcapData_sessiondates<-redcapData %>%
-  select(sa_date,sb_date,subject_spit_id) %>%
-  filter(!sa_date=="")
-redcap_cleaned<-merge(redcapData_sessiondates,redcapData_dob) %>%
-  mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
-  filter(!subject_spit_id=="TAG_001P") %>%
-  mutate(tagid=ifelse(nchar(tagid)==4,substring(subject_spit_id,first=5,last=length(subject_spit_id)),tagid)) %>%
-  mutate(tagid=sprintf("TAG%03d",as.integer(tagid))) %>%
-  select(-subject_spit_id)
-
-#redcapLocal <- write.csv(redcapData, "redcapData.csv")
-
-KSADS<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/wave2_Depression_addedGUT01.csv")) %>%
-  filter("Participated GUT" > 1)
-# remove <- KSADS[,(3:272)]
-KSADS_reduced <-KSADS[,c(1,2,273:338)] %>%
-  mutate(sub=paste0("sub-", ID)) %>%
-arrange(sub)
-
-#ksads_reduced_local <- write.csv(KSADS_reduced, "KSADS_reduced.csv")
-
-CESDC_wave2<-fread(paste0("/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/Jessica_Depression/FLUX2018/CESDC_Wave12.csv")) %>%
-  mutate(sub=paste0("sub-",tagid)) %>%
-arrange(sub)
-
-# cesdc_wave2_local <- write.csv(CESDC_wave2, "CESDC_wave2.csv")
-# view(dfSummary(CESDC))
-
-
-
-local_cesdc<-fread(paste0("~/Desktop/CESDC_wave2.csv"))
-local_ksads<-fread(paste0("~/Desktop/KSADS_reduced.csv"))
-####before joining, fix the names to be the same sub ID format. Changes to make sure TAG_001 is now TAG001
-local_ksads$ID<- str_replace_all(local_ksads$ID, "_", "")
-local_ksads$ID<- str_replace_all(local_ksads$ID, "-", "")
-local_ksads <- local_ksads[,-70]
-local_cesdc <- local_cesdc[, -(2:3)]
-local_ksads_sub <- local_ksads %>% mutate(sub=paste0("sub-",ID)) %>%
-arrange(sub)
-  
-library(purrr)
-KSADS_CESDC <- list(local_cesdc, local_ksads_sub) %>%
-  reduce(full_join, by= "sub") %>%
-  arrange(sub)
- 
-cnames <- names(KSADS_CESDC)<-gsub("\\s","_",names(KSADS_CESDC))
-colnames(KSADS_CESDC) <- cnames
-
-KSADS_CESDC_gut <- KSADS_CESDC %>%
-  filter(Participated_GUT == 1)
-view(dfSummary(KSADS_CESDC_gut))
-```
-
-#mock PCA
-http://rfunctions.blogspot.com/2015/01/pca-principal-component-analysis.html 
-```{r}
-library("vegan")
-library("FactoMineR")
-library("factoextra")
-library(gplots)
-
-reduced_data <- na.omit(KSADS_CESDC_gut)
-reduced_data <- as_data_frame(reduced_data)
-
-#write.csv(reduced_data, "reduced_data.csv")
-# Install packages.
-
-# install.packages("rgl")
-# install.packages("devtools")
-
-# Load packages.
-
-library(rgl)
-
-# Install another package using "devtools".
-
-library(devtools)
-# install_github("ggbiplot", "vqv")
-library(ggbiplot)
-
-# str(reduced_data)
-reduced_data$CES_DC_total<-  as.numeric(reduced_data$CES_DC_total)
-ir.pca <- prcomp(reduced_data[,c(2:6)], center = TRUE, scale. = TRUE)
-# ir.pca <- prcomp(reduced_data[,c(3:6, 13:18)], center = TRUE, scale. = TRUE)
-ir.pca
-summary(ir.pca)
-loadings <- ir.pca$rotation
-scores <- ir.pca$x
-correlations <- t(loadings)*ir.pca$sdev
-
-plot(ir.pca, type = "l",main="")
-
-source ('http://www.davidzeleny.net/anadat-r/doku.php/en:numecolr:evplot?do=export_code&codeblock=1')
-
-ev <- ir.pca$sdev^2
-evplot(ev)
-library(ggplot2)
-ggbiplot(ir.pca, choices=c(1,2), obs.scale = 1, var.scale = 1)
-
-# ggbiplot(ir.pca,choices=c(1,2), groups=CES_DC_total[,2] obs.scale = 1, var.scale = 1, ellipse = TRUE)
-
-plot3d(scores[,1:3],size=2.5)
-text3d(loadings[,1:3], texts=rownames(loadings), col="red")
-coords <- NULL
-for (i in 1:nrow(loadings)) {
-  coords <- rbind(coords, rbind(c(0,0,0),loadings[i,1:3]))}
-lines3d(coords, col="red", lwd=4)
-
-#merge PCA 1 into redcued data set for mood variable
-scores <- tbl_df(scores)
-library(tibble)
-scores_2 <- rownames_to_column(scores, var = "ID")
-
-PCA_combined<- scores_2 %>% 
-  bind_cols(reduced_data)
-
-write.csv(PCA_combined, "PCA_combined.csv")
-
-```
-
-Filter sublist
-```{r}
-
-# many of these subs need to be re-run because HPC timed out on their processing
-sublist<-sublist %>%
-  filter(!sub=="sub-TAG000",
-         !sub=="sub-TAG074",
-         !sub=="sub-TAG087",
-         !sub=="sub-TAG120",
-         !sub=="sub-TAG122",
-         !sub=="sub-TAG125",
-         !sub=="sub-TAG155",
-         !sub=="sub-TAG166",
-         !sub=="sub-TAG175",
-         !sub=="sub-TAG188",
-         !sub=="sub-TAG200",
-         !sub=="sub-TAG203",
-         !sub=="sub-TAG206",
-         !sub=="sub-TAG223",
-         !sub=="sub-TAG224",
-         !sub=="sub-TAG225",
-         !sub=="sub-TAG238",
-         !sub=="sub-TAG243",
-         !sub=="sub-TAG250",
-         !sub=="sub-TAG252") %>%
-  mutate(sub=as.character(sub))
-  
-```
 
 Get timecourses
 ```{r, message=FALSE, warning=FALSE, include=FALSE}
