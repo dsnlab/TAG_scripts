@@ -1,0 +1,33 @@
+{
+  "MNI%1x1x1": {
+    "Map": "${BRAINSPACE}/MNI/MNI-1x1x1.nii.gz"
+  },
+  "MNI%2x2x2": {
+    "Map": "${BRAINSPACE}/MNI/MNI-2x2x2.nii.gz"
+  },
+  "MNI:OASIS": {
+    "TransformANTs": [
+      "${BRAINSPACE}/OASIS/OASIS_transforms/MNI-OASIS_0Affine.mat",
+      "${BRAINSPACE}/OASIS/OASIS_transforms/MNI-OASIS_1Warp.nii.gz"
+    ]
+  },
+  "OASIS%1x1x1": {
+    "BrainPrior": "${BRAINSPACE}/OASIS/OASIS-1x1x1BrainPrior.nii.gz",
+    "Citation": "${BRAINSPACE}/OASIS/OASIS_reference.bib",
+    "Map": "${BRAINSPACE}/OASIS/OASIS-1x1x1.nii.gz",
+    "MapHead": "${BRAINSPACE}/OASIS/OASIS-1x1x1Head.nii.gz",
+    "Mask": "${BRAINSPACE}/OASIS/OASIS-1x1x1Mask.nii.gz",
+    "MaskDilated": "${BRAINSPACE}/OASIS/OASIS-1x1x1MaskDilated.nii.gz",
+    "Priors": "${BRAINSPACE}/OASIS/OASIS_priors/OASIS-priors-%03d.nii.gz",
+    "Sample": "${BRAINSPACE}/OASIS/OASIS_sample.csv"
+  },
+  "OASIS%2x2x2": {
+    "Map": "${BRAINSPACE}/OASIS/OASIS-2x2x2.nii.gz"
+  },
+  "OASIS:MNI": {
+    "TransformANTs": [
+      "${BRAINSPACE}/OASIS/OASIS_transforms/OASIS-MNI_0Warp.nii.gz",
+      "${BRAINSPACE}/OASIS/OASIS_transforms/OASIS-MNI_1Affine.mat"
+    ]
+  }
+}
