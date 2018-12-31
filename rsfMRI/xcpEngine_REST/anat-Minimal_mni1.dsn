@@ -34,7 +34,7 @@
 ###################################################################
 
 analysis=struc-ACCELERATOR
-design=${XCPEDIR}/designs/anat-antsct.dsn
+design=/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/xcpEngine_REST/anat-Minimal_mni1.dsn
 sequence=anatomical
 standard=MNI%1x1x1
 
@@ -42,7 +42,7 @@ standard=MNI%1x1x1
 # PIPELINE
 ###################################################################
 
-pipeline=struc,roiquant,qcanat
+pipeline=struc,qcanat
 
 ###################################################################
 # 1 STRUC
@@ -57,31 +57,22 @@ struc_random_seed[1]=0
 struc_bspline[1]=0
 struc_fit[1]=0.3
 struc_quick[1]=0
-struc_seg_priors[1]=1
+struc_seg_priors[1]=0
 struc_rerun[1]=0
 struc_cleanup[1]=1
-struc_process[1]=ACT
+struc_process[1]=BFC-ABE-REG-SEG
 
 ###################################################################
-# 2 ROIQUANT
+# 2 QCANAT
 ###################################################################
 
-roiquant_atlas[2]=all
-roiquant_vol[2]=1
-roiquant_rerun[2]=0
-roiquant_cleanup[2]=1
-
-###################################################################
-# 3 QCANAT
-###################################################################
-
-qcanat_gm[3]=Y
-qcanat_gm_val[3]=2,4
-qcanat_wm[3]=Y
-qcanat_wm_val[3]=3
-qcanat_csf[3]=Y
-qcanat_csf_val[3]=1
-qcanat_cort[3]=Y
-qcanat_cort_val[3]=4
-qcanat_rerun[3]=0
-qcanat_cleanup[3]=1
+qcanat_gm[2]=Y
+qcanat_gm_val[2]=2,4
+qcanat_wm[2]=Y
+qcanat_wm_val[2]=3
+qcanat_csf[2]=Y
+qcanat_csf_val[2]=1
+qcanat_cort[2]=Y
+qcanat_cort_val[2]=4
+qcanat_rerun[2]=0
+qcanat_cleanup[2]=1
