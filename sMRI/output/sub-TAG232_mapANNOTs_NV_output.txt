@@ -1,0 +1,688 @@
+job_map_annotsNV.sh ran on Thu Jul 19 23:09:47 PDT 2018
+
+Setting Up Freesurfer6.0
+
+Mapping labels
+/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA8_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = lh.BA8_v2_medial.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 2043 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  2043 nlabel points
+Performing mapping from target back to the source label 138152
+Number of reverse mapping hits = 181
+Checking for and removing duplicates
+Writing label file lh.BA8_v2_medial.label 2224
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA8_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = rh.BA8_v2_medial.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 2546 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  2546 nlabel points
+Performing mapping from target back to the source label 138269
+Number of reverse mapping hits = 164
+Checking for and removing duplicates
+Writing label file rh.BA8_v2_medial.label 2710
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA9_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = lh.BA9_v2_medial.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 1328 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  1328 nlabel points
+Performing mapping from target back to the source label 138152
+Number of reverse mapping hits = 246
+Checking for and removing duplicates
+Writing label file lh.BA9_v2_medial.label 1574
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA9_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = rh.BA9_v2_medial.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 1786 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  1786 nlabel points
+Performing mapping from target back to the source label 138269
+Number of reverse mapping hits = 174
+Checking for and removing duplicates
+Writing label file rh.BA9_v2_medial.label 1960
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA10_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = lh.BA10_v2_medial.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 1865 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  1865 nlabel points
+Performing mapping from target back to the source label 138152
+Number of reverse mapping hits = 244
+Checking for and removing duplicates
+Writing label file lh.BA10_v2_medial.label 2109
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA10_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = rh.BA10_v2_medial.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 1545 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  1545 nlabel points
+Performing mapping from target back to the source label 138269
+Number of reverse mapping hits = 211
+Checking for and removing duplicates
+Writing label file rh.BA10_v2_medial.label 1756
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA11_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = lh.BA11_v2_medial.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 744 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  744 nlabel points
+Performing mapping from target back to the source label 138152
+Number of reverse mapping hits = 130
+Checking for and removing duplicates
+Writing label file lh.BA11_v2_medial.label 874
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA11_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = rh.BA11_v2_medial.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 2163 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  2163 nlabel points
+Performing mapping from target back to the source label 138269
+Number of reverse mapping hits = 276
+Checking for and removing duplicates
+Writing label file rh.BA11_v2_medial.label 2439
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA25.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = lh.BA25.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 554 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  554 nlabel points
+Performing mapping from target back to the source label 138152
+Number of reverse mapping hits = 40
+Checking for and removing duplicates
+Writing label file lh.BA25.label 594
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA25.label
+srcsubject = fsaverage
+trgsubject = sub-TAG232
+trglabel = rh.BA25.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 657 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG232/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  657 nlabel points
+Performing mapping from target back to the source label 138269
+Number of reverse mapping hits = 45
+Checking for and removing duplicates
+Writing label file rh.BA25.label 702
+mri_label2label: Done
+
+
+Extracting stats for BA annotation (if I need it in future)
+Using TH3 vertex volume calc
+Total face volume 289535
+Total vertex volume 286057 (mask=0)
+Using TH3 vertex volume calc
+Total face volume 290596
+Total vertex volume 285920 (mask=0)
+
+Extracting stats for custom BA labels
+Using TH3 vertex volume calc
+Total face volume 289535
+Total vertex volume 286057 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/lh.BA8_v2_medial.label"
+number of vertices                      = 1678
+total surface area                      = 1187 mm^2
+total gray matter volume                = 4550 mm^3
+average cortical thickness              = 3.311 mm +- 0.608 mm
+average integrated rectified mean curvature     = 0.127
+average integrated rectified Gaussian curvature = 0.028
+folding index                           = 17
+intrinsic curvature index               = 1.9
+Using TH3 vertex volume calc
+Total face volume 289535
+Total vertex volume 286057 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/lh.BA9_v2_medial.label"
+number of vertices                      = 1339
+total surface area                      = 946 mm^2
+total gray matter volume                = 4268 mm^3
+average cortical thickness              = 3.453 mm +- 0.680 mm
+average integrated rectified mean curvature     = 0.146
+average integrated rectified Gaussian curvature = 0.043
+folding index                           = 21
+intrinsic curvature index               = 2.2
+Using TH3 vertex volume calc
+Total face volume 289535
+Total vertex volume 286057 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/lh.BA10_v2_medial.label"
+number of vertices                      = 1672
+total surface area                      = 1173 mm^2
+total gray matter volume                = 4306 mm^3
+average cortical thickness              = 3.102 mm +- 0.713 mm
+average integrated rectified mean curvature     = 0.126
+average integrated rectified Gaussian curvature = 0.029
+folding index                           = 22
+intrinsic curvature index               = 2.1
+Using TH3 vertex volume calc
+Total face volume 289535
+Total vertex volume 286057 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/lh.BA11_v2_medial.label"
+number of vertices                      = 662
+total surface area                      = 421 mm^2
+total gray matter volume                = 1721 mm^3
+average cortical thickness              = 2.831 mm +- 0.758 mm
+average integrated rectified mean curvature     = 0.138
+average integrated rectified Gaussian curvature = 0.048
+folding index                           = 18
+intrinsic curvature index               = 1.3
+Using TH3 vertex volume calc
+Total face volume 289535
+Total vertex volume 286057 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/lh.BA25.label"
+number of vertices                      = 441
+total surface area                      = 285 mm^2
+total gray matter volume                = 1108 mm^3
+average cortical thickness              = 3.438 mm +- 0.636 mm
+average integrated rectified mean curvature     = 0.122
+average integrated rectified Gaussian curvature = 0.040
+folding index                           =  6
+intrinsic curvature index               = 0.5
+Using TH3 vertex volume calc
+Total face volume 290596
+Total vertex volume 285920 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/rh.BA8_v2_medial.label"
+number of vertices                      = 1817
+total surface area                      = 1256 mm^2
+total gray matter volume                = 4931 mm^3
+average cortical thickness              = 3.281 mm +- 0.649 mm
+average integrated rectified mean curvature     = 0.127
+average integrated rectified Gaussian curvature = 0.034
+folding index                           = 23
+intrinsic curvature index               = 2.2
+Using TH3 vertex volume calc
+Total face volume 290596
+Total vertex volume 285920 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/rh.BA9_v2_medial.label"
+number of vertices                      = 1464
+total surface area                      = 1007 mm^2
+total gray matter volume                = 4058 mm^3
+average cortical thickness              = 3.221 mm +- 0.631 mm
+average integrated rectified mean curvature     = 0.126
+average integrated rectified Gaussian curvature = 0.034
+folding index                           = 18
+intrinsic curvature index               = 1.9
+Using TH3 vertex volume calc
+Total face volume 290596
+Total vertex volume 285920 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/rh.BA10_v2_medial.label"
+number of vertices                      = 1417
+total surface area                      = 974 mm^2
+total gray matter volume                = 3575 mm^3
+average cortical thickness              = 2.817 mm +- 0.774 mm
+average integrated rectified mean curvature     = 0.138
+average integrated rectified Gaussian curvature = 0.037
+folding index                           = 22
+intrinsic curvature index               = 2.0
+Using TH3 vertex volume calc
+Total face volume 290596
+Total vertex volume 285920 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/rh.BA11_v2_medial.label"
+number of vertices                      = 1853
+total surface area                      = 1313 mm^2
+total gray matter volume                = 4767 mm^3
+average cortical thickness              = 2.579 mm +- 0.844 mm
+average integrated rectified mean curvature     = 0.151
+average integrated rectified Gaussian curvature = 0.049
+folding index                           = 48
+intrinsic curvature index               = 4.3
+Using TH3 vertex volume calc
+Total face volume 290596
+Total vertex volume 285920 (mask=0)
+atlas_icv (eTIV) = 1539399 mm^3    (det: 1.265497 )
+lhCtxGM: 284130.157 283462.000  diff=  668.2  pctdiff= 0.235
+rhCtxGM: 285487.278 284969.000  diff=  518.3  pctdiff= 0.182
+lhCtxWM: 227270.987 227543.000  diff= -272.0  pctdiff=-0.120
+rhCtxWM: 227865.858 228563.000  diff= -697.1  pctdiff=-0.306
+SubCortGMVol  64387.000
+SupraTentVol  1108440.280 (1105549.000) diff=2891.280 pctdiff=0.261
+SupraTentVolNotVent  1091833.280 (1088942.000) diff=2891.280 pctdiff=0.265
+BrainSegVol  1262233.000 (1259834.000) diff=2399.000 pctdiff=0.190
+BrainSegVolNotVent  1242358.000 (1242534.280) diff=-176.280 pctdiff=-0.014
+BrainSegVolNotVent  1242358.000
+CerebellumVol 153375.000
+VentChorVol   16607.000
+3rd4th5thCSF   3268.000
+CSFVol   869.000, OptChiasmVol    41.000
+MaskVol 1641882.000
+structure is "sub-TAG232/label/fromannots/rh.BA25.label"
+number of vertices                      = 449
+total surface area                      = 318 mm^2
+total gray matter volume                = 1082 mm^3
+average cortical thickness              = 2.960 mm +- 0.588 mm
+average integrated rectified mean curvature     = 0.110
+average integrated rectified Gaussian curvature = 0.032
+folding index                           =  5
+intrinsic curvature index               = 0.6
+
+Done

@@ -1,0 +1,315 @@
+job_SUMA.sh ran on Wed Jan 16 14:42:10 PST 2019 
+
+Setting Up Freesurfer6.0
+
+Setting up AFNI
+
+Freesurfer Home is /packages/freesurfer/6.0.0/freesurfer
+
+The Subject Directory is /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/
+
+Running SUMA Make Spec on sub-TAG113
+++ creating directory './SUMA' for results...
+-- found 6 LH surfaces
+-- found 6 RH surfaces
+No COR files, converting mri/orig.mgz ...
+mri_convert.bin -ot cor mri/orig.mgz mri/orig 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/orig.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to mri/orig...
+mri_convert.bin -ot nii /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/mri/orig.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/orig.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/mri/orig.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/orig.nii...
+++ created AFNI file './SUMA/sub-TAG113_SurfVol.nii'
+Made roi label table for AFNI - fs_table.niml.lt
+mri_convert.bin -ot nii mri/T1.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/T1.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/T1.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/T1.nii...
+mri_convert.bin -ot nii mri/aparc+aseg.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/aparc+aseg.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/aparc+aseg.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/aparc+aseg.nii...
+Program 3dmerge 
+3dmerge: edit and combine 3D datasets, by RW Cox
+++ editing input dataset in memory (64.0 MB)
+.
+
+Notice: SessionAtlases.niml already exists, appending to it aparc+aseg_rank.
+mri_convert.bin -ot nii mri/aparc.a2009s+aseg.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/aparc.a2009s+aseg.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/aparc.a2009s+aseg.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/aparc.a2009s+aseg.nii...
+
+Notice: SessionAtlases.niml already exists, appending to it aparc.a2009s+aseg.
+Program 3dmerge 
+3dmerge: edit and combine 3D datasets, by RW Cox
+++ editing input dataset in memory (64.0 MB)
+.
+
+Notice: SessionAtlases.niml already exists, appending to it aparc.a2009s+aseg_rank.
+mri_convert.bin -ot nii mri/aseg.auto.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/aseg.auto.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/aseg.auto.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/aseg.auto.nii...
+mri_convert.bin -ot nii mri/aseg.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/aseg.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/aseg.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/aseg.nii...
+
+Notice: SessionAtlases.niml already exists, appending to it aseg.
+Program 3dmerge 
+3dmerge: edit and combine 3D datasets, by RW Cox
+++ editing input dataset in memory (64.0 MB)
+.
+
+Notice: SessionAtlases.niml already exists, appending to it aseg_rank.
+mri_convert.bin -ot nii mri/brain.finalsurfs.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/brain.finalsurfs.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/brain.finalsurfs.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/brain.finalsurfs.nii...
+mri_convert.bin -ot nii mri/brain.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/brain.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/brain.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/brain.nii...
+mri_convert.bin -ot nii mri/brainmask.auto.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/brainmask.auto.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/brainmask.auto.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/brainmask.auto.nii...
+mri_convert.bin -ot nii mri/brainmask.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/brainmask.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/brainmask.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/brainmask.nii...
+mri_convert.bin -ot nii mri/norm.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/norm.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/norm.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/norm.nii...
+mri_convert.bin -ot nii mri/nu.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/nu.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/nu.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/nu.nii...
+mri_convert.bin -ot nii mri/lh.ribbon.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/lh.ribbon.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/lh.ribbon.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/lh.ribbon.nii...
+mri_convert.bin -ot nii mri/rh.ribbon.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/rh.ribbon.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/rh.ribbon.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/rh.ribbon.nii...
+mri_convert.bin -ot nii mri/wm.asegedit.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/wm.asegedit.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/wm.asegedit.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/wm.asegedit.nii...
+mri_convert.bin -ot nii mri/wm.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/wm.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/wm.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/wm.nii...
+mri_convert.bin -ot nii mri/wm.seg.mgz /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/wm.seg.nii 
+$Id: mri_convert.c,v 1.226 2016/02/26 16:15:24 mreuter Exp $
+reading from mri/wm.seg.mgz...
+TR=2500.00, TE=0.00, TI=0.00, flip angle=0.00
+i_ras = (-1, -1.99361e-09, -7.45058e-09)
+j_ras = (0, -2.32831e-10, -1)
+k_ras = (1.99361e-09, 1, -2.32831e-10)
+writing to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG113/./SUMA/wm.seg.nii...
+-- running 'mris_convert lh.smoothwm lh.smoothwm.asc'
+Saving lh.smoothwm.asc as a surface
+Reading lh.smoothwm.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert lh.pial lh.pial.asc'
+Saving lh.pial.asc as a surface
+Reading lh.pial.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert lh.inflated lh.inflated.asc'
+Saving lh.inflated.asc as a surface
+Reading lh.inflated.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert lh.sphere lh.sphere.asc'
+Saving lh.sphere.asc as a surface
+Reading lh.sphere.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert lh.white lh.white.asc'
+Saving lh.white.asc as a surface
+Reading lh.white.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert lh.sphere.reg lh.sphere.reg.asc'
+Saving lh.sphere.reg.asc as a surface
+Reading lh.sphere.reg.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert rh.smoothwm rh.smoothwm.asc'
+Saving rh.smoothwm.asc as a surface
+Reading rh.smoothwm.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert rh.pial rh.pial.asc'
+Saving rh.pial.asc as a surface
+Reading rh.pial.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert rh.inflated rh.inflated.asc'
+Saving rh.inflated.asc as a surface
+Reading rh.inflated.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert rh.sphere rh.sphere.asc'
+Saving rh.sphere.asc as a surface
+Reading rh.sphere.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert rh.white rh.white.asc'
+Saving rh.white.asc as a surface
+Reading rh.white.asc ...
+Performing affine transform...
+Writing surface...
+-- running 'mris_convert rh.sphere.reg rh.sphere.reg.asc'
+Saving rh.sphere.reg.asc as a surface
+Reading rh.sphere.reg.asc ...
+Performing affine transform...
+Writing surface...
+++ created spec file'./SUMA/sub-TAG113_lh.spec'
+++ created spec file'./SUMA/sub-TAG113_rh.spec'
+++ created spec file'./SUMA/sub-TAG113_both.spec'
+
+------------------------------------------------------------------
+Running MapIcosahedron for both hemispheres at ld values of 141 60
+
+------------------------------------------------------------------
+Please verify that the datasets are aligned properly in both
+afni and suma.  You may do this by running the following commands:
+
+    cd ./SUMA
+    afni -niml &
+    suma -spec sub-TAG113_both.spec -sv sub-TAG113_SurfVol.nii
+
+
+++ Going to make renumbered ROIs now.
+    --> done for colorbar and making tissue maps.
+        See '@SUMA_renumber_FS -help' for description.
+
+
+++ found ./aparc+aseg.nii
+++ found ./aparc.a2009s+aseg.nii
+++ Renumbering FS whole brain (./aparc+aseg.nii).
+++ ... getting gm...
+++ ... getting wmat...
+++ ... getting csf...
+++ ... getting vent...
+++ ... getting othr...
+++ ... getting unkn...
+
+++ Running checks now.
+
+++ Attaching labeltable to:   aparc+aseg_REN_all.nii.gz
+++ Attaching labeltable to:   aparc+aseg_REN_gm.nii.gz
+++ Attaching labeltable to:   aparc+aseg_REN_wmat.nii.gz
+++ Attaching labeltable to:   aparc+aseg_REN_csf.nii.gz
+++ Attaching labeltable to:   aparc+aseg_REN_vent.nii.gz
+++ Attaching labeltable to:   aparc+aseg_REN_othr.nii.gz
+++ Attaching labeltable to:   aparc+aseg_REN_unkn.nii.gz
+
+
+++ OK through '2000' dsets.
+
+
+++ Renumbering FS whole brain (./aparc.a2009s+aseg.nii).
+++ ... getting gm...
+++ ... getting wmat...
+++ ... getting csf...
+++ ... getting vent...
+++ ... getting othr...
+++ ... getting unkn...
+
+++ Running checks now.
+
+++ Attaching labeltable to:   aparc.a2009s+aseg_REN_all.nii.gz
+++ Attaching labeltable to:   aparc.a2009s+aseg_REN_gm.nii.gz
+++ Attaching labeltable to:   aparc.a2009s+aseg_REN_wmat.nii.gz
+++ Attaching labeltable to:   aparc.a2009s+aseg_REN_csf.nii.gz
+++ Attaching labeltable to:   aparc.a2009s+aseg_REN_vent.nii.gz
+++ Attaching labeltable to:   aparc.a2009s+aseg_REN_othr.nii.gz
+++ Attaching labeltable to:   aparc.a2009s+aseg_REN_unkn.nii.gz
+
+
+++ OK through '2009' dsets.
+
+
+
+@SUMA_Make_Spec_FS ... finished
+
+
+Creating ventricle and white matter masks

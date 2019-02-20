@@ -1,0 +1,260 @@
+echo: No match.
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+** AFNI converts NIFTI_datatype=8 (INT32) in file aparc+aseg.nii to FLOAT32
+     Warnings of this type will be muted for this session.
+     Set AFNI_NIFTI_TYPE_WARN to YES to see them all, NO to see none.
+++ Processing AFNI dataset aparc+aseg.nii
+ + setting labeltable
+ + loading and re-writing dataset aparc+aseg.nii (./aparc+aseg.nii in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3dmerge: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ default -1dindex = 0
+++ default -1tindex = 1
+-- Wrote edited dataset: ./aparc+aseg_rank.nii
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc+aseg_rank.nii
+ + setting labeltable
+ + loading and re-writing dataset aparc+aseg_rank.nii (./aparc+aseg_rank.nii in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+** AFNI converts NIFTI_datatype=8 (INT32) in file aparc.a2009s+aseg.nii to FLOAT32
+     Warnings of this type will be muted for this session.
+     Set AFNI_NIFTI_TYPE_WARN to YES to see them all, NO to see none.
+++ Processing AFNI dataset aparc.a2009s+aseg.nii
+ + setting labeltable
+ + loading and re-writing dataset aparc.a2009s+aseg.nii (./aparc.a2009s+aseg.nii in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3dmerge: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ default -1dindex = 0
+++ default -1tindex = 1
+-- Wrote edited dataset: ./aparc.a2009s+aseg_rank.nii
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc.a2009s+aseg_rank.nii
+ + setting labeltable
+ + loading and re-writing dataset aparc.a2009s+aseg_rank.nii (./aparc.a2009s+aseg_rank.nii in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+** AFNI converts NIFTI_datatype=8 (INT32) in file aseg.nii to FLOAT32
+     Warnings of this type will be muted for this session.
+     Set AFNI_NIFTI_TYPE_WARN to YES to see them all, NO to see none.
+++ Processing AFNI dataset aseg.nii
+ + setting labeltable
+ + loading and re-writing dataset aseg.nii (./aseg.nii in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3dmerge: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ default -1dindex = 0
+++ default -1tindex = 1
+-- Wrote edited dataset: ./aseg_rank.nii
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aseg_rank.nii
+ + setting labeltable
+ + loading and re-writing dataset aseg_rank.nii (./aseg_rank.nii in NIFTI storage)
+++ 3drefit processed 1 datasets
+++     Notice FSread_annot (SUMA_FSread_annot.c:298 @15:02:30):
+Guessed FS annot version of 2009
+++     Notice FSread_annot (SUMA_FSread_annot.c:310 @15:02:30):
+Guessed left hemisphere
+++     Notice FSread_annot (SUMA_FSread_annot.c:332 @15:02:30):
+Using /packages/freesurfer/6.0.0/freesurfer/FreeSurferColorLUT.txt
+++     Notice FSread_annot (SUMA_FSread_annot.c:343 @15:02:30):
+Setting -FScmaprange to [13100 13199]
+++     Notice FSread_annot (SUMA_FSread_annot.c:298 @15:02:31):
+Guessed FS annot version of 2009
+++     Notice FSread_annot (SUMA_FSread_annot.c:312 @15:02:31):
+Guessed right hemisphere
+++     Notice FSread_annot (SUMA_FSread_annot.c:332 @15:02:31):
+Using /packages/freesurfer/6.0.0/freesurfer/FreeSurferColorLUT.txt
+++     Notice FSread_annot (SUMA_FSread_annot.c:348 @15:02:31):
+Setting -FScmaprange to [14100 14199]
+++     Notice MapIcosahedron (SUMA_MapIcosahedron.c:810 @15:02:51):
+Adding -NN_dset_map ./lh.aparc.a2009s.annot.niml.dset
+
+
+**               **
+    To view in SUMA, run:
+  suma -spec std.141.sub-TAG105_lh.spec 
+**               **
+
+++     Notice MapIcosahedron (SUMA_MapIcosahedron.c:810 @15:04:19):
+Adding -NN_dset_map ./rh.aparc.a2009s.annot.niml.dset
+
+
+**               **
+    To view in SUMA, run:
+  suma -spec std.141.sub-TAG105_rh.spec 
+**               **
+
+++     Notice MapIcosahedron (SUMA_MapIcosahedron.c:810 @15:05:33):
+Adding -NN_dset_map ./lh.aparc.a2009s.annot.niml.dset
+
+
+**               **
+    To view in SUMA, run:
+  suma -spec std.60.sub-TAG105_lh.spec 
+**               **
+
+++     Notice MapIcosahedron (SUMA_MapIcosahedron.c:810 @15:05:46):
+Adding -NN_dset_map ./rh.aparc.a2009s.annot.niml.dset
+
+
+**               **
+    To view in SUMA, run:
+  suma -spec std.60.sub-TAG105_rh.spec 
+**               **
+
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc+aseg_REN_all.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc+aseg_REN_gm.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc+aseg_REN_wmat.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc+aseg_REN_csf.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc+aseg_REN_vent.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc+aseg_REN_othr.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc+aseg_REN_unkn.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./__zarglefizz_070.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./__zarglefizz_071.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./__zarglefizz_072.nii.gz
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc+aseg_REN_all.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc+aseg_REN_all.nii.gz (./aparc+aseg_REN_all.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc+aseg_REN_gm.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc+aseg_REN_gm.nii.gz (./aparc+aseg_REN_gm.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc+aseg_REN_wmat.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc+aseg_REN_wmat.nii.gz (./aparc+aseg_REN_wmat.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc+aseg_REN_csf.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc+aseg_REN_csf.nii.gz (./aparc+aseg_REN_csf.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc+aseg_REN_vent.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc+aseg_REN_vent.nii.gz (./aparc+aseg_REN_vent.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc+aseg_REN_othr.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc+aseg_REN_othr.nii.gz (./aparc+aseg_REN_othr.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc+aseg_REN_unkn.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc+aseg_REN_unkn.nii.gz (./aparc+aseg_REN_unkn.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc.a2009s+aseg_REN_all.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc.a2009s+aseg_REN_gm.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc.a2009s+aseg_REN_wmat.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc.a2009s+aseg_REN_csf.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc.a2009s+aseg_REN_vent.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc.a2009s+aseg_REN_othr.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./aparc.a2009s+aseg_REN_unkn.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./__zarglefizz_070.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./__zarglefizz_071.nii.gz
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./__zarglefizz_072.nii.gz
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc.a2009s+aseg_REN_all.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc.a2009s+aseg_REN_all.nii.gz (./aparc.a2009s+aseg_REN_all.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc.a2009s+aseg_REN_gm.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc.a2009s+aseg_REN_gm.nii.gz (./aparc.a2009s+aseg_REN_gm.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc.a2009s+aseg_REN_wmat.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc.a2009s+aseg_REN_wmat.nii.gz (./aparc.a2009s+aseg_REN_wmat.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc.a2009s+aseg_REN_csf.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc.a2009s+aseg_REN_csf.nii.gz (./aparc.a2009s+aseg_REN_csf.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc.a2009s+aseg_REN_vent.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc.a2009s+aseg_REN_vent.nii.gz (./aparc.a2009s+aseg_REN_vent.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc.a2009s+aseg_REN_othr.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc.a2009s+aseg_REN_othr.nii.gz (./aparc.a2009s+aseg_REN_othr.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3drefit: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: RW Cox
+++ Processing AFNI dataset aparc.a2009s+aseg_REN_unkn.nii.gz
+ + setting labeltable
+ + loading and re-writing dataset aparc.a2009s+aseg_REN_unkn.nii.gz (./aparc.a2009s+aseg_REN_unkn.nii.gz in NIFTI storage)
+++ 3drefit processed 1 datasets
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./sub-TAG105_vent.nii
+++ 3dcalc: AFNI version=AFNI_18.2.04 (Jul  6 2018) [64-bit]
+++ Authored by: A cast of thousands
+++ Output dataset ./sub-TAG105_WM.nii

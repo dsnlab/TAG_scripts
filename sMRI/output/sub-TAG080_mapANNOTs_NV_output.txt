@@ -1,0 +1,1487 @@
+job_map_annotsNV.sh ran on Thu Jul 19 23:09:44 PDT 2018
+
+Setting Up Freesurfer6.0
+
+Mapping labels
+/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA8_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = lh.BA8_v2_medial.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 2043 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  2043 nlabel points
+Performing mapping from target back to the source label 143226
+Number of reverse mapping hits = 177
+Checking for and removing duplicates
+Writing label file lh.BA8_v2_medial.label 2220
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA8_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = rh.BA8_v2_medial.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 2546 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  2546 nlabel points
+Performing mapping from target back to the source label 146365
+Number of reverse mapping hits = 171
+Checking for and removing duplicates
+Writing label file rh.BA8_v2_medial.label 2717
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA9_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = lh.BA9_v2_medial.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 1328 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  1328 nlabel points
+Performing mapping from target back to the source label 143226
+Number of reverse mapping hits = 310
+Checking for and removing duplicates
+Writing label file lh.BA9_v2_medial.label 1638
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA9_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = rh.BA9_v2_medial.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 1786 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  1786 nlabel points
+Performing mapping from target back to the source label 146365
+Number of reverse mapping hits = 425
+Checking for and removing duplicates
+Writing label file rh.BA9_v2_medial.label 2211
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA10_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = lh.BA10_v2_medial.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 1865 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  1865 nlabel points
+Performing mapping from target back to the source label 143226
+Number of reverse mapping hits = 333
+Checking for and removing duplicates
+Writing label file lh.BA10_v2_medial.label 2198
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA10_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = rh.BA10_v2_medial.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 1545 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  1545 nlabel points
+Performing mapping from target back to the source label 146365
+Number of reverse mapping hits = 647
+Checking for and removing duplicates
+Writing label file rh.BA10_v2_medial.label 2192
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA11_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = lh.BA11_v2_medial.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 744 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  744 nlabel points
+Performing mapping from target back to the source label 143226
+Number of reverse mapping hits = 64
+Checking for and removing duplicates
+Writing label file lh.BA11_v2_medial.label 808
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA11_v2_medial.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = rh.BA11_v2_medial.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 2163 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  2163 nlabel points
+Performing mapping from target back to the source label 146365
+Number of reverse mapping hits = 419
+Checking for and removing duplicates
+Writing label file rh.BA11_v2_medial.label 2582
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/lh.BA25.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = lh.BA25.label
+regmethod = surface
+
+srchemi = lh
+trghemi = lh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 554 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/lh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  554 nlabel points
+Performing mapping from target back to the source label 143226
+Number of reverse mapping hits = 142
+Checking for and removing duplicates
+Writing label file lh.BA25.label 696
+mri_label2label: Done
+
+
+srclabel = /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/nandi/rh.BA25.label
+srcsubject = fsaverage
+trgsubject = sub-TAG080
+trglabel = rh.BA25.label
+regmethod = surface
+
+srchemi = rh
+trghemi = rh
+trgsurface = white
+srcsurfreg = sphere.reg
+trgsurfreg = sphere.reg
+usehash = 1
+Use ProjAbs  = 0, 0
+Use ProjFrac = 0, 0
+DoPaint 0
+
+SUBJECTS_DIR    /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+FREESURFER_HOME /packages/freesurfer/6.0.0/freesurfer
+Loading source label.
+Found 657 points in source label.
+Starting surface-based mapping
+Reading source registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Reading target surface 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.white
+Reading target registration 
+ /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/surf/rh.sphere.reg
+Rescaling ...  original radius = 100
+Building target registration hash (res=16).
+Building source registration hash (res=16).
+INFO: found  657 nlabel points
+Performing mapping from target back to the source label 146365
+Number of reverse mapping hits = 46
+Checking for and removing duplicates
+Writing label file rh.BA25.label 703
+mri_label2label: Done
+
+
+Extracting stats for BA annotation (if I need it in future)
+Using TH3 vertex volume calc
+Total face volume 287511
+Total vertex volume 284191 (mask=0)
+ERROR: stating file /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/label/sub-TAG080/label/lh.PALS_B12_Brodmann.annot
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "???"
+number of vertices                      = 7435
+total surface area                      = 4915 mm^2
+total gray matter volume                = 15074 mm^3
+average cortical thickness              = 3.054 mm +- 0.633 mm
+average integrated rectified mean curvature     = 0.109
+average integrated rectified Gaussian curvature = 0.026
+folding index                           = 77
+intrinsic curvature index               = 6.9
+structure is "Brodmann.8"
+number of vertices                      = 2774
+total surface area                      = 1833 mm^2
+total gray matter volume                = 7304 mm^3
+average cortical thickness              = 3.242 mm +- 0.635 mm
+average integrated rectified mean curvature     = 0.120
+average integrated rectified Gaussian curvature = 0.024
+folding index                           = 33
+intrinsic curvature index               = 2.6
+structure is "Brodmann.6"
+number of vertices                      = 6506
+total surface area                      = 4385 mm^2
+total gray matter volume                = 15388 mm^3
+average cortical thickness              = 3.006 mm +- 0.616 mm
+average integrated rectified mean curvature     = 0.118
+average integrated rectified Gaussian curvature = 0.022
+folding index                           = 69
+intrinsic curvature index               = 5.7
+structure is "Brodmann.4"
+number of vertices                      = 6508
+total surface area                      = 4132 mm^2
+total gray matter volume                = 13216 mm^3
+average cortical thickness              = 2.827 mm +- 0.531 mm
+average integrated rectified mean curvature     = 0.108
+average integrated rectified Gaussian curvature = 0.021
+folding index                           = 59
+intrinsic curvature index               = 5.2
+structure is "Brodmann.9"
+number of vertices                      = 4680
+total surface area                      = 3191 mm^2
+total gray matter volume                = 10945 mm^3
+average cortical thickness              = 2.950 mm +- 0.591 mm
+average integrated rectified mean curvature     = 0.124
+average integrated rectified Gaussian curvature = 0.026
+folding index                           = 66
+intrinsic curvature index               = 4.7
+structure is "Brodmann.3"
+number of vertices                      = 1942
+total surface area                      = 1245 mm^2
+total gray matter volume                = 2029 mm^3
+average cortical thickness              = 1.743 mm +- 0.513 mm
+average integrated rectified mean curvature     = 0.099
+average integrated rectified Gaussian curvature = 0.018
+folding index                           = 13
+intrinsic curvature index               = 1.3
+structure is "Brodmann.1"
+number of vertices                      = 2958
+total surface area                      = 1715 mm^2
+total gray matter volume                = 4592 mm^3
+average cortical thickness              = 2.268 mm +- 0.601 mm
+average integrated rectified mean curvature     = 0.117
+average integrated rectified Gaussian curvature = 0.022
+folding index                           = 35
+intrinsic curvature index               = 2.8
+structure is "Brodmann.5"
+number of vertices                      = 2050
+total surface area                      = 1388 mm^2
+total gray matter volume                = 4537 mm^3
+average cortical thickness              = 2.697 mm +- 0.515 mm
+average integrated rectified mean curvature     = 0.130
+average integrated rectified Gaussian curvature = 0.028
+folding index                           = 31
+intrinsic curvature index               = 2.1
+structure is "Brodmann.7"
+number of vertices                      = 7402
+total surface area                      = 5023 mm^2
+total gray matter volume                = 15303 mm^3
+average cortical thickness              = 2.668 mm +- 0.548 mm
+average integrated rectified mean curvature     = 0.125
+average integrated rectified Gaussian curvature = 0.024
+folding index                           = 103
+intrinsic curvature index               = 7.2
+structure is "Brodmann.2"
+number of vertices                      = 4439
+total surface area                      = 2968 mm^2
+total gray matter volume                = 7808 mm^3
+average cortical thickness              = 2.542 mm +- 0.478 mm
+average integrated rectified mean curvature     = 0.119
+average integrated rectified Gaussian curvature = 0.021
+folding index                           = 46
+intrinsic curvature index               = 3.8
+structure is "Brodmann.31"
+number of vertices                      = 2234
+total surface area                      = 1510 mm^2
+total gray matter volume                = 4675 mm^3
+average cortical thickness              = 2.850 mm +- 0.528 mm
+average integrated rectified mean curvature     = 0.120
+average integrated rectified Gaussian curvature = 0.026
+folding index                           = 34
+intrinsic curvature index               = 2.3
+structure is "Brodmann.40"
+number of vertices                      = 4011
+total surface area                      = 2654 mm^2
+total gray matter volume                = 9723 mm^3
+average cortical thickness              = 2.960 mm +- 0.603 mm
+average integrated rectified mean curvature     = 0.125
+average integrated rectified Gaussian curvature = 0.025
+folding index                           = 57
+intrinsic curvature index               = 4.0
+structure is "Brodmann.44"
+number of vertices                      = 2339
+total surface area                      = 1600 mm^2
+total gray matter volume                = 4707 mm^3
+average cortical thickness              = 2.721 mm +- 0.401 mm
+average integrated rectified mean curvature     = 0.118
+average integrated rectified Gaussian curvature = 0.021
+folding index                           = 27
+intrinsic curvature index               = 2.1
+structure is "Brodmann.45"
+number of vertices                      = 851
+total surface area                      = 558 mm^2
+total gray matter volume                = 2119 mm^3
+average cortical thickness              = 2.962 mm +- 0.515 mm
+average integrated rectified mean curvature     = 0.117
+average integrated rectified Gaussian curvature = 0.022
+folding index                           = 11
+intrinsic curvature index               = 0.7
+structure is "Brodmann.23"
+number of vertices                      = 1028
+total surface area                      = 693 mm^2
+total gray matter volume                = 2559 mm^3
+average cortical thickness              = 2.976 mm +- 0.695 mm
+average integrated rectified mean curvature     = 0.137
+average integrated rectified Gaussian curvature = 0.027
+folding index                           = 16
+intrinsic curvature index               = 1.1
+structure is "Brodmann.39"
+number of vertices                      = 4651
+total surface area                      = 3191 mm^2
+total gray matter volume                = 9872 mm^3
+average cortical thickness              = 2.825 mm +- 0.525 mm
+average integrated rectified mean curvature     = 0.121
+average integrated rectified Gaussian curvature = 0.023
+folding index                           = 60
+intrinsic curvature index               = 4.3
+structure is "Brodmann.43"
+number of vertices                      = 879
+total surface area                      = 578 mm^2
+total gray matter volume                = 2020 mm^3
+average cortical thickness              = 2.875 mm +- 0.437 mm
+average integrated rectified mean curvature     = 0.144
+average integrated rectified Gaussian curvature = 0.028
+folding index                           = 14
+intrinsic curvature index               = 1.0
+structure is "Brodmann.19"
+number of vertices                      = 9840
+total surface area                      = 6609 mm^2
+total gray matter volume                = 18911 mm^3
+average cortical thickness              = 2.634 mm +- 0.520 mm
+average integrated rectified mean curvature     = 0.122
+average integrated rectified Gaussian curvature = 0.024
+folding index                           = 122
+intrinsic curvature index               = 9.4
+structure is "Brodmann.47"
+number of vertices                      = 630
+total surface area                      = 401 mm^2
+total gray matter volume                = 1742 mm^3
+average cortical thickness              = 3.185 mm +- 0.479 mm
+average integrated rectified mean curvature     = 0.151
+average integrated rectified Gaussian curvature = 0.035
+folding index                           = 12
+intrinsic curvature index               = 0.8
+structure is "Brodmann.41"
+number of vertices                      = 715
+total surface area                      = 462 mm^2
+total gray matter volume                = 1195 mm^3
+average cortical thickness              = 2.855 mm +- 0.480 mm
+average integrated rectified mean curvature     = 0.129
+average integrated rectified Gaussian curvature = 0.028
+folding index                           =  9
+intrinsic curvature index               = 0.8
+structure is "Brodmann.30"
+number of vertices                      = 301
+total surface area                      = 194 mm^2
+total gray matter volume                = 691 mm^3
+average cortical thickness              = 3.032 mm +- 0.461 mm
+average integrated rectified mean curvature     = 0.117
+average integrated rectified Gaussian curvature = 0.027
+folding index                           =  5
+intrinsic curvature index               = 0.2
+structure is "Brodmann.22"
+number of vertices                      = 7463
+total surface area                      = 4966 mm^2
+total gray matter volume                = 19949 mm^3
+average cortical thickness              = 3.267 mm +- 0.619 mm
+average integrated rectified mean curvature     = 0.114
+average integrated rectified Gaussian curvature = 0.023
+folding index                           = 88
+intrinsic curvature index               = 6.7
+structure is "Brodmann.42"
+number of vertices                      = 1194
+total surface area                      = 771 mm^2
+total gray matter volume                = 1807 mm^3
+average cortical thickness              = 2.618 mm +- 0.477 mm
+average integrated rectified mean curvature     = 0.109
+average integrated rectified Gaussian curvature = 0.021
+folding index                           = 12
+intrinsic curvature index               = 1.0
+structure is "Brodmann.21"
+number of vertices                      = 3119
+total surface area                      = 2139 mm^2
+total gray matter volume                = 7696 mm^3
+average cortical thickness              = 2.983 mm +- 0.569 mm
+average integrated rectified mean curvature     = 0.129
+average integrated rectified Gaussian curvature = 0.028
+folding index                           = 60
+intrinsic curvature index               = 3.5
+structure is "Brodmann.38"
+number of vertices                      = 2155
+total surface area                      = 1480 mm^2
+total gray matter volume                = 6777 mm^3
+average cortical thickness              = 3.358 mm +- 0.815 mm
+average integrated rectified mean curvature     = 0.129
+average integrated rectified Gaussian curvature = 0.040
+folding index                           = 34
+intrinsic curvature index               = 3.5
+structure is "Brodmann.37"
+number of vertices                      = 4402
+total surface area                      = 2967 mm^2
+total gray matter volume                = 9344 mm^3
+average cortical thickness              = 2.841 mm +- 0.571 mm
+average integrated rectified mean curvature     = 0.122
+average integrated rectified Gaussian curvature = 0.027
+folding index                           = 65
+intrinsic curvature index               = 4.6
+structure is "Brodmann.20"
+number of vertices                      = 4841
+total surface area                      = 3280 mm^2
+total gray matter volume                = 11944 mm^3
+average cortical thickness              = 3.149 mm +- 0.644 mm
+average integrated rectified mean curvature     = 0.118
+average integrated rectified Gaussian curvature = 0.029
+folding index                           = 63
+intrinsic curvature index               = 5.9
+structure is "Brodmann.32"
+number of vertices                      = 2585
+total surface area                      = 1755 mm^2
+total gray matter volume                = 5516 mm^3
+average cortical thickness              = 2.820 mm +- 0.538 mm
+average integrated rectified mean curvature     = 0.113
+average integrated rectified Gaussian curvature = 0.022
+folding index                           = 34
+intrinsic curvature index               = 2.4
+structure is "Brodmann.24"
+number of vertices                      = 3320
+total surface area                      = 2290 mm^2
+total gray matter volume                = 7946 mm^3
+average cortical thickness              = 2.992 mm +- 0.552 mm
+average integrated rectified mean curvature     = 0.119
+average integrated rectified Gaussian curvature = 0.023
+folding index                           = 38
+intrinsic curvature index               = 3.2
+structure is "Brodmann.10"
+number of vertices                      = 4312
+total surface area                      = 2929 mm^2
+total gray matter volume                = 9937 mm^3
+average cortical thickness              = 2.733 mm +- 0.552 mm
+average integrated rectified mean curvature     = 0.138
+average integrated rectified Gaussian curvature = 0.031
+folding index                           = 82
+intrinsic curvature index               = 5.4
+structure is "Brodmann.25"
+number of vertices                      = 547
+total surface area                      = 380 mm^2
+total gray matter volume                = 1168 mm^3
+average cortical thickness              = 2.694 mm +- 0.729 mm
+average integrated rectified mean curvature     = 0.156
+average integrated rectified Gaussian curvature = 0.067
+folding index                           = 12
+intrinsic curvature index               = 1.5
+structure is "Brodmann.11"
+number of vertices                      = 5808
+total surface area                      = 3916 mm^2
+total gray matter volume                = 13731 mm^3
+average cortical thickness              = 2.905 mm +- 0.698 mm
+average integrated rectified mean curvature     = 0.134
+average integrated rectified Gaussian curvature = 0.038
+folding index                           = 112
+intrinsic curvature index               = 9.1
+structure is "Brodmann.46"
+number of vertices                      = 3530
+total surface area                      = 2371 mm^2
+total gray matter volume                = 6778 mm^3
+average cortical thickness              = 2.637 mm +- 0.474 mm
+average integrated rectified mean curvature     = 0.108
+average integrated rectified Gaussian curvature = 0.018
+folding index                           = 39
+intrinsic curvature index               = 2.7
+structure is "Brodmann.17"
+number of vertices                      = 5452
+total surface area                      = 3520 mm^2
+total gray matter volume                = 6440 mm^3
+average cortical thickness              = 1.830 mm +- 0.512 mm
+average integrated rectified mean curvature     = 0.142
+average integrated rectified Gaussian curvature = 0.038
+folding index                           = 78
+intrinsic curvature index               = 8.4
+structure is "Brodmann.18"
+number of vertices                      = 8470
+total surface area                      = 5211 mm^2
+total gray matter volume                = 12528 mm^3
+average cortical thickness              = 2.176 mm +- 0.512 mm
+average integrated rectified mean curvature     = 0.136
+average integrated rectified Gaussian curvature = 0.035
+folding index                           = 133
+intrinsic curvature index               = 11.4
+structure is "Brodmann.27"
+number of vertices                      = 329
+total surface area                      = 194 mm^2
+total gray matter volume                = 389 mm^3
+average cortical thickness              = 2.140 mm +- 0.928 mm
+average integrated rectified mean curvature     = 0.124
+average integrated rectified Gaussian curvature = 0.047
+folding index                           =  9
+intrinsic curvature index               = 0.5
+structure is "Brodmann.36"
+number of vertices                      = 1065
+total surface area                      = 684 mm^2
+total gray matter volume                = 2247 mm^3
+average cortical thickness              = 3.489 mm +- 0.893 mm
+average integrated rectified mean curvature     = 0.139
+average integrated rectified Gaussian curvature = 0.048
+folding index                           = 18
+intrinsic curvature index               = 2.0
+structure is "Brodmann.35"
+number of vertices                      = 287
+total surface area                      = 177 mm^2
+total gray matter volume                = 521 mm^3
+average cortical thickness              = 2.719 mm +- 0.716 mm
+average integrated rectified mean curvature     = 0.106
+average integrated rectified Gaussian curvature = 0.027
+folding index                           =  3
+intrinsic curvature index               = 0.2
+structure is "Brodmann.28"
+number of vertices                      = 609
+total surface area                      = 387 mm^2
+total gray matter volume                = 171 mm^3
+average cortical thickness              = 2.822 mm +- 0.920 mm
+average integrated rectified mean curvature     = 0.103
+average integrated rectified Gaussian curvature = 0.038
+folding index                           = 10
+intrinsic curvature index               = 0.9
+structure is "Brodmann.29"
+number of vertices                      = 84
+total surface area                      = 56 mm^2
+total gray matter volume                = 187 mm^3
+average cortical thickness              = 2.916 mm +- 0.461 mm
+average integrated rectified mean curvature     = 0.128
+average integrated rectified Gaussian curvature = 0.035
+folding index                           =  2
+intrinsic curvature index               = 0.1
+structure is "Brodmann.26"
+number of vertices                      = 85
+total surface area                      = 55 mm^2
+total gray matter volume                = 194 mm^3
+average cortical thickness              = 3.210 mm +- 0.495 mm
+average integrated rectified mean curvature     = 0.190
+average integrated rectified Gaussian curvature = 0.043
+folding index                           =  2
+intrinsic curvature index               = 0.2
+structure is "MEDIAL.WALL"
+number of vertices                      = 9011
+total surface area                      = 5604 mm^2
+total gray matter volume                = 3606 mm^3
+average cortical thickness              = 0.817 mm +- 1.268 mm
+average integrated rectified mean curvature     = 0.086
+average integrated rectified Gaussian curvature = 0.030
+folding index                           = 101
+intrinsic curvature index               = 8.8
+structure is "Brodmann.33"
+number of vertices                      = 385
+total surface area                      = 257 mm^2
+total gray matter volume                = 905 mm^3
+average cortical thickness              = 3.043 mm +- 0.483 mm
+average integrated rectified mean curvature     = 0.120
+average integrated rectified Gaussian curvature = 0.022
+folding index                           =  5
+intrinsic curvature index               = 0.3
+Using TH3 vertex volume calc
+Total face volume 291987
+Total vertex volume 288464 (mask=0)
+ERROR: stating file /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG080/label/sub-TAG080/label/rh.PALS_B12_Brodmann.annot
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "???"
+number of vertices                      = 7161
+total surface area                      = 4761 mm^2
+total gray matter volume                = 15859 mm^3
+average cortical thickness              = 3.139 mm +- 0.696 mm
+average integrated rectified mean curvature     = 0.110
+average integrated rectified Gaussian curvature = 0.025
+folding index                           = 75
+intrinsic curvature index               = 7.1
+structure is "Brodmann.8"
+number of vertices                      = 3428
+total surface area                      = 2300 mm^2
+total gray matter volume                = 9369 mm^3
+average cortical thickness              = 3.212 mm +- 0.643 mm
+average integrated rectified mean curvature     = 0.118
+average integrated rectified Gaussian curvature = 0.023
+folding index                           = 37
+intrinsic curvature index               = 3.1
+structure is "Brodmann.6"
+number of vertices                      = 5597
+total surface area                      = 3736 mm^2
+total gray matter volume                = 12259 mm^3
+average cortical thickness              = 2.921 mm +- 0.543 mm
+average integrated rectified mean curvature     = 0.113
+average integrated rectified Gaussian curvature = 0.020
+folding index                           = 55
+intrinsic curvature index               = 4.5
+structure is "Brodmann.4"
+number of vertices                      = 5777
+total surface area                      = 3534 mm^2
+total gray matter volume                = 10898 mm^3
+average cortical thickness              = 2.713 mm +- 0.494 mm
+average integrated rectified mean curvature     = 0.103
+average integrated rectified Gaussian curvature = 0.020
+folding index                           = 50
+intrinsic curvature index               = 4.4
+structure is "Brodmann.9"
+number of vertices                      = 5666
+total surface area                      = 3878 mm^2
+total gray matter volume                = 12905 mm^3
+average cortical thickness              = 2.860 mm +- 0.539 mm
+average integrated rectified mean curvature     = 0.130
+average integrated rectified Gaussian curvature = 0.027
+folding index                           = 84
+intrinsic curvature index               = 6.2
+structure is "Brodmann.3"
+number of vertices                      = 1609
+total surface area                      = 1127 mm^2
+total gray matter volume                = 2105 mm^3
+average cortical thickness              = 1.790 mm +- 0.682 mm
+average integrated rectified mean curvature     = 0.101
+average integrated rectified Gaussian curvature = 0.018
+folding index                           = 12
+intrinsic curvature index               = 1.3
+structure is "Brodmann.1"
+number of vertices                      = 2436
+total surface area                      = 1344 mm^2
+total gray matter volume                = 3512 mm^3
+average cortical thickness              = 2.089 mm +- 0.553 mm
+average integrated rectified mean curvature     = 0.102
+average integrated rectified Gaussian curvature = 0.025
+folding index                           = 23
+intrinsic curvature index               = 2.6
+structure is "Brodmann.5"
+number of vertices                      = 1976
+total surface area                      = 1307 mm^2
+total gray matter volume                = 3918 mm^3
+average cortical thickness              = 2.520 mm +- 0.514 mm
+average integrated rectified mean curvature     = 0.129
+average integrated rectified Gaussian curvature = 0.025
+folding index                           = 27
+intrinsic curvature index               = 1.9
+structure is "Brodmann.7"
+number of vertices                      = 7632
+total surface area                      = 5121 mm^2
+total gray matter volume                = 15477 mm^3
+average cortical thickness              = 2.634 mm +- 0.502 mm
+average integrated rectified mean curvature     = 0.133
+average integrated rectified Gaussian curvature = 0.027
+folding index                           = 111
+intrinsic curvature index               = 8.1
+structure is "Brodmann.2"
+number of vertices                      = 3845
+total surface area                      = 2610 mm^2
+total gray matter volume                = 6207 mm^3
+average cortical thickness              = 2.479 mm +- 0.502 mm
+average integrated rectified mean curvature     = 0.102
+average integrated rectified Gaussian curvature = 0.017
+folding index                           = 28
+intrinsic curvature index               = 2.7
+structure is "Brodmann.31"
+number of vertices                      = 2200
+total surface area                      = 1494 mm^2
+total gray matter volume                = 4063 mm^3
+average cortical thickness              = 2.626 mm +- 0.534 mm
+average integrated rectified mean curvature     = 0.117
+average integrated rectified Gaussian curvature = 0.021
+folding index                           = 26
+intrinsic curvature index               = 2.0
+structure is "Brodmann.40"
+number of vertices                      = 4049
+total surface area                      = 2619 mm^2
+total gray matter volume                = 9539 mm^3
+average cortical thickness              = 2.946 mm +- 0.564 mm
+average integrated rectified mean curvature     = 0.125
+average integrated rectified Gaussian curvature = 0.025
+folding index                           = 57
+intrinsic curvature index               = 4.0
+structure is "Brodmann.44"
+number of vertices                      = 1888
+total surface area                      = 1242 mm^2
+total gray matter volume                = 4050 mm^3
+average cortical thickness              = 2.888 mm +- 0.483 mm
+average integrated rectified mean curvature     = 0.114
+average integrated rectified Gaussian curvature = 0.023
+folding index                           = 25
+intrinsic curvature index               = 1.7
+structure is "Brodmann.45"
+number of vertices                      = 1166
+total surface area                      = 806 mm^2
+total gray matter volume                = 2935 mm^3
+average cortical thickness              = 2.983 mm +- 0.425 mm
+average integrated rectified mean curvature     = 0.115
+average integrated rectified Gaussian curvature = 0.021
+folding index                           = 12
+intrinsic curvature index               = 1.0
+structure is "Brodmann.23"
+number of vertices                      = 1282
+total surface area                      = 819 mm^2
+total gray matter volume                = 2896 mm^3
+average cortical thickness              = 2.994 mm +- 0.547 mm
+average integrated rectified mean curvature     = 0.134
+average integrated rectified Gaussian curvature = 0.028
+folding index                           = 20
+intrinsic curvature index               = 1.4
+structure is "Brodmann.39"
+number of vertices                      = 4291
+total surface area                      = 2814 mm^2
+total gray matter volume                = 9116 mm^3
+average cortical thickness              = 2.881 mm +- 0.526 mm
+average integrated rectified mean curvature     = 0.117
+average integrated rectified Gaussian curvature = 0.022
+folding index                           = 51
+intrinsic curvature index               = 3.7
+structure is "Brodmann.43"
+number of vertices                      = 1051
+total surface area                      = 683 mm^2
+total gray matter volume                = 2370 mm^3
+average cortical thickness              = 2.910 mm +- 0.536 mm
+average integrated rectified mean curvature     = 0.137
+average integrated rectified Gaussian curvature = 0.028
+folding index                           = 16
+intrinsic curvature index               = 1.2
+structure is "Brodmann.19"
+number of vertices                      = 12430
+total surface area                      = 8052 mm^2
+total gray matter volume                = 22849 mm^3
+average cortical thickness              = 2.642 mm +- 0.490 mm
+average integrated rectified mean curvature     = 0.128
+average integrated rectified Gaussian curvature = 0.028
+folding index                           = 166
+intrinsic curvature index               = 12.8
+structure is "Brodmann.47"
+number of vertices                      = 700
+total surface area                      = 500 mm^2
+total gray matter volume                = 2018 mm^3
+average cortical thickness              = 3.138 mm +- 0.594 mm
+average integrated rectified mean curvature     = 0.140
+average integrated rectified Gaussian curvature = 0.025
+folding index                           = 12
+intrinsic curvature index               = 0.8
+structure is "Brodmann.41"
+number of vertices                      = 617
+total surface area                      = 420 mm^2
+total gray matter volume                = 1204 mm^3
+average cortical thickness              = 2.904 mm +- 0.368 mm
+average integrated rectified mean curvature     = 0.133
+average integrated rectified Gaussian curvature = 0.023
+folding index                           =  7
+intrinsic curvature index               = 0.5
+structure is "Brodmann.30"
+number of vertices                      = 449
+total surface area                      = 288 mm^2
+total gray matter volume                = 854 mm^3
+average cortical thickness              = 3.134 mm +- 0.489 mm
+average integrated rectified mean curvature     = 0.118
+average integrated rectified Gaussian curvature = 0.022
+folding index                           =  4
+intrinsic curvature index               = 0.4
+structure is "Brodmann.22"
+number of vertices                      = 7079
+total surface area                      = 4718 mm^2
+total gray matter volume                = 17324 mm^3
+average cortical thickness              = 3.192 mm +- 0.520 mm
+average integrated rectified mean curvature     = 0.103
+average integrated rectified Gaussian curvature = 0.020
+folding index                           = 67
+intrinsic curvature index               = 5.8
+structure is "Brodmann.42"
+number of vertices                      = 1083
+total surface area                      = 720 mm^2
+total gray matter volume                = 1823 mm^3
+average cortical thickness              = 2.635 mm +- 0.442 mm
+average integrated rectified mean curvature     = 0.099
+average integrated rectified Gaussian curvature = 0.016
+folding index                           =  7
+intrinsic curvature index               = 0.7
+structure is "Brodmann.21"
+number of vertices                      = 3419
+total surface area                      = 2269 mm^2
+total gray matter volume                = 8192 mm^3
+average cortical thickness              = 3.112 mm +- 0.817 mm
+average integrated rectified mean curvature     = 0.133
+average integrated rectified Gaussian curvature = 0.036
+folding index                           = 59
+intrinsic curvature index               = 5.6
+structure is "Brodmann.38"
+number of vertices                      = 2377
+total surface area                      = 1645 mm^2
+total gray matter volume                = 7379 mm^3
+average cortical thickness              = 3.298 mm +- 0.696 mm
+average integrated rectified mean curvature     = 0.120
+average integrated rectified Gaussian curvature = 0.032
+folding index                           = 30
+intrinsic curvature index               = 3.4
+structure is "Brodmann.37"
+number of vertices                      = 7246
+total surface area                      = 4802 mm^2
+total gray matter volume                = 15916 mm^3
+average cortical thickness              = 2.892 mm +- 0.619 mm
+average integrated rectified mean curvature     = 0.124
+average integrated rectified Gaussian curvature = 0.030
+folding index                           = 103
+intrinsic curvature index               = 8.5
+structure is "Brodmann.20"
+number of vertices                      = 4693
+total surface area                      = 3120 mm^2
+total gray matter volume                = 11103 mm^3
+average cortical thickness              = 3.041 mm +- 0.690 mm
+average integrated rectified mean curvature     = 0.121
+average integrated rectified Gaussian curvature = 0.035
+folding index                           = 67
+intrinsic curvature index               = 6.5
+structure is "Brodmann.32"
+number of vertices                      = 2777
+total surface area                      = 1884 mm^2
+total gray matter volume                = 5847 mm^3
+average cortical thickness              = 2.990 mm +- 0.472 mm
+average integrated rectified mean curvature     = 0.116
+average integrated rectified Gaussian curvature = 0.024
+folding index                           = 34
+intrinsic curvature index               = 2.3
+structure is "Brodmann.24"
+number of vertices                      = 2902
+total surface area                      = 2015 mm^2
+total gray matter volume                = 6915 mm^3
+average cortical thickness              = 2.909 mm +- 0.576 mm
+average integrated rectified mean curvature     = 0.135
+average integrated rectified Gaussian curvature = 0.032
+folding index                           = 43
+intrinsic curvature index               = 3.9
+structure is "Brodmann.10"
+number of vertices                      = 5485
+total surface area                      = 3675 mm^2
+total gray matter volume                = 11986 mm^3
+average cortical thickness              = 2.738 mm +- 0.493 mm
+average integrated rectified mean curvature     = 0.134
+average integrated rectified Gaussian curvature = 0.031
+folding index                           = 100
+intrinsic curvature index               = 6.7
+structure is "Brodmann.25"
+number of vertices                      = 442
+total surface area                      = 285 mm^2
+total gray matter volume                = 1049 mm^3
+average cortical thickness              = 3.175 mm +- 0.645 mm
+average integrated rectified mean curvature     = 0.089
+average integrated rectified Gaussian curvature = 0.026
+folding index                           =  5
+intrinsic curvature index               = 0.4
+structure is "Brodmann.11"
+number of vertices                      = 6966
+total surface area                      = 4723 mm^2
+total gray matter volume                = 17065 mm^3
+average cortical thickness              = 2.920 mm +- 0.712 mm
+average integrated rectified mean curvature     = 0.138
+average integrated rectified Gaussian curvature = 0.037
+folding index                           = 126
+intrinsic curvature index               = 10.2
+structure is "Brodmann.46"
+number of vertices                      = 3565
+total surface area                      = 2378 mm^2
+total gray matter volume                = 7288 mm^3
+average cortical thickness              = 2.692 mm +- 0.499 mm
+average integrated rectified mean curvature     = 0.113
+average integrated rectified Gaussian curvature = 0.023
+folding index                           = 46
+intrinsic curvature index               = 2.9
+structure is "Brodmann.17"
+number of vertices                      = 4739
+total surface area                      = 2905 mm^2
+total gray matter volume                = 5308 mm^3
+average cortical thickness              = 1.875 mm +- 0.506 mm
+average integrated rectified mean curvature     = 0.135
+average integrated rectified Gaussian curvature = 0.038
+folding index                           = 68
+intrinsic curvature index               = 7.3
+structure is "Brodmann.18"
+number of vertices                      = 8541
+total surface area                      = 5115 mm^2
+total gray matter volume                = 12375 mm^3
+average cortical thickness              = 2.163 mm +- 0.584 mm
+average integrated rectified mean curvature     = 0.137
+average integrated rectified Gaussian curvature = 0.035
+folding index                           = 128
+intrinsic curvature index               = 11.9
+structure is "Brodmann.27"
+number of vertices                      = 225
+total surface area                      = 125 mm^2
+total gray matter volume                = 550 mm^3
+average cortical thickness              = 3.090 mm +- 0.809 mm
+average integrated rectified mean curvature     = 0.161
+average integrated rectified Gaussian curvature = 0.052
+folding index                           =  7
+intrinsic curvature index               = 0.4
+structure is "Brodmann.36"
+number of vertices                      = 1011
+total surface area                      = 669 mm^2
+total gray matter volume                = 957 mm^3
+average cortical thickness              = 2.909 mm +- 0.853 mm
+average integrated rectified mean curvature     = 0.128
+average integrated rectified Gaussian curvature = 0.059
+folding index                           = 14
+intrinsic curvature index               = 2.3
+structure is "Brodmann.35"
+number of vertices                      = 272
+total surface area                      = 171 mm^2
+total gray matter volume                = 523 mm^3
+average cortical thickness              = 3.173 mm +- 0.569 mm
+average integrated rectified mean curvature     = 0.121
+average integrated rectified Gaussian curvature = 0.018
+folding index                           =  3
+intrinsic curvature index               = 0.2
+structure is "Brodmann.28"
+number of vertices                      = 454
+total surface area                      = 285 mm^2
+total gray matter volume                = 231 mm^3
+average cortical thickness              = 2.729 mm +- 0.759 mm
+average integrated rectified mean curvature     = 0.081
+average integrated rectified Gaussian curvature = 0.017
+folding index                           =  2
+intrinsic curvature index               = 0.3
+structure is "Brodmann.29"
+number of vertices                      = 97
+total surface area                      = 59 mm^2
+total gray matter volume                = 300 mm^3
+average cortical thickness              = 3.412 mm +- 0.585 mm
+average integrated rectified mean curvature     = 0.160
+average integrated rectified Gaussian curvature = 0.072
+folding index                           =  3
+intrinsic curvature index               = 0.1
+structure is "Brodmann.26"
+number of vertices                      = 55
+total surface area                      = 34 mm^2
+total gray matter volume                = 209 mm^3
+average cortical thickness              = 3.679 mm +- 0.513 mm
+average integrated rectified mean curvature     = 0.093
+average integrated rectified Gaussian curvature = 0.024
+folding index                           =  0
+intrinsic curvature index               = 0.0
+structure is "MEDIAL.WALL"
+number of vertices                      = 7687
+total surface area                      = 4992 mm^2
+total gray matter volume                = 1721 mm^3
+average cortical thickness              = 0.607 mm +- 1.067 mm
+average integrated rectified mean curvature     = 0.084
+average integrated rectified Gaussian curvature = 0.027
+folding index                           = 70
+intrinsic curvature index               = 6.0
+
+Extracting stats for custom BA labels
+Using TH3 vertex volume calc
+Total face volume 287511
+Total vertex volume 284191 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/lh.BA8_v2_medial.label"
+number of vertices                      = 1683
+total surface area                      = 1145 mm^2
+total gray matter volume                = 4288 mm^3
+average cortical thickness              = 3.331 mm +- 0.608 mm
+average integrated rectified mean curvature     = 0.122
+average integrated rectified Gaussian curvature = 0.028
+folding index                           = 17
+intrinsic curvature index               = 1.7
+Using TH3 vertex volume calc
+Total face volume 287511
+Total vertex volume 284191 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/lh.BA9_v2_medial.label"
+number of vertices                      = 1426
+total surface area                      = 954 mm^2
+total gray matter volume                = 3232 mm^3
+average cortical thickness              = 2.945 mm +- 0.595 mm
+average integrated rectified mean curvature     = 0.128
+average integrated rectified Gaussian curvature = 0.030
+folding index                           = 23
+intrinsic curvature index               = 1.5
+Using TH3 vertex volume calc
+Total face volume 287511
+Total vertex volume 284191 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/lh.BA10_v2_medial.label"
+number of vertices                      = 1900
+total surface area                      = 1309 mm^2
+total gray matter volume                = 4305 mm^3
+average cortical thickness              = 2.681 mm +- 0.572 mm
+average integrated rectified mean curvature     = 0.126
+average integrated rectified Gaussian curvature = 0.027
+folding index                           = 33
+intrinsic curvature index               = 2.4
+Using TH3 vertex volume calc
+Total face volume 287511
+Total vertex volume 284191 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/lh.BA11_v2_medial.label"
+number of vertices                      = 592
+total surface area                      = 443 mm^2
+total gray matter volume                = 1564 mm^3
+average cortical thickness              = 2.907 mm +- 0.513 mm
+average integrated rectified mean curvature     = 0.132
+average integrated rectified Gaussian curvature = 0.029
+folding index                           = 12
+intrinsic curvature index               = 0.6
+Using TH3 vertex volume calc
+Total face volume 287511
+Total vertex volume 284191 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/lh.BA25.label"
+number of vertices                      = 550
+total surface area                      = 387 mm^2
+total gray matter volume                = 1193 mm^3
+average cortical thickness              = 2.693 mm +- 0.745 mm
+average integrated rectified mean curvature     = 0.156
+average integrated rectified Gaussian curvature = 0.067
+folding index                           = 12
+intrinsic curvature index               = 1.5
+Using TH3 vertex volume calc
+Total face volume 291987
+Total vertex volume 288464 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/rh.BA8_v2_medial.label"
+number of vertices                      = 2029
+total surface area                      = 1345 mm^2
+total gray matter volume                = 5075 mm^3
+average cortical thickness              = 3.206 mm +- 0.533 mm
+average integrated rectified mean curvature     = 0.119
+average integrated rectified Gaussian curvature = 0.022
+folding index                           = 20
+intrinsic curvature index               = 1.8
+Using TH3 vertex volume calc
+Total face volume 291987
+Total vertex volume 288464 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/rh.BA9_v2_medial.label"
+number of vertices                      = 1992
+total surface area                      = 1325 mm^2
+total gray matter volume                = 4963 mm^3
+average cortical thickness              = 3.090 mm +- 0.505 mm
+average integrated rectified mean curvature     = 0.128
+average integrated rectified Gaussian curvature = 0.031
+folding index                           = 30
+intrinsic curvature index               = 2.3
+Using TH3 vertex volume calc
+Total face volume 291987
+Total vertex volume 288464 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/rh.BA10_v2_medial.label"
+number of vertices                      = 2071
+total surface area                      = 1425 mm^2
+total gray matter volume                = 4519 mm^3
+average cortical thickness              = 2.751 mm +- 0.478 mm
+average integrated rectified mean curvature     = 0.132
+average integrated rectified Gaussian curvature = 0.031
+folding index                           = 36
+intrinsic curvature index               = 2.4
+Using TH3 vertex volume calc
+Total face volume 291987
+Total vertex volume 288464 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/rh.BA11_v2_medial.label"
+number of vertices                      = 2104
+total surface area                      = 1435 mm^2
+total gray matter volume                = 5117 mm^3
+average cortical thickness              = 2.736 mm +- 0.713 mm
+average integrated rectified mean curvature     = 0.134
+average integrated rectified Gaussian curvature = 0.037
+folding index                           = 47
+intrinsic curvature index               = 2.9
+Using TH3 vertex volume calc
+Total face volume 291987
+Total vertex volume 288464 (mask=0)
+atlas_icv (eTIV) = 1527413 mm^3    (det: 1.275428 )
+lhCtxGM: 283484.873 282495.000  diff=  989.9  pctdiff= 0.349
+rhCtxGM: 287281.031 286371.000  diff=  910.0  pctdiff= 0.317
+lhCtxWM: 206680.238 206843.500  diff= -163.3  pctdiff=-0.079
+rhCtxWM: 210773.307 211591.500  diff= -818.2  pctdiff=-0.388
+SubCortGMVol  59272.000
+SupraTentVol  1062267.449 (1059389.000) diff=2878.449 pctdiff=0.271
+SupraTentVolNotVent  1049463.449 (1046585.000) diff=2878.449 pctdiff=0.274
+BrainSegVol  1216131.000 (1212064.000) diff=4067.000 pctdiff=0.334
+BrainSegVolNotVent  1198409.000 (1199213.449) diff=-804.449 pctdiff=-0.067
+BrainSegVolNotVent  1198409.000
+CerebellumVol 151710.000
+VentChorVol   12804.000
+3rd4th5thCSF   4918.000
+CSFVol   851.000, OptChiasmVol   114.000
+MaskVol 1562783.000
+structure is "sub-TAG080/label/fromannots/rh.BA25.label"
+number of vertices                      = 461
+total surface area                      = 301 mm^2
+total gray matter volume                = 1105 mm^3
+average cortical thickness              = 3.168 mm +- 0.653 mm
+average integrated rectified mean curvature     = 0.093
+average integrated rectified Gaussian curvature = 0.028
+folding index                           =  6
+intrinsic curvature index               = 0.4
+
+Done

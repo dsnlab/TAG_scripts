@@ -1,0 +1,393 @@
+
+Setting Up Freesurfer6.0
+
+Freesurfer Home is /packages/freesurfer/6.0.0/freesurfer
+
+The Subject Directory is /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+\Running recon-all on sub-TAG073
+Thu Jun  7 11:59:02 PDT 2018
+
+setenv SUBJECTS_DIR /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+cd /gpfs/projects/dsnlab/shared/tag/TAG_scripts/sMRI
+/packages/freesurfer/6.0.0/freesurfer/bin/surfreg --s sub-TAG073 --t fsaverage6
+
+Linux n085 3.10.0-693.17.1.el7.x86_64 #1 SMP Sun Jan 14 10:36:03 EST 2018 x86_64 x86_64 x86_64 GNU/Linux
+#@# lh Thu Jun  7 11:59:03 PDT 2018
+#CMD# mris_register -curv -annot aparc.annot /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/lh.sphere /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage6/lh.reg.template.tif /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/lh.fsaverage6.sphere.reg
+using smoothwm curvature for final alignment
+zeroing medial wall in aparc.annot
+
+cwd /gpfs/projects/dsnlab/shared/tag/TAG_scripts/sMRI
+cmdline mris_register -curv -annot aparc.annot /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/lh.sphere /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage6/lh.reg.template.tif /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/lh.fsaverage6.sphere.reg 
+
+0 inflated.H
+1 sulc
+2 smoothwm (computed)
+$Id: mris_register.c,v 1.63 2016/01/20 23:43:04 greve Exp $
+  $Id: mrisurf.c,v 1.781.2.6 2016/12/27 16:47:14 zkaufman Exp $
+reading surface from /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/lh.sphere...
+reading colortable from annotation file...
+colortable with 36 entries read (originally /autofs/space/tanha_002/users/greve/fsdev.build/average/colortable_desikan_killiany.txt)
+reading template parameterization from /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage6/lh.reg.template.tif...
+ripping medial wall...
+MRISregister() -------
+max_passes = 4 
+min_degrees = 0.500000 
+max_degrees = 64.000000 
+nangles = 8 
+tol=5.0e-01, sigma=0.0, host= n085, nav=1024, nbrs=1, l_extern=10000.000, l_parea=0.200, l_nlarea=1.000, l_corr=1.000, l_dist=5.000
+using quadratic fit line minimization
+complete_dist_mat 0
+rms 0
+smooth_averages 0
+remove_neg 0
+ico_order 0
+which_surface 0
+target_radius 0.000000
+nfields 0
+scale 0.000000
+desired_rms_height -1.000000
+momentum 0.950000
+nbhd_size -10
+max_nbrs 10
+niterations 25
+nsurfaces 0
+SURFACES 3
+flags 16 (10)
+use curv 16
+no sulc 0
+no rigid align 0
+mris->nsize 1
+mris->hemisphere 0
+randomSeed 0
+
+tol=5.0e-01, sigma=0.0, host= n085, nav=1024, nbrs=1, l_extern=10000.000, l_parea=0.200, l_nlarea=1.000, l_corr=1.000, l_dist=5.000
+using quadratic fit line minimization
+--------------------
+1 Reading lh.sulc
+curvature mean = 0.027, std = 5.788
+curvature mean = 0.032, std = 0.891
+curvature mean = 0.013, std = 0.871
+Starting MRISrigidBodyAlignGlobal()
+  d=64.00 min @ (0.00, -16.00, 16.00) sse = 341803.2, tmin=0.7669
+  d=32.00 min @ (8.00, 8.00, 0.00) sse = 289917.7, tmin=1.5401
+  d=16.00 min @ (-4.00, 0.00, 0.00) sse = 270880.1, tmin=2.3152
+  d=4.00 min @ (0.00, -1.00, 0.00) sse = 269276.5, tmin=3.8676
+  d=2.00 min @ (0.00, 0.00, 0.50) sse = 269062.5, tmin=4.6431
+  d=1.00 min @ (0.25, 0.25, -0.25) sse = 268910.9, tmin=5.4250
+  d=0.50 min @ (0.00, 0.00, 0.12) sse = 268897.5, tmin=6.2996
+tol=1.0e+00, sigma=0.5, host= n085, nav=1024, nbrs=1, l_extern=10000.000, l_parea=0.200, l_nlarea=1.000, l_corr=0.050, l_spring=0.500, l_dist=5.000
+using quadratic fit line minimization
+MRISrigidBodyAlignGlobal() done   6.30 min
+curvature mean = 0.018, std = 0.916
+curvature mean = 0.004, std = 0.964
+curvature mean = 0.012, std = 0.924
+curvature mean = 0.006, std = 1.015
+curvature mean = 0.011, std = 0.921
+curvature mean = 0.005, std = 1.015
+2 Reading smoothwm
+curvature mean = -0.026, std = 0.269
+curvature mean = 0.019, std = 0.215
+curvature mean = 0.069, std = 0.443
+curvature mean = 0.017, std = 0.263
+curvature mean = 0.026, std = 0.600
+curvature mean = 0.017, std = 0.282
+curvature mean = 0.017, std = 0.728
+curvature mean = 0.018, std = 0.289
+curvature mean = 0.006, std = 0.831
+MRISregister() return, current seed 0
+-01: dt=0.0000, 43 negative triangles
+170: dt=0.9900, 43 negative triangles
+expanding nbhd size to 1
+171: dt=0.9900, 52 negative triangles
+172: dt=0.9900, 36 negative triangles
+173: dt=0.9900, 34 negative triangles
+174: dt=0.9900, 36 negative triangles
+175: dt=0.9900, 32 negative triangles
+176: dt=0.9900, 29 negative triangles
+177: dt=0.9900, 29 negative triangles
+178: dt=0.9900, 25 negative triangles
+179: dt=0.9900, 27 negative triangles
+180: dt=0.9900, 20 negative triangles
+181: dt=0.9900, 22 negative triangles
+182: dt=0.9900, 18 negative triangles
+183: dt=0.9900, 15 negative triangles
+184: dt=0.9900, 16 negative triangles
+185: dt=0.9900, 16 negative triangles
+186: dt=0.9900, 14 negative triangles
+187: dt=0.9900, 13 negative triangles
+188: dt=0.9900, 12 negative triangles
+189: dt=0.9900, 13 negative triangles
+190: dt=0.9900, 12 negative triangles
+191: dt=0.9900, 7 negative triangles
+192: dt=0.9900, 7 negative triangles
+193: dt=0.9900, 7 negative triangles
+194: dt=0.9900, 10 negative triangles
+195: dt=0.9900, 9 negative triangles
+196: dt=0.9900, 5 negative triangles
+197: dt=0.9900, 2 negative triangles
+198: dt=0.9900, 2 negative triangles
+199: dt=0.9900, 5 negative triangles
+200: dt=0.9900, 6 negative triangles
+201: dt=0.9900, 5 negative triangles
+202: dt=0.9900, 4 negative triangles
+203: dt=0.9900, 3 negative triangles
+204: dt=0.9900, 5 negative triangles
+205: dt=0.9900, 3 negative triangles
+206: dt=0.9900, 3 negative triangles
+207: dt=0.9405, 4 negative triangles
+208: dt=0.9405, 3 negative triangles
+209: dt=0.9405, 3 negative triangles
+210: dt=0.9405, 3 negative triangles
+211: dt=0.9405, 2 negative triangles
+212: dt=0.9405, 2 negative triangles
+213: dt=0.9405, 1 negative triangles
+214: dt=0.9405, 2 negative triangles
+215: dt=0.9405, 1 negative triangles
+216: dt=0.9405, 2 negative triangles
+217: dt=0.9405, 1 negative triangles
+218: dt=0.9405, 1 negative triangles
+219: dt=0.9405, 1 negative triangles
+220: dt=0.9405, 1 negative triangles
+221: dt=0.9405, 1 negative triangles
+222: dt=0.9405, 1 negative triangles
+223: dt=0.8935, 2 negative triangles
+224: dt=0.8935, 3 negative triangles
+225: dt=0.8935, 1 negative triangles
+226: dt=0.8935, 1 negative triangles
+227: dt=0.8935, 1 negative triangles
+228: dt=0.8935, 1 negative triangles
+229: dt=0.8935, 1 negative triangles
+writing registered surface to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/lh.fsaverage6.sphere.reg...
+registration took 1.64 hours
+mris_register utimesec    5907.864573
+mris_register stimesec    1.594911
+mris_register ru_maxrss   235420
+mris_register ru_ixrss    0
+mris_register ru_idrss    0
+mris_register ru_isrss    0
+mris_register ru_minflt   1025625
+mris_register ru_majflt   0
+mris_register ru_nswap    0
+mris_register ru_inblock  0
+mris_register ru_oublock  0
+mris_register ru_msgsnd   0
+mris_register ru_msgrcv   0
+mris_register ru_nsignals 0
+mris_register ru_nvcsw    81
+mris_register ru_nivcsw   15464
+FSRUNTIME@ mris_register  1.6421 hours 1 threads
+#@# rh Thu Jun  7 13:37:34 PDT 2018
+#CMD# mris_register -curv -annot aparc.annot /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/rh.sphere /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage6/rh.reg.template.tif /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/rh.fsaverage6.sphere.reg
+using smoothwm curvature for final alignment
+zeroing medial wall in aparc.annot
+
+cwd /gpfs/projects/dsnlab/shared/tag/TAG_scripts/sMRI
+cmdline mris_register -curv -annot aparc.annot /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/rh.sphere /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage6/rh.reg.template.tif /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/rh.fsaverage6.sphere.reg 
+
+0 inflated.H
+1 sulc
+2 smoothwm (computed)
+$Id: mris_register.c,v 1.63 2016/01/20 23:43:04 greve Exp $
+  $Id: mrisurf.c,v 1.781.2.6 2016/12/27 16:47:14 zkaufman Exp $
+reading surface from /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/rh.sphere...
+reading colortable from annotation file...
+colortable with 36 entries read (originally /autofs/space/tanha_002/users/greve/fsdev.build/average/colortable_desikan_killiany.txt)
+reading template parameterization from /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/fsaverage6/rh.reg.template.tif...
+ripping medial wall...
+MRISregister() -------
+max_passes = 4 
+min_degrees = 0.500000 
+max_degrees = 64.000000 
+nangles = 8 
+tol=5.0e-01, sigma=0.0, host= n085, nav=1024, nbrs=1, l_extern=10000.000, l_parea=0.200, l_nlarea=1.000, l_corr=1.000, l_dist=5.000
+using quadratic fit line minimization
+complete_dist_mat 0
+rms 0
+smooth_averages 0
+remove_neg 0
+ico_order 0
+which_surface 0
+target_radius 0.000000
+nfields 0
+scale 0.000000
+desired_rms_height -1.000000
+momentum 0.950000
+nbhd_size -10
+max_nbrs 10
+niterations 25
+nsurfaces 0
+SURFACES 3
+flags 16 (10)
+use curv 16
+no sulc 0
+no rigid align 0
+mris->nsize 1
+mris->hemisphere 1
+randomSeed 0
+
+tol=5.0e-01, sigma=0.0, host= n085, nav=1024, nbrs=1, l_extern=10000.000, l_parea=0.200, l_nlarea=1.000, l_corr=1.000, l_dist=5.000
+using quadratic fit line minimization
+--------------------
+1 Reading rh.sulc
+curvature mean = 0.002, std = 5.711
+curvature mean = 0.015, std = 0.873
+curvature mean = 0.014, std = 0.868
+Starting MRISrigidBodyAlignGlobal()
+  d=64.00 min @ (16.00, -16.00, 16.00) sse = 342876.6, tmin=1.0306
+  d=32.00 min @ (-8.00, 0.00, 0.00) sse = 340725.1, tmin=2.0874
+  d=16.00 min @ (4.00, 4.00, 0.00) sse = 314123.7, tmin=3.1442
+  d=8.00 min @ (0.00, -2.00, 0.00) sse = 310293.6, tmin=4.1848
+  d=4.00 min @ (1.00, 1.00, 1.00) sse = 309179.0, tmin=5.2352
+  d=2.00 min @ (0.00, -0.50, 0.00) sse = 308792.5, tmin=6.2905
+  d=1.00 min @ (-0.25, 0.00, -0.25) sse = 308719.6, tmin=7.3338
+  d=0.50 min @ (0.00, -0.12, 0.12) sse = 308698.9, tmin=8.3781
+tol=1.0e+00, sigma=0.5, host= n085, nav=1024, nbrs=1, l_extern=10000.000, l_parea=0.200, l_nlarea=1.000, l_corr=0.050, l_spring=0.500, l_dist=5.000
+using quadratic fit line minimization
+MRISrigidBodyAlignGlobal() done   8.38 min
+curvature mean = -0.008, std = 0.906
+curvature mean = 0.003, std = 0.948
+curvature mean = -0.010, std = 0.919
+curvature mean = 0.001, std = 0.977
+curvature mean = -0.013, std = 0.920
+curvature mean = -0.001, std = 0.990
+2 Reading smoothwm
+curvature mean = -0.026, std = 0.285
+curvature mean = 0.014, std = 0.197
+curvature mean = 0.067, std = 0.355
+curvature mean = 0.013, std = 0.245
+curvature mean = 0.038, std = 0.545
+curvature mean = 0.013, std = 0.269
+curvature mean = 0.021, std = 0.687
+curvature mean = 0.013, std = 0.280
+curvature mean = 0.008, std = 0.798
+MRISregister() return, current seed 0
+-01: dt=0.0000, 86 negative triangles
+142: dt=0.9900, 86 negative triangles
+143: dt=0.9900, 78 negative triangles
+144: dt=0.9900, 84 negative triangles
+145: dt=0.9900, 79 negative triangles
+146: dt=0.9900, 73 negative triangles
+147: dt=0.9900, 71 negative triangles
+148: dt=0.9900, 74 negative triangles
+149: dt=0.9900, 66 negative triangles
+150: dt=0.9900, 56 negative triangles
+151: dt=0.9900, 58 negative triangles
+152: dt=0.9900, 51 negative triangles
+153: dt=0.9900, 52 negative triangles
+154: dt=0.9900, 49 negative triangles
+155: dt=0.9900, 51 negative triangles
+156: dt=0.9900, 44 negative triangles
+157: dt=0.9900, 49 negative triangles
+158: dt=0.9900, 45 negative triangles
+159: dt=0.9900, 44 negative triangles
+160: dt=0.9900, 44 negative triangles
+161: dt=0.9900, 50 negative triangles
+162: dt=0.9900, 44 negative triangles
+163: dt=0.9900, 45 negative triangles
+164: dt=0.9900, 44 negative triangles
+165: dt=0.9900, 47 negative triangles
+166: dt=0.9900, 40 negative triangles
+167: dt=0.9900, 45 negative triangles
+168: dt=0.9900, 39 negative triangles
+169: dt=0.9900, 42 negative triangles
+170: dt=0.9900, 40 negative triangles
+171: dt=0.9900, 39 negative triangles
+172: dt=0.9900, 33 negative triangles
+173: dt=0.9900, 32 negative triangles
+174: dt=0.9900, 40 negative triangles
+175: dt=0.9900, 34 negative triangles
+176: dt=0.9900, 30 negative triangles
+177: dt=0.9900, 37 negative triangles
+178: dt=0.9900, 37 negative triangles
+179: dt=0.9900, 34 negative triangles
+180: dt=0.9900, 31 negative triangles
+181: dt=0.9900, 25 negative triangles
+182: dt=0.9900, 23 negative triangles
+183: dt=0.9900, 28 negative triangles
+184: dt=0.9900, 27 negative triangles
+185: dt=0.9900, 26 negative triangles
+186: dt=0.9900, 22 negative triangles
+187: dt=0.9900, 26 negative triangles
+188: dt=0.9900, 22 negative triangles
+189: dt=0.9900, 17 negative triangles
+190: dt=0.9900, 17 negative triangles
+191: dt=0.9900, 17 negative triangles
+192: dt=0.9900, 20 negative triangles
+193: dt=0.9900, 21 negative triangles
+194: dt=0.9900, 17 negative triangles
+195: dt=0.9900, 13 negative triangles
+196: dt=0.9900, 16 negative triangles
+197: dt=0.9900, 18 negative triangles
+198: dt=0.9900, 18 negative triangles
+199: dt=0.9900, 16 negative triangles
+200: dt=0.9900, 16 negative triangles
+201: dt=0.9900, 15 negative triangles
+202: dt=0.9900, 15 negative triangles
+203: dt=0.9900, 11 negative triangles
+204: dt=0.9900, 15 negative triangles
+205: dt=0.9900, 11 negative triangles
+206: dt=0.9900, 9 negative triangles
+207: dt=0.9900, 14 negative triangles
+208: dt=0.9900, 8 negative triangles
+209: dt=0.9900, 9 negative triangles
+210: dt=0.9900, 7 negative triangles
+211: dt=0.9900, 6 negative triangles
+212: dt=0.9900, 5 negative triangles
+213: dt=0.9900, 5 negative triangles
+214: dt=0.9900, 4 negative triangles
+215: dt=0.9900, 5 negative triangles
+216: dt=0.9900, 3 negative triangles
+writing registered surface to /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/surf/rh.fsaverage6.sphere.reg...
+registration took 1.38 hours
+mris_register utimesec    4962.442107
+mris_register stimesec    1.264935
+mris_register ru_maxrss   241060
+mris_register ru_ixrss    0
+mris_register ru_idrss    0
+mris_register ru_isrss    0
+mris_register ru_minflt   450305
+mris_register ru_majflt   0
+mris_register ru_nswap    0
+mris_register ru_inblock  0
+mris_register ru_oublock  0
+mris_register ru_msgsnd   0
+mris_register ru_msgrcv   0
+mris_register ru_nsignals 0
+mris_register ru_nvcsw    72
+mris_register ru_nivcsw   12936
+FSRUNTIME@ mris_register  1.3791 hours 1 threads
+surfreg-Run-Time-Hours sub-TAG073 lhrh 0 3.02
+Thu Jun  7 15:00:19 PDT 2018
+surfreg done
+Subject Stamp: freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0-2beb96c
+Current Stamp: freesurfer-Linux-centos6_x86_64-stable-pub-v6.0.0-2beb96c
+INFO: SUBJECTS_DIR is /gpfs/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+Actual FREESURFER_HOME /gpfs/packages/freesurfer/6.0.0/freesurfer
+-rw-rw---- 1 jpfeifer dsnlab 433457 Jun  1 18:32 /gpfs/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/scripts/recon-all.log
+Linux n085 3.10.0-693.17.1.el7.x86_64 #1 SMP Sun Jan 14 10:36:03 EST 2018 x86_64 x86_64 x86_64 GNU/Linux
+
+ERROR: it appears that recon-all is already running
+for sub-TAG073 based on the presence of /gpfs/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/scripts/IsRunning.lh+rh. It could
+also be that recon-all was running at one point but
+died in an unexpected way. If it is the case that there
+is a process running, you can kill it and start over or
+just let it run. If the process has died, you should type:
+
+rm /gpfs/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG073/scripts/IsRunning.lh+rh
+
+and re-run. Or you can add -no-isrunning to the recon-all
+command-line. The contents of this file are:
+----------------------------------------------------------
+------------------------------
+SUBJECT sub-TAG073
+HEMI    lh rh
+DATE Wed May 30 11:43:39 PDT 2018
+USER jpfeifer
+HOST n050
+PROCESSID 185105 
+PROCESSOR x86_64
+OS Linux
+Linux n050 3.10.0-693.17.1.el7.x86_64 #1 SMP Sun Jan 14 10:36:03 EST 2018 x86_64 x86_64 x86_64 GNU/Linux
+$Id: recon-all,v 1.580.2.16 2017/01/18 14:11:24 zkaufman Exp $
+----------------------------------------------------------
