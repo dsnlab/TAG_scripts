@@ -1,5 +1,0 @@
-exec_xcp() {
-   verbose &&  echo_cmd '${XCPEDIR}/utils/'"${@}"
-               echo_cmd '${XCPEDIR}/utils/'"${@}" 2>> ${log_proc}
-               ${XCPEDIR}/utils/"${@}"
-}

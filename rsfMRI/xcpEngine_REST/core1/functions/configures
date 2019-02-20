@@ -1,4 +1,0 @@
-configures() {
-   eval ${1}[${cxt}]=\"\${@:2}\"
-   declared_s[${1}]=${1}
-}

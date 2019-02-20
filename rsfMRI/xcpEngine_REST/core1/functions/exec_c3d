@@ -1,5 +1,0 @@
-exec_c3d() {
-   verbose &&  echo_cmd    "${@}"
-               echo_cmd    "${@}" 2>> ${log_proc}
-               ${C3D_PATH}/"${@}"
-}

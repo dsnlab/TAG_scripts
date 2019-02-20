@@ -1,5 +1,0 @@
-exec_afni() {
-   verbose &&  echo_cmd     "${@}"
-               echo_cmd     "${@}" 2>> ${log_proc}
-               ${AFNI_PATH}/"${@}" 2>> ${log_proc}
-}

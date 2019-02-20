@@ -1,4 +1,0 @@
-define() {
-     is+integer ${cxt} && eval ${1}[${cxt}]=\"\${@:2}\"
-   ! is+integer ${cxt} && eval ${1}=\"\${@:2}\"
-}

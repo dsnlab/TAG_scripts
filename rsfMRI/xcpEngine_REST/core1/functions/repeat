@@ -1,7 +1,0 @@
-repeat() {
-   [[ ${1} == 0 ]] && return
-   local ct=$(eval echo {1..${1}})
-   shift
-   local pattern=${@}
-   printf "${pattern}"'%.0s' ${ct}
-}
