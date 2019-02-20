@@ -1,0 +1,56 @@
+-e 
+Setting up AFNI
+Tue Jan 22 09:48:04 PST 2019
+/bin/bash
+2
+sub-TAG019
+sub-TAG019
+tag
+/projects/dsnlab/shared/tag
+/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA
+/projects/dsnlab/shared/tag/bids_data/sub-TAG019/ses-wave2/func
+/projects/dsnlab/shared/tag/bids_data/derivatives/rsfMRI_preproc_wave2
+/projects/dsnlab/shared/tag/bids_data/derivatives/rsfMRI_preproc_wave2 /gpfs/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI 
+"$subj" folder created
+-- applying input view as +orig
+** warning: removing first 5 TRs from beginning of each run
+   --> the stimulus timing files must reflect the removal of these TRs
+** WARNING: anat follower does not seem to exist: /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/aparc.a2009s+aseg_rank.nii.gz
+   originally from /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/aparc.a2009s+aseg_rank.nii.gz
+** warning: have duplicate anat follower: aparc.a2009s+aseg_rank.nii.gz
+** WARNING: anat follower does not seem to exist: /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/aparc.a2009s+aseg_rank.nii.gz
+   originally from /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/aparc.a2009s+aseg_rank.nii.gz
+** WARNING: anat follower does not seem to exist: /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/sub-TAG019_vent.nii.gz
+   originally from /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/sub-TAG019_vent.nii.gz
+** WARNING: anat follower does not seem to exist: /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/sub-TAG019_WM.nii.gz
+   originally from /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/sub-TAG019_WM.nii.gz
+-- will use min outlier volume as motion base
+** TR of 0 != run #1 TR 0.78
+----------------------------------------------------------------------
+** failed command (create_script):
+
+  afni_proc.py -subj_id sub-TAG019 -script                                                                              \
+      rsfMRI_preproc_wave2.proc.sub-TAG019 -scr_overwrite -blocks despike                                               \
+      align volreg blur mask scale regress -copy_anat                                                                   \
+      /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/sub-TAG019_SurfVol.nii.gz            \
+      -anat_follower_ROI aaseg anat                                                                                     \
+      /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/aparc.a2009s+aseg_rank.nii.gz        \
+      -anat_follower_ROI aeseg epi                                                                                      \
+      /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/aparc.a2009s+aseg_rank.nii.gz        \
+      -anat_follower_ROI FSvent epi                                                                                     \
+      /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/sub-TAG019_vent.nii.gz               \
+      -anat_follower_ROI FSWe epi                                                                                       \
+      /projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer/sub-TAG019/SUMA/sub-TAG019_WM.nii.gz                 \
+      -anat_follower_erode FSvent FSWe -dsets                                                                           \
+      /projects/dsnlab/shared/tag/bids_data/sub-TAG019/ses-wave2/func/sub-TAG019_ses-wave2_task-rest_run-01_bold.nii.gz \
+      /projects/dsnlab/shared/tag/bids_data/sub-TAG019/ses-wave2/func/sub-TAG019_ses-wave2_task-rest_run-02_bold.nii.gz \
+      /projects/dsnlab/shared/tag/bids_data/sub-TAG019/ses-wave2/func/sub-TAG019_ses-wave2_task-rest_run-03_bold.nii.gz \
+      -tcat_remove_first_trs 5 -volreg_align_to MIN_OUTLIER -volreg_align_e2a                                           \
+      -align_opts_aea -giant_move -cost lpc+ZZ -volreg_interp -Fourier                                                  \
+      -blur_size 2 -mask_apply epi -mask_test_overlap yes -scale_max_val 200                                            \
+      -regress_ROI_PC FSvent 3 -regress_make_corr_vols aeseg FSvent                                                     \
+      -regress_anaticor_fast -regress_anaticor_label FSWe                                                               \
+      -regress_censor_outliers 0.1 -regress_censor_motion 0.2                                                           \
+      -regress_bandpass 0.009 0.2 -regress_apply_mot_types demean deriv                                                 \
+      -regress_run_clustsim no -regress_est_blur_errts
+----------------------------------------------------------------------

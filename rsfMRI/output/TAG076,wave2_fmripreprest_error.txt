@@ -1,0 +1,66 @@
+(node:99195) UnhandledPromiseRejectionWarning: TypeError: Cannot read property 'length' of undefined
+    at /usr/lib/node_modules/bids-validator/cli.js:21:27
+    at /usr/lib/node_modules/bids-validator/validators/bids/start.js:22:7
+    at /usr/lib/node_modules/bids-validator/utils/options.js:21:9
+    at /usr/lib/node_modules/bids-validator/utils/options.js:53:9
+    at files.readFile.then.catch.issue (/usr/lib/node_modules/bids-validator/utils/options.js:40:11)
+    at process._tickCallback (internal/process/next_tick.js:68:7)
+(node:99195) UnhandledPromiseRejectionWarning: Unhandled promise rejection. This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). (rejection id: 1)
+(node:99195) [DEP0018] DeprecationWarning: Unhandled promise rejections are deprecated. In the future, promise rejections that are not handled will terminate the Node.js process with a non-zero exit code.
+[WARNING] This document format requires a nonempty <title> element.
+  Please specify either 'title' or 'pagetitle' in the metadata.
+  Falling back to 'CITATION'
+/usr/local/miniconda/lib/python3.6/importlib/_bootstrap.py:219: ImportWarning: can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+  return f(*args, **kwds)
+/usr/local/miniconda/lib/python3.6/site-packages/skimage/__init__.py:80: ResourceWarning: unclosed file <_io.TextIOWrapper name='/usr/local/miniconda/lib/python3.6/site-packages/pytest.py' mode='r' encoding='utf-8'>
+  imp.find_module('pytest')
+/usr/local/miniconda/lib/python3.6/importlib/_bootstrap.py:219: ImportWarning: can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+  return f(*args, **kwds)
+/usr/local/miniconda/lib/python3.6/importlib/_bootstrap.py:219: ImportWarning: can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+  return f(*args, **kwds)
+/usr/local/miniconda/lib/python3.6/importlib/_bootstrap.py:219: ImportWarning: can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+  return f(*args, **kwds)
+/usr/local/miniconda/lib/python3.6/site-packages/bids/layout/bids_layout.py:121: ResourceWarning: unclosed file <_io.TextIOWrapper name='/projects/dsnlab/shared/tag/bids_data/dataset_description.json' mode='r' encoding='UTF-8'>
+  self.description = json.load(open(target, 'r'))
+/usr/local/miniconda/lib/python3.6/site-packages/grabbit/core.py:436: ResourceWarning: unclosed file <_io.TextIOWrapper name='/usr/local/miniconda/lib/python3.6/site-packages/bids/layout/config/bids.json' mode='r' encoding='UTF-8'>
+  domain = json.load(open(domain, 'r'))
+/usr/local/miniconda/lib/python3.6/site-packages/bids/layout/bids_layout.py:208: ResourceWarning: unclosed file <_io.TextIOWrapper name='/projects/dsnlab/shared/tag/bids_data/task-rest_bold.json' mode='r' encoding='utf-8'>
+  encoding='utf-8'))
+/usr/local/miniconda/lib/python3.6/site-packages/bids/layout/bids_layout.py:208: ResourceWarning: unclosed file <_io.TextIOWrapper name='/projects/dsnlab/shared/tag/bids_data/phasediff.json' mode='r' encoding='utf-8'>
+  encoding='utf-8'))
+/usr/local/miniconda/lib/python3.6/site-packages/bids/layout/bids_layout.py:208: ResourceWarning: unclosed file <_io.TextIOWrapper name='/projects/dsnlab/shared/tag/bids_data/sub-TAG076/ses-wave1/fmap/sub-TAG076_ses-wave1_phasediff.json' mode='r' encoding='utf-8'>
+  encoding='utf-8'))
+/usr/local/miniconda/lib/python3.6/site-packages/bids/layout/bids_layout.py:208: ResourceWarning: unclosed file <_io.TextIOWrapper name='/projects/dsnlab/shared/tag/bids_data/sub-TAG076/ses-wave2/fmap/sub-TAG076_ses-wave2_phasediff.json' mode='r' encoding='utf-8'>
+  encoding='utf-8'))
+/usr/local/miniconda/lib/python3.6/site-packages/nipype/workflows/dmri/mrtrix/group_connectivity.py:16: UserWarning: cmp not installed
+  warnings.warn('cmp not installed')
+/usr/local/miniconda/lib/python3.6/site-packages/nipype/interfaces/fsl/preprocess.py:1887: UserWarning: This has not been fully tested. Please report any failures.
+  warn('This has not been fully tested. Please report any failures.')
+/usr/local/miniconda/lib/python3.6/site-packages/nipype/interfaces/fsl/preprocess.py:1887: UserWarning: This has not been fully tested. Please report any failures.
+  warn('This has not been fully tested. Please report any failures.')
+/usr/local/miniconda/lib/python3.6/site-packages/bids/layout/bids_layout.py:208: ResourceWarning: unclosed file <_io.TextIOWrapper name='/projects/dsnlab/shared/tag/bids_data/sub-TAG076/ses-wave2/func/sub-TAG076_ses-wave2_task-rest_run-01_bold.json' mode='r' encoding='utf-8'>
+  encoding='utf-8'))
+/usr/local/miniconda/lib/python3.6/site-packages/nipype/interfaces/fsl/preprocess.py:1887: UserWarning: This has not been fully tested. Please report any failures.
+  warn('This has not been fully tested. Please report any failures.')
+/usr/local/miniconda/lib/python3.6/site-packages/bids/layout/bids_layout.py:208: ResourceWarning: unclosed file <_io.TextIOWrapper name='/projects/dsnlab/shared/tag/bids_data/sub-TAG076/ses-wave2/func/sub-TAG076_ses-wave2_task-rest_run-02_bold.json' mode='r' encoding='utf-8'>
+  encoding='utf-8'))
+/usr/local/miniconda/lib/python3.6/site-packages/nipype/interfaces/fsl/preprocess.py:1887: UserWarning: This has not been fully tested. Please report any failures.
+  warn('This has not been fully tested. Please report any failures.')
+Captured warning (<class 'ImportWarning'>): can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+Captured warning (<class 'ResourceWarning'>): unclosed file <_io.TextIOWrapper name='/usr/local/miniconda/lib/python3.6/site-packages/pytest.py' mode='r' encoding='utf-8'>
+Captured warning (<class 'ImportWarning'>): can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+Captured warning (<class 'ImportWarning'>): can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+Captured warning (<class 'ImportWarning'>): can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+/usr/local/miniconda/lib/python3.6/importlib/_bootstrap.py:219: ImportWarning: can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+  return f(*args, **kwds)
+/usr/local/miniconda/lib/python3.6/site-packages/skimage/__init__.py:80: ResourceWarning: unclosed file <_io.TextIOWrapper name='/usr/local/miniconda/lib/python3.6/site-packages/pytest.py' mode='r' encoding='utf-8'>
+  imp.find_module('pytest')
+/usr/local/miniconda/lib/python3.6/importlib/_bootstrap.py:219: ImportWarning: can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+  return f(*args, **kwds)
+/usr/local/miniconda/lib/python3.6/importlib/_bootstrap.py:219: ImportWarning: can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+  return f(*args, **kwds)
+/usr/local/miniconda/lib/python3.6/importlib/_bootstrap.py:219: ImportWarning: can't resolve package from __spec__ or __package__, falling back on __name__ and __path__
+  return f(*args, **kwds)
+Captured warning (<class 'PendingDeprecationWarning'>): the matrix subclass is not the recommended way to represent matrices or deal with linear algebra (see https://docs.scipy.org/doc/numpy/user/numpy-for-matlab-users.html). Please adjust your code to use regular ndarray.
+Captured warning (<class 'DeprecationWarning'>): In future, it will be an error for 'np.bool_' scalars to be interpreted as an index
+slurmstepd: error: *** JOB 3055386 ON n068 CANCELLED AT 2019-01-12T16:10:23 DUE TO TIME LIMIT ***
