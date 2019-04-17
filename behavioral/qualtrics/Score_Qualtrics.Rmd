@@ -13,7 +13,7 @@ Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
 #You should set this to the behavioral directory on the TAG file server 
-workdir='I:/dsnlab/TAG/behavior/' 
+workdir='/Volumes/psych-cog/dsnlab/TAG/behavior/' 
 ```
 
 Load required packages
@@ -3055,14 +3055,14 @@ rm(together,part2,part3,mspss_df_header,mspss_temp,mspss_temp_df,MSPSS,MSPSS_Wav
 
 Prepare PSS
 ```{r}
-PSS<-left_join(filter(cleaned_survey_data, grepl("^PSS",item)) %>%
+PSS<-filter(cleaned_survey_data, grepl("^PSS",item)) %>% #left_join(
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 mutate(value=ifelse(tagid=="TAG132" && item=="PSS_5",4,
-                                     ifelse(tagid=="TAG132" && item=="PSS_6",2,
-                                            ifelse(tagid=="TAG132" && item=="PSS_7",3,
-                                                   ifelse(tagid=="TAG132" && item=="PSS_9",2,value))))
+                 mutate(value=ifelse(tagid=="TAG132" & item=="PSS_5",4,
+                                     ifelse(tagid=="TAG132" & item=="PSS_6",2,
+                                            ifelse(tagid=="TAG132" & item=="PSS_7",3,
+                                                   ifelse(tagid=="TAG132" & item=="PSS_9",2,value))))
                  ) %>%
                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
                  spread(item,value),

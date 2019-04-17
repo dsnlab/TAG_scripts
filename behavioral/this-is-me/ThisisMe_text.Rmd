@@ -24,7 +24,7 @@ package.check <- lapply(packages, FUN = function(x) {
 ```{r load and tidy text}
 rm(list=ls())
 setwd("/Volumes/psych-cog/dsnlab/TAG/behavior/This_Is_Me/Text")
-df_raw <- read.delim("thisisme_03192018.txt", header=FALSE)
+df_raw <- read.delim("thisisme_03192018.txt", header=FALSE) 
 df_raw$V1 <- as.character(df_raw$V1)
 
 df_wide <- list() # initialize a list
@@ -36,6 +36,11 @@ colnames(df_wide) <- c("SID", "text") # rename the variables
 df_wide <- separate(df_wide, col = SID, into = c("junk", "SID"), sep = "G") # separate TAG from the SIDs
 df_wide <- df_wide[,-1] # remove the junk, e.g., "TAG" column
 
+# remove everything after the "E:" in the raw text"
+temp <- unlist(strsplit(df_wide$text, "E:", fixed = TRUE)) # split by the E: character, then unlist the strsplit output
+temp = temp[c(TRUE, FALSE)] # subset to get the odd values only
+df_wide$text = temp # replace text in df_wide
+
 df_tidy <- unnest_tokens(df_wide, word, text) # tidy into one word per line
 ```
 
@@ -43,52 +48,65 @@ df_tidy <- unnest_tokens(df_wide, word, text) # tidy into one word per line
 
 # terms that are being removed include 
 # the letters "s" and "e" which indicate the start and stop of 1 min
-# for privacy: 
-# when participants said their own name or the names of others
-# when participants said their age
-# when participants said the name of their school 
-df_tidy <- filter(df_tidy, word!="s" & word!= "e" & word!= "nayme" & word!= "ayge" & word!= "pahuse" & word!= "NOS" & word!= "incomp")
+df_tidy <- filter(df_tidy, word!="s" & word!="um") # remove the "start" labels
 
 # need to remove timestamps, age data or other numbers may incidentally be removed
 is_alphabet <- str_detect(df_tidy$word, "[:alpha:]") # logical vector answering the question: is it composed of letters from the alphabet?
 df_tidy <- filter(df_tidy, is_alphabet==TRUE) # filter such that only rows with letters of the alphabet are present
-```
-
-```{r create sentiment df}
 
 # count the total number of words uttered per subject
 total_num <- df_tidy %>% 
   group_by(SID) %>%
   summarise(total_num=n()) 
 
-# create a subset of the NRC sentiment library that is categorizes as "joyful" or "positive""
-nrcjoypos <- get_sentiments("nrc") %>% 
-  filter(sentiment == "joy" | sentiment == "positive")
+# AFTER counting the total number of words per subject, remove terms for privacy:
+# when participants said their own name or the names of others
+# when participants said their age
+# when participants said the name of their school 
 
-# count the number of words that subjects uttered that match words in nrcjoy library
-joypos_num <- inner_join(df_tidy, nrcjoypos) %>% 
-  group_by(SID) %>% 
-  summarise(joypos_num=n())
-
-# count the percentage of total words
-df_joypos <- left_join(total_num, joypos_num) %>% 
-  mutate(joypos_percent = joypos_num/total_num) 
+df_tidy <- filter(df_tidy, word!= "nayme" & word!= "ayge" & word!= "pahuse" & word!= "NOS" & word!= "nos" & word!= "incomp" & word!= "birfdate")
 
 ```
 
-```{r summarise sentiment data}
+```{r create sentiment df}
+
+count_sentiment <- function(affect){
+
+# create a subset of the NRC sentiment library based on the sentiment
+nrc_dict <- get_sentiments("nrc") %>% 
+  filter(sentiment == affect)
+
+# count the number of words that subjects uttered that match words in nrcjoy library
+affect_num <- inner_join(df_tidy, nrc_dict) %>% 
+  group_by(SID) %>% 
+  summarise(affect_num=n())
+
+# count the percentage of total words
+df_affect <- left_join(total_num, affect_num) %>% 
+  mutate(affect_percent = affect_num/total_num)
+
+filename = paste0(affect, "_summary_04262018.csv")
+write.csv(df_affect, filename)
+
+}
+
+count_sentiment("positive")
+count_sentiment("negative")
+```
+
+```{r summarise sentiment data, include= FALSE}
 # How many participants utter no words of joy or positivity?
-sum(is.na(df_joypos$joypos_num)) 
-
-# What is the average percentage of joy and positivity words?
-mean(df_joypos$joypos_percent, na.rm=TRUE)
-
-# what is the standard deviation of joy and positivity words? 
-sd(df_joypos$joypos_percent, na.rm=TRUE)
-
-# what is the distribution of joy and positivity words?
-ggplot(df_joypos, aes(x= joypos_percent)) + 
-  geom_dotplot(binwidth=.01) +
-  geom_density()
+# sum(is.na(df_affect$affect_num)) 
+# 
+# # What is the average percentage of joy and positivity words?
+# mean(df_affect$affect_percent, na.rm=TRUE)
+# 
+# # what is the standard deviation of joy and positivity words? 
+# sd(df_affect$affect_percent, na.rm=TRUE)
+# 
+# # what is the distribution of joy and positivity words?
+# ggplot(df_affect, aes(x= affect_percent)) + 
+#   geom_dotplot(binwidth=.01) +
+#   geom_density()
 
 ```
