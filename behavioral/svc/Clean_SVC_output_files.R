@@ -1,7 +1,7 @@
 ###########
 # title: "cleaning SVC output files"
 # author: "Marjolein"
-# date: "12 April 2019"
+# date: "24 April 2019"
 ###########
 ## This script imports SVC output files, and outputs a long format file with SVC behavior across all waves and runs
 ## It also codes response tendencies and reaction times per adjective factor for self and change.
@@ -31,12 +31,22 @@ dataHeader <- c('trial', 'condition.and.factor', 'onset', 'RT.seconds',
 # %           [1,4] = Prosocial; [2, 5] = Withdrawn; [3,6] Antisocial
 # %       3. Time since trigger
 # %       4. Reaction time
-# %       5. Response 1=yes, 2=no, 0=no response
+# %       5. Response 1=yes, 2=no ??? 0=no response
 # %       6. Reverse coding 1=not reverse coded, 0=reverse coded (i.e. if it loads negatively on the adjective factor)
 # %       7. Number of syllables in the word
 # %       8. The presented word/adjective
 
 Filestrings = list.files(path=rawDataDir,pattern="tag.*svc.*output.txt",full.names=T,recursive=T)
+Filestrings <- as.data.frame(Filestrings) %>% 
+  filter(!grepl("Y:/dsnlab/TAG/behavior/task/output/tag059_wave_1_svc_run1_output.txt",Filestrings)) %>%
+  filter(!grepl("Y:/dsnlab/TAG/behavior/task/output/tag166_wave_1_svc_run1_output.txt",Filestrings)) %>%
+  filter(!grepl("Y:/dsnlab/TAG/behavior/task/output/tag220_wave_1_svc_run1_output.txt",Filestrings)) %>%
+  filter(!grepl("Y:/dsnlab/TAG/behavior/task/output/tag240_wave_1_svc_run2_output.txt",Filestrings)) %>%
+  filter(!grepl("Y:/dsnlab/TAG/behavior/task/output/tag036_wave_1_svc_run2_output.txt",Filestrings)) %>%
+  filter(!grepl("Y:/dsnlab/TAG/behavior/task/output/tag221_wave_1_svc_run1_output.txt",Filestrings)) %>%
+  filter(!grepl("Y:/dsnlab/TAG/behavior/task/output/tag067_wave_1_svc_run1_output.txt",Filestrings)) %>%
+  filter(!grepl("Y:/dsnlab/TAG/behavior/task/output/tag194_wave_1_svc_run2_output.txt",Filestrings)) #filtering out some files that have been manually edited (edited files are in 'edited' folder)
+Filestrings <- as.character(Filestrings[,1])
 
 longDF <- setNames(data.frame(matrix(ncol = 8, nrow = 0)),paste0(dataHeader)) 
 
@@ -64,6 +74,7 @@ for (string in Filestrings) {
 
 longDF <- longDF %>% 
   filter(sid<350) %>%
+  filter(!sid==29) %>% #TAG029 was excluded from the study because of psychotic symptoms
   mutate(response.0NA = ifelse(response==0,NA,response)) %>%
   mutate(response.recoded = ifelse(reverse.coding==0,
                              ifelse(change==FALSE,
@@ -79,7 +90,7 @@ write.csv(wave1DF,paste0(outDataDir,'svc_trials_wave1.csv'),row.names=F)
 responsetable <- table(wave1DF$condition.and.factor, wave1DF$response.recoded)
 prop.table(responsetable, margin=1)
 #endorsement of prosocial adjectives is 93%, of withdrawn items 32% and of antisocial items 21%
-#on average about 80% of the items are considered malleable, no difference between adjective factors
+#on average about 80% of the items are considered malleable, not much difference between adjective factors
 describeBy(wave1DF$RT.seconds,wave1DF$change)
 describeBy(wave1DF$RT.seconds,wave1DF$condition.and.factor)
 #average reaction times between 1.5 and 2 seconds, does not vary much by condition or adjective factor
@@ -97,3 +108,4 @@ files <- lapply(X=ids, df=wave1DF, FUN=function(id, df) {
   
   write.table(df,file=paste0(outDataDir,'subjects/tag',fid,'.csv'),sep=",",row.names=F,na="") 
 })
+
