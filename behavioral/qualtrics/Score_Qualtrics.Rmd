@@ -3837,11 +3837,11 @@ SCARED_Wave1<-left_join(SCARED,survey_date, by = c("tagid","survey_name")) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(SCARED_total=rowSums(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5,
                                     SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_9),na.rm=F),
-         SCARED_ptsd_total=rowSums(cbind(SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_8),na.rm=F),
+         SCARED_ptsd_total=rowSums(cbind(SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_9),na.rm=F),
          SCARED_anxiety_total=rowSums(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5),na.rm=F),
          SCARED_mean=round(rowMeans(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5,
-                                    SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_8),na.rm=T),3),
-         SCARED_ptsd_mean=round(rowMeans(cbind(SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_8),na.rm=T),3),
+                                    SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_9),na.rm=T),3),
+         SCARED_ptsd_mean=round(rowMeans(cbind(SCARED_R_6,SCARED_R_7,SCARED_R_8,SCARED_R_9),na.rm=T),3),
          SCARED_anxiety_mean=round(rowMeans(cbind(SCARED_R_1,SCARED_R_2,SCARED_R_3,SCARED_R_4,SCARED_R_5),na.rm=T),3))
   
 
