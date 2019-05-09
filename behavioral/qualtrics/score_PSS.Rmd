@@ -1,0 +1,144 @@
+---
+title: "score_PSS"
+author: "Theresa Cheng"
+date: "5/9/2019"
+output: html_document
+---
+
+```{r}
+PSS<-left_join(filter(cleaned_survey_data, grepl("^PSS",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 mutate(value=ifelse((tagid=="TAG132" & item=="PSS_5"),4,
+                                     ifelse((tagid=="TAG132" & item=="PSS_6"),2,
+                                            ifelse((tagid=="TAG132" & item=="PSS_7"),3,
+                                                   ifelse((tagid=="TAG132" & item=="PSS_9"),2,value))))
+                 ) %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 subset(!tagid=="TAG200" | !survey_name=="W2S1 - Current V1") %>% 
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+
+if (length(PSS$tagid) == length(unique(PSS$tagid))){
+  print("No duplicate tagids in data")
+}
+
+PSS_Wave1<-left_join(PSS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>% # remove this line when making RDoC db document
+  mutate(PSS_4=ifelse(PSS_4==0,4,
+                      ifelse(PSS_4==1,3,
+                             ifelse(PSS_4==2,2,
+                                    ifelse(PSS_4==3,1,
+                                           ifelse(PSS_4==4,0,
+                                                  88))))),
+         PSS_5=ifelse(PSS_5==0,4,
+                      ifelse(PSS_5==1,3,
+                             ifelse(PSS_5==2,2,
+                                    ifelse(PSS_5==3,1,
+                                           ifelse(PSS_5==4,0,
+                                                  88))))),
+         PSS_7=ifelse(PSS_7==0,4,
+                      ifelse(PSS_7==1,3,
+                             ifelse(PSS_7==2,2,
+                                    ifelse(PSS_7==3,1,
+                                           ifelse(PSS_7==4,0,
+                                                  88))))),
+         PSS_8=ifelse(PSS_8==0,4,
+                      ifelse(PSS_8==1,3,
+                             ifelse(PSS_8==2,2,
+                                    ifelse(PSS_8==3,1,
+                                           ifelse(PSS_8==4,0,
+                                                  88)))))) %>%
+  mutate(PSS_total=rowSums(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=F),
+         PSS_mean=rowMeans(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=T))
+  
+## Save it
+PSS_Wave1_outdf <- PSS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(PSS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PSS_Wave1.csv"))
+
+PSS_Wave2_outdf <- PSS_Wave1 %>% filter(grepl("W2",survey_name)) 
+write.csv(PSS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PSS_Wave2.csv"))
+
+PSS_Wave3_outdf <- PSS_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(PSS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/PSS_Wave3.csv"))
+
+## Graph it
+PSS_Wave1_totals<-PSS_Wave1 %>%
+  select(tagid,PSS_total) %>%
+  mutate(Perceived_Stress=PSS_total) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("PSS_",item))
+PSS_Wave1_totals_graph<-ggplot(PSS_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("PSS total score for ",length(unique(PSS_Wave1$tagid[!is.na(PSS_Wave1$PSS_total)]))," participants"))
+
+PSS_Wave1_means<-PSS_Wave1 %>%
+  select(tagid,PSS_mean) %>%
+  mutate(Perceived_Stress=PSS_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("PSS_",item))
+PSS_Wave1_means_graph<-ggplot(PSS_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("PSS mean score for ",length(unique(PSS_Wave1$tagid[!is.na(PSS_Wave1$tagid)]))," participants"))
+
+
+## Make RDOC ready file
+ndar_pss_data <- left_join(PSS_Wave1,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         visit=ifelse(grepl("Sess 1",survey_name),"Session1",
+                      ifelse(grepl("Session 1",survey_name),"Session1",
+                             ifelse(grepl("Sess 2",survey_name),"Session2",
+                                    ifelse(grepl("Session 2",survey_name),"Session2",
+                                           ifelse(grepl("Home",survey_name),"Home Questionnaires",
+                                           NA))))),
+         version_form="PSS-10",
+         respondent="Child",
+         pssp1_1=PSS_1,
+         pssp1_2=PSS_2,
+         pssp1_3=PSS_3,
+         pssp2_1=PSS_4,
+         pssp2_2=PSS_5,
+         pssp2_3=PSS_6,
+         pssp2_4=PSS_7,
+         pssp2_5=PSS_8,
+         pssp3_1=PSS_9,
+         pssp3_4=PSS_10,
+         pss_totalscore=ifelse(is.na(PSS_total),999,PSS_total))
+
+ndar_pss_data <- left_join(ndar_key,ndar_pss_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("PSS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-guid,-survey_type)
+pss_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+pss_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+pss_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+pss_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+pss_temp_df<-data.frame(pss_temp)
+ndar_pss_data<-bind_rows(pss_temp_df,ndar_pss_data)
+
+part2<-colnames(ndar_pss_data)
+part3<-as.matrix(ndar_pss_data)
+colnames(part3)<-NULL
+together<-rbind(pss_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/pss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,pss_df_header,pss_temp,pss_temp_df,PSS,PSS_Wave1,PSS_Wave1_means,PSS_Wave1_means_graph,
+   PSS_Wave1_totals,PSS_Wave1_totals_graph)
+```
