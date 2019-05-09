@@ -20,7 +20,7 @@ if (length(PANAS$tagid) == length(unique(PANAS$tagid))){
   } else {
       print("DUPLICATE TAGIDs in data")
   }
-PANAS_allwaves<-left_join(PANAS,survey_date, by = c("tagid","survey_name")) %>% 
+PANAS_Wave1<-left_join(PANAS,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
