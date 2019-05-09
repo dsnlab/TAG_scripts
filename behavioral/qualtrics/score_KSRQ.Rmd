@@ -1,0 +1,124 @@
+---
+title: "TAG KSRQ"
+author: "Michelle Byrne"
+date: "May 9, 2019"
+output: html_document
+---
+Prepare K-SRQ 
+```{r}
+KSRQ<-left_join(filter(cleaned_survey_data, grepl("K_SRQ",item)) %>%
+                  mutate(value=as.numeric(value)) %>% 
+                  filter(!is.na(value)) %>%
+                  filter(!value=="") %>%
+                  distinct(tagid,item,survey_name,value,.keep_all = FALSE) %>% 
+                  group_by(tagid,item,survey_name) %>%
+                  mutate(nrow = n(),
+                         value = ifelse(nrow > 1, NA, value)) %>%
+                  distinct(tagid,item,survey_name,value,.keep_all = FALSE) %>% 
+                  spread(item,value),
+                redcap_cleaned %>%
+                  filter(!is.na(dob),!is.na(sa_date)) %>%
+                  select(tagid, sa_date, sb_date, dob),by="tagid")
+
+KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=qualtrics_date) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(KSRQ_adm_mean=round(rowMeans(cbind(K_SRQ_1,K_SRQ_7,K_SRQ_11,K_SRQ_17), na.rm=T),3),
+         KSRQ_negsoc_mean=round(rowMeans(cbind(K_SRQ_3,K_SRQ_5,K_SRQ_8,K_SRQ_13,K_SRQ_16), na.rm=T),3),
+         KSRQ_pass_mean=round(rowMeans(cbind(K_SRQ_12,K_SRQ_20,K_SRQ_22), na.rm=T),3),
+         KSRQ_prosoc_mean=round(rowMeans(cbind(K_SRQ_2,K_SRQ_6,K_SRQ_15,K_SRQ_18,K_SRQ_21), na.rm=T),3),
+         KSRQ_sex_mean=round(rowMeans(cbind(K_SRQ_9,K_SRQ_19), na.rm=T),3), # item 13 up to 5/9/19 was missing, will add new item #23 here (after 5/9/19) to replace item 13 - MLB
+         KSRQ_social_mean=round(rowMeans(cbind(K_SRQ_4,K_SRQ_10,K_SRQ_14), na.rm=T),3))
+# Note above: Up to 5/09/2019, item 13 was missing completely from qualtrics, so subscales above reflect actual qualtrics item numbers - MLB
+
+## Save it
+KSRQ_Wave1_outdf <- KSRQ_Wave1 %>% filter(!grepl("W2|W3",survey_name))
+write.csv(KSRQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/KSRQ_Wave1.csv"))
+
+KSRQ_Wave2_outdf <- KSRQ_Wave1 %>% filter(grepl("W2",survey_name))
+write.csv(KSRQ_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/KSRQ_Wave2.csv"))
+
+KSRQ_Wave3_outdf <- KSRQ_Wave1 %>% filter(grepl("W3",survey_name))
+write.csv(KSRQ_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/KSRQ_Wave3.csv"))
+
+## Graph it
+KSRQ_Wave1_means<-KSRQ_Wave1 %>%
+  select(tagid,KSRQ_adm_mean,KSRQ_negsoc_mean,KSRQ_pass_mean,KSRQ_prosoc_mean,
+         KSRQ_sex_mean,KSRQ_social_mean) %>%
+  mutate(Admiration=KSRQ_adm_mean,
+         Negative_Social_Potency=KSRQ_negsoc_mean,
+         Passivity=KSRQ_pass_mean,
+         Prosocial_Interactions=KSRQ_prosoc_mean,
+         Sexual_Relationships=KSRQ_sex_mean,
+         Sociability=KSRQ_social_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("KSRQ_",item))
+KSRQ_Wave1_means_graph<-ggplot(KSRQ_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("KSRQ mean subscores for ",length(unique(KSRQ_Wave1$tagid[!is.na(KSRQ_Wave1$tagid)]))," participants"))
+
+## Make RDOC ready file
+ndar_ksrq_data <- left_join(KSRQ_Wave1,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
+  filter(!is.na(survey_date)) %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         comments_misc=ifelse(grepl("Sess 1",survey_name),"Session1",
+                             ifelse(grepl("Sess 2",survey_name),"Session2",
+                                           ifelse(grepl("Home",survey_name),"Home Questionnaires",NA))),
+         version_form="Child version",
+         site="University of Oregon",
+         study="Transitions in Adolescent Girls (TAG) Study",
+         ksrq_1=K_SRQ_1,
+         ksrq_2=K_SRQ_2,
+         ksrq_3=K_SRQ_3,
+         ksrq_4=K_SRQ_4,
+         ksrq_5=K_SRQ_5,
+         ksrq_6=K_SRQ_6,
+         ksrq_7=K_SRQ_7,
+         ksrq_8=K_SRQ_8,
+         ksrq_9=K_SRQ_9,
+         ksrq_10=K_SRQ_10,
+         ksrq_11=K_SRQ_11,
+         ksrq_12=K_SRQ_12,
+         ksrq_13=-99, # will replace with new item #23 (from qualtrics) here from 5/9/19 onwards - MLB
+         ksrq_14=K_SRQ_13,
+         ksrq_15=K_SRQ_14,
+         ksrq_16=K_SRQ_15,
+         ksrq_17=K_SRQ_16,
+         ksrq_18=K_SRQ_17,
+         ksrq_19=K_SRQ_18,
+         ksrq_20=K_SRQ_19,
+         ksrq_21=K_SRQ_20,
+         ksrq_22=K_SRQ_21,
+         ksrq_23=K_SRQ_22,
+         ksrq_adm=KSRQ_adm_mean,
+         krsq_negsoc=KSRQ_negsoc_mean,
+         krsq_pass=KSRQ_pass_mean,
+         krsq_prosoc=KSRQ_prosoc_mean,
+         krsq_sex=KSRQ_sex_mean,
+         krsq_social=KSRQ_social_mean)
+ndar_ksrq_data <- left_join(ndar_key,ndar_ksrq_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("SRQ",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-guid,-survey_type)
+ksrq_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+ksrq_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+ksrq_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+ksrq_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/srq01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+ksrq_temp_df<-data.frame(ksrq_temp)
+ndar_ksrq_data<-bind_rows(ksrq_temp_df,ndar_ksrq_data)
+
+part2<-colnames(ndar_ksrq_data)
+part3<-as.matrix(ndar_ksrq_data)
+colnames(part3)<-NULL
+together<-rbind(ksrq_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,ksrq_df_header,ksrq_temp,ksrq_temp_df,KSRQ,KSRQ_Wave1,KSRQ_Wave1_means,KSRQ_Wave1_means_graph)
+```
