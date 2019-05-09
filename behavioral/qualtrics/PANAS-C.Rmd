@@ -1,0 +1,110 @@
+---
+title: "PANAS-C"
+date: "9 May 2019"
+output: html_document
+---
+```
+Prepare PANAS-C
+```{r}
+PANAS<-left_join(filter(cleaned_survey_data, grepl("PANAS",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+if (length(PANAS$tagid) == length(unique(PANAS$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+PANAS_allwaves<-left_join(PANAS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                          ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                          ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(PANAS_pos_total=rowSums(cbind(PANAS_C_1,PANAS_C_3,PANAS_C_5,PANAS_C_7,PANAS_C_9),na.rm=FALSE),
+         PANAS_pos_mean=rowMeans(cbind(PANAS_C_1,PANAS_C_3,PANAS_C_5,PANAS_C_7,PANAS_C_9),na.rm=TRUE),
+         PANAS_neg_total=rowSums(cbind(PANAS_C_2,PANAS_C_4,PANAS_C_6,PANAS_C_8,PANAS_C_10),na.rm=FALSE),
+         PANAS_neg_mean=rowMeans(cbind(PANAS_C_2,PANAS_C_4,PANAS_C_6,PANAS_C_8,PANAS_C_10),na.rm=TRUE))
+## Save it
+PANAS_Wave1_outdf <- PANAS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(PANAS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PANAS_Wave1.csv"))
+PANAS_Wave2_outdf <- PANAS_Wave1 %>% filter(grepl("W2",survey_name)) 
+write.csv(PANAS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PANAS_Wave2.csv"))
+PANAS_Wave3_outdf <- PANAS_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(PANAS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/PANAS_Wave3.csv"))
+## Anything below this line has not been checked
+## Graph it
+PANAS_Wave1_totals<-PANAS_Wave1 %>%
+  select(tagid,PANAS_pos_total,PANAS_neg_total) %>%
+  mutate(Positive_Affect=PANAS_pos_total,
+         Negative_Affect=PANAS_neg_total) %>%
+  select(-contains("PANAS")) %>%
+  gather('item','value',2:length(.)) 
+PANAS_Wave1_totals_graph<-ggplot(PANAS_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("PANAS totals for ",length(unique(PANAS_Wave1$tagid[!is.na(PANAS_Wave1$PANAS_pos_total)]))," participants"))
+PANAS_Wave1_means<-PANAS_Wave1 %>%
+  select(tagid,PANAS_pos_mean,PANAS_neg_mean) %>%
+  mutate(Positive_Affect=PANAS_pos_mean,
+         Negative_Affect=PANAS_neg_mean) %>%
+  select(-contains("PANAS")) %>%
+  gather('item','value',2:length(.)) 
+PANAS_Wave1_means_graph<-ggplot(PANAS_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("PANAS means for ",length(unique(PANAS_Wave1$tagid[!is.na(PANAS_Wave1$PANAS_pos_mean)]))," participants"))
+options(scipen=999)
+PANAS_Wave1_cor_graph<-ggplot(PANAS_Wave1, aes(x=PANAS_neg_mean,y=PANAS_pos_mean)) +
+  ylab("Positive Affect")+
+  xlab("Negative Affect")+
+  geom_point(show.legend = FALSE)+
+  ggtitle(paste0("PANAS positive and negative affect correlations for ",length(unique(PANAS_Wave1$tagid[!is.na(PANAS_Wave1$PANAS_pos_mean)])),
+                 " Wave 1 participants. r = ",
+                 round(cor.test(x = PANAS_Wave1$PANAS_pos_mean,y=PANAS_Wave1$PANAS_neg_mean,use=na.or.complete)[[4]],3)," p = ",
+                 cor.test(x=PANAS_Wave1$PANAS_pos_mean,y=PANAS_Wave1$PANAS_neg_mean,use=na.or.complete)[[3]]))
+## Make RDOC ready file
+ndar_panas_data <- left_join(PANAS_Wave1,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         panas_21=PANAS_C_1,
+         panas_15=PANAS_C_2,
+         panas_17=PANAS_C_3,
+         panas_23=PANAS_C_4,
+         panas_8=PANAS_C_5,
+         panas_20=PANAS_C_6,
+         panas_30=PANAS_C_7,
+         panas_13=PANAS_C_8,
+         panas_19=PANAS_C_9,
+         panas_2=PANAS_C_10,
+         sum_pos=-9,
+         sum_neg=-9)
+ndar_panas_data <- left_join(ndar_key,ndar_panas_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("PANAS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-guid,-survey_type)
+panas_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/panas_c01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+panas_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/panas_c01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+panas_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/panas_c01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+panas_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/panas_c01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+panas_temp_df<-data.frame(panas_temp)
+ndar_panas_data<-bind_rows(panas_temp_df,ndar_panas_data)
+part2<-colnames(ndar_panas_data)
+part3<-as.matrix(ndar_panas_data)
+colnames(part3)<-NULL
+together<-rbind(panas_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/panas_c01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,panas_df_header,panas_temp,panas_temp_df,PANAS,PANAS_Wave1_means,PANAS_Wave1,PANAS_Wave1_totals,PANAS_Wave1_totals_graph,
+   PANAS_Wave1_cor_graph)
+```
