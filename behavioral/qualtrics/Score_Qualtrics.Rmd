@@ -13,7 +13,7 @@ Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
 #You should set this to the behavioral directory on the TAG file server 
-workdir='/Volumes/psych-cog/dsnlab/TAG/behavior/' 
+workdir='I:/dsnlab/TAG/behavior/' 
 ```
 
 Load required packages
@@ -170,7 +170,7 @@ print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("
 
 Load and clean redcap info
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
-redcapData <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_dates_20190110.csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
+redcapData <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_dates_20190509.csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
   # filter(!grepl("wave_2",redcap_event_name))
 redcapData_dob<-redcapData %>%
   select(dob,subject_spit_id) %>%
@@ -193,7 +193,7 @@ rm(redcapData_dob,redcapData,redcapData_sessiondates)
 
 Configure anthro information
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
-redcap_anthro <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_anthro.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
+redcap_anthro <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_anthro_20190405.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
   filter(!anthro_doc=="") %>%
   extract(redcap_event_name, c('wave'), 'wave_([\\d]).*') %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
@@ -267,7 +267,7 @@ rm(waist_graph,heights_graph,weights_graph,redcap_anthro,anthro_change_graph)
 
 ONLY RUN IF Prepping for NDA Submission: Prepare GUIDs
 ```{r, eval=FALSE, include=FALSE}
-redcap_NDA_info <- read.csv(paste0(workdir,"RDoCdb/Confidential/redcap_nda_consent_20190111.csv"),
+redcap_NDA_info <- read.csv(paste0(workdir,"RDoCdb/Confidential/redcap_nda_consent_20190509.csv"),
                             header = TRUE,
                             stringsAsFactors = FALSE)
 
@@ -408,14 +408,14 @@ timebetween=function(subid){
   }
   as.data.frame(cbind(tag_id, totaldays))
 }
-output.df<-lapply(as.list(unique(survey_date$tagid)),timebetween) ##NV: NOT WORKING, BUT SEEMINGLY ONLY RELEVANT FOR PLOTTING TIME DIFFERENCE
-output.df<-as.data.frame(do.call(rbind,output.df)) %>% 
-  mutate(totaldays=round(as.numeric(levels(totaldays))[totaldays]),0)
-time_between <- ggplot(output.df,
-                       aes(x=tag_id, y=totaldays, fill=totaldays))
-time_between + geom_bar(colour="black", stat="identity")
+#output.df<-lapply(as.list(unique(survey_date$tagid)),timebetween) ##NV: NOT WORKING, BUT SEEMINGLY ONLY RELEVANT FOR PLOTTING TIME DIFFERENCE
+#output.df<-as.data.frame(do.call(rbind,output.df)) %>% 
+#  mutate(totaldays=round(as.numeric(levels(totaldays))[totaldays]),0)
+#time_between <- ggplot(output.df,
+#                       aes(x=tag_id, y=totaldays, fill=totaldays))
+#time_between + geom_bar(colour="black", stat="identity")
 
-rm(time_between,graph_dates)
+#rm(time_between,graph_dates)
 ```
 
 Prepare NDAR template
@@ -564,7 +564,7 @@ part2<-colnames(ndar_subject_df)
 part3<-as.matrix(ndar_subject_df)
 colnames(part3)<-NULL
 together<-rbind(ndar_subject_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
 ```
 
@@ -589,7 +589,9 @@ BFI10<-left_join(filter(cleaned_survey_data, grepl("BFI",item)) %>%
                    mutate(value=as.numeric(value)) %>% 
                    filter(!is.na(value)) %>% 
                    distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
-                   spread(item,value),redcap_cleaned %>%
+                   subset(!tagid=="TAG200" | !survey_name=="W2S1 - Current V1") %>% 
+                   spread(item,value),
+                 redcap_cleaned %>%
                    filter(!is.na(dob),!is.na(sa_date)) %>%
                    select(tagid, sa_date, sb_date, dob),by="tagid")
 
@@ -672,7 +674,7 @@ BFI10_Wave3_outdf <- BFI10_Wave1 %>% filter(grepl("W3",survey_name))
 write.csv(BFI10_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/BFI10_Wave3.csv"))
 
 ## Graph it
-BFI10_Wave1_totals<-BFI10_Wave1 %>%
+BFI10_Wave1_totals<-BFI10_Wave1_outdf %>%
   select(tagid,BFI10_neuro_total,BFI10_open_total,BFI10_consc_total,BFI10_agree_total,BFI10_extra_total) %>%
   mutate(Neuroticism=BFI10_neuro_total,
          Opennes=BFI10_open_total,
@@ -681,9 +683,24 @@ BFI10_Wave1_totals<-BFI10_Wave1 %>%
          Extraversion=BFI10_extra_total) %>%
   gather('item','value',2:length(.)) %>%
   filter(!grepl("BFI10",item))
+
 BFI10_Wave1_totals_graph<-ggplot(BFI10_Wave1_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("BFI Wave1 total for ",length(BFI10_Wave1_totals$tagid[!is.na(BFI10_Wave1_totals$tagid)])," participants"))
+  ggtitle(paste0("BFI Wave1 total for ",length(BFI10_Wave1_outdf$tagid[!is.na(BFI10_Wave1_outdf$tagid)])," participants"))
+
+BFI10_Wave2_totals<-BFI10_Wave2_outdf %>%
+  select(tagid,BFI10_neuro_total,BFI10_open_total,BFI10_consc_total,BFI10_agree_total,BFI10_extra_total) %>%
+  mutate(Neuroticism=BFI10_neuro_total,
+         Opennes=BFI10_open_total,
+         Conscientiousness=BFI10_consc_total,
+         Agreeableness=BFI10_agree_total,
+         Extraversion=BFI10_extra_total) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("BFI10",item))
+
+BFI10_Wave2_totals_graph<-ggplot(BFI10_Wave2_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("BFI Wave1 total for ",length(BFI10_Wave2_outdf$tagid[!is.na(BFI10_Wave2_outdf$tagid)])," participants"))
 
 BFI10_Wave1_means<-BFI10_Wave1 %>%
   select(tagid,BFI10_neuro_mean,BFI10_open_mean,BFI10_consc_mean,BFI10_agree_mean,BFI10_extra_mean) %>%
@@ -732,7 +749,7 @@ part2<-colnames(ndar_bfi10_data)
 part3<-as.matrix(ndar_bfi10_data)
 colnames(part3)<-NULL
 together<-rbind(bfi10_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(BFI10,BFI10_Wave1,BFI10_Wave1_means,BFI10_Wave1_means_graph,BFI10_Wave1_totals,BFI10_Wave1_totals_graph,
    bfi10_df_header,bfi10_temp,bfi10_temp_df,part3,part2,together)
 ```
@@ -743,7 +760,8 @@ CAMM<-left_join(filter(cleaned_survey_data, grepl("CAMM",item)) %>%
                   mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value)) %>% 
                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
-                  spread(item,value),redcap_cleaned %>%
+                  spread(item,value),
+                redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
                   select(tagid, sa_date, sb_date, dob),by="tagid")
 
@@ -823,7 +841,7 @@ CAMM_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>%
          CAMM_missing=rowSums(is.na(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10))),
          CAMM_missing_perc=100*(rowSums(is.na(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10)))/10),
          CAMM_mean=rowMeans(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10), na.rm=T),
-         CAMM_total=rowSums(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10), na.rm=F))
+         CAMM_total=rowSums(cbind(CAMM_1,CAMM_2,CAMM_3,CAMM_4,CAMM_5,CAMM_6,CAMM_7,CAMM_8,CAMM_9,CAMM_10), na.rm=F)) #change to false unless submitting ndar
 
 ## Save it
 CAMM_Wave1_outdf <- CAMM_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
@@ -831,6 +849,9 @@ write.csv(CAMM_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CAMM_Wav
 
 CAMM_Wave2_outdf <- CAMM_Wave1 %>% filter(grepl("W2",survey_name)) 
 write.csv(CAMM_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/CAMM_Wave2.csv"))
+
+CAMM_Wave3_outdf <- CAMM_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(CAMM_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/CAMM_Wave3.csv"))
 
 ## Graph it
 CAMM_Wave1_total_graph<-ggplot(CAMM_Wave1, aes(x=CAMM_total, colour="deeppink")) +
@@ -876,7 +897,7 @@ part2<-colnames(ndar_camm_data)
 part3<-as.matrix(ndar_camm_data)
 colnames(part3)<-NULL
 together<-rbind(camm_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/camm01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/camm01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(CAMM,CAMM_Wave1,CAMM_Wave1_mean_graph,CAMM_Wave1_total_graph,
    camm_df_header,camm_temp,camm_temp_df,part3,part2,together)
 ```
@@ -998,8 +1019,15 @@ write.csv(PDS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PDS_Wave1
 PDS_Wave2_outdf <- PDS_Wave1 %>% filter(grepl("W2",survey_name))
 write.csv(PDS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PDS_Wave2.csv"))
 
+PDS_Wave3_outdf <- PDS_Wave1 %>% filter(grepl("W3",survey_name))
+write.csv(PDS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave3/PDS_Wave3.csv"))
+
 ## Graph it
-PDS_Wave1_pdss_graph<-ggplot(PDS_Wave1, aes(x=pdss, colour="deeppink")) +
+PDS_Wave1_pdss_graph<-ggplot(PDS_Wave1_outdf, aes(x=pdss, colour="deeppink")) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("PDSS scores for ",length(PDS_Wave1$pdss[!is.na(PDS_Wave1$pdss)])," Wave 1 participants"))
+
+PDS_Wave2_pdss_graph<-ggplot(PDS_Wave2_outdf, aes(x=pdss, colour="deeppink")) +
   geom_density(alpha=.3)+
   ggtitle(paste0("PDSS scores for ",length(PDS_Wave1$pdss[!is.na(PDS_Wave1$pdss)])," Wave 1 participants"))
 
@@ -1058,7 +1086,7 @@ part2<-colnames(ndar_pds_data)
 part3<-as.matrix(ndar_pds_data)
 colnames(part3)<-NULL
 together<-rbind(pds_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/pds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/pds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(pds_temp_df,pds_temp,pds_df_header,PDS_Wave1_pdss_by_age_graph,PDS_withage,PDS_Wave1_pdss_graph,
    PDS_Wave1,PDS)
 ```
@@ -1095,6 +1123,9 @@ write.csv(PBIP_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PBIP_Wav
 
 PBIP_Wave2_outdf <- PBIP_Wave1 %>% filter(grepl("W2",survey_name))
 write.csv(PBIP_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PBIP_Wave2.csv"))
+
+PBIP_Wave3_outdf <- PBIP_Wave1 %>% filter(grepl("W3",survey_name))
+write.csv(PBIP_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/PBIP_Wave3.csv"))
 
 ## Graph it
 PBIP_Wave1_pbip_graph<-ggplot(PBIP_Wave1, aes(x=stage, colour="deeppink")) +
@@ -1140,7 +1171,7 @@ part2<-colnames(ndar_pbip_data)
 part3<-as.matrix(ndar_pbip_data)
 colnames(part3)<-NULL
 together<-rbind(pbip_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/tanner_sms01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/tanner_sms01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(pbip_temp_df,pbip_temp,pbip_df_header,PBIP_Wave1_pbip_by_pds_graph,PBIP_PDS_Wave1,
    PBIP_Wave1_pbip_graph,PBIP_Wave1,PBIP,part3,part2,together)
 ```
@@ -1208,6 +1239,9 @@ write.csv(CARE_R_SOC_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CA
 
 CARE_R_SOC_Wave2_outdf <- CARE_R_SOC_Wave1 %>% filter(grepl("W2",survey_name)) 
 write.csv(CARE_R_SOC_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/CARE_R_SOC_Wave2.csv"))
+
+CARE_R_SOC_Wave3_outdf <- CARE_R_SOC_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(CARE_R_SOC_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/CARE_R_SOC_Wave3.csv"))
 
 ## Graph it
 CARE_R_SOC_Wave1_DO<-CARE_R_SOC_Wave1 %>%
@@ -1300,7 +1334,7 @@ part2<-colnames(ndar_carersoc_data)
 part3<-as.matrix(ndar_carersoc_data)
 colnames(part3)<-NULL
 together<-rbind(carersoc_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/caore01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/caore01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,carersoc_df_header,carersoc_temp,carersoc_temp_df,CARE_R_SOC,CARE_R_SOC_Wave1,CARE_R_SOC_Wave1_DO,
    CARE_R_SOC_Wave1_DO_graph,CARE_R_SOC_Wave1_DONT_graph,CARE_R_SOC_Wave1_DONT)
 ```
@@ -1360,10 +1394,34 @@ write.csv(CESDC_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CESDC_W
 CESDC_Wave2_outdf <- CESDC_Wave1 %>% filter(grepl("W2",survey_name)) 
 write.csv(CESDC_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/CESDC_Wave2.csv"))
 
+CESDC_Wave3_outdf <- CESDC_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(CESDC_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/CESDC_Wave3.csv"))
+
 ## Graph it
-CESDC_Wave1_totals_graph<-ggplot(CESDC_Wave1, aes(x=CES_DC_total, colour="deeppink")) +
+CESDC_Wave1_totals_graph<-ggplot(CESDC_Wave1_outdf, aes(x=CES_DC_total, colour="deeppink")) +
   geom_density(alpha=.3,show.legend = FALSE)+
-  ggtitle(paste0("CESD-C total scores for ",length(CESDC_Wave1$CES_DC_total[!is.na(CESDC_Wave1$CES_DC_total)])," Wave 1 participants"))
+  ggtitle(paste0("CESD-C total scores for ",length(CESDC_Wave1_outdf$CES_DC_total[!is.na(CESDC_Wave1_outdf$CES_DC_total)])," Wave 1 participants"))
+
+CESDC_Wave2_totals_graph<-ggplot(CESDC_Wave2_outdf, aes(x=CES_DC_total, colour="deeppink")) +
+  geom_density(alpha=.3,show.legend = FALSE)+
+  ggtitle(paste0("CESD-C total scores for ",length(CESDC_Wave2_outdf$CES_DC_total[!is.na(CESDC_Wave2_outdf$CES_DC_total)])," Wave 2 participants"))
+
+require(gridExtra)
+grid.arrange(CESDC_Wave1_totals_graph, CESDC_Wave2_totals_graph, ncol=2)
+
+cesdc_change <- merge(CESDC_Wave1_outdf, CESDC_Wave2_outdf, by = "tagid", all = T)
+cesdc_change <- cesdc_change[c("tagid","CES_DC_total.x","CES_DC_total.y")]
+cor.test(cesdc_change$CES_DC_total.x, cesdc_change$CES_DC_total.y, use = "pairwise.complete.obs", method = "pearson")
+cor.test(cesdc_change$CES_DC_total.x, cesdc_change$CES_DC_total.y, use = "pairwise.complete.obs", method = "spearman")
+
+cesdc_long <- gather(cesdc_change, wave, ces_dc_total, CES_DC_total.x:CES_DC_total.y, factor_key=TRUE)
+cesdc_long$wave <- ifelse(cesdc_long$wave=="CES_DC_total.x",1,2)
+
+tspag = ggplot(cesdc_long, aes(x=wave, y=ces_dc_total)) + 
+  geom_line() + guides(colour=FALSE) + xlab("Wave") +
+  ylab("CES-DC-Total Score")
+spag = tspag + aes(colour = factor(tagid)) + scale_x_continuous(breaks=c(1,2)) + ylim(0,45)
+spag2 <- spag + geom_smooth(se=FALSE, colour="black", size=2)
 
 CESDC_Wave1_means_graph<-ggplot(CESDC_Wave1, aes(x=CES_DC_mean, colour="dodgerblue")) +
   geom_density(alpha=.3, show.legend = FALSE)+
@@ -1424,7 +1482,7 @@ part2<-colnames(ndar_cesdc_data)
 part3<-as.matrix(ndar_cesdc_data)
 colnames(part3)<-NULL
 together<-rbind(cesdc_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/ces_d01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/ces_d01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,cesdc_df_header,cesdc_temp,cesdc_temp_df,CESDC,CESDC_Wave1,CESDC_Wave1_means_graph,CESDC_Wave1_totals_graph)
 ```
 
@@ -1434,6 +1492,7 @@ CRQ<-left_join(filter(cleaned_survey_data, grepl("CRQ",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>% 
                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 subset(!tagid=="TAG200" | !survey_name=="W2S1 - Current V1") %>% 
                  spread(item,value),redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
                  select(tagid, sa_date, sb_date, dob),by="tagid")
@@ -1546,7 +1605,7 @@ part2<-colnames(ndar_crq_data)
 part3<-as.matrix(ndar_crq_data)
 colnames(part3)<-NULL
 together<-rbind(crq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/crq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/crq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,crq_df_header,crq_temp,crq_temp_df,CRQ,CRQ_Wave1,CRQ_Wave1_means,CRQ_Wave1_means_graph,CRQ_Wave1_totals,CRQ_Wave1_totals_graph)
 ```
 
@@ -1658,6 +1717,9 @@ write.csv(CTQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CTQ_Wave1
 CTQ_Wave2_outdf <- CTQ_Wave1 %>% filter(grepl("W2",survey_name)) 
 write.csv(CTQ_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/CTQ_Wave2.csv"))
 
+CTQ_Wave3_outdf <- CTQ_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(CTQ_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/CTQ_Wave3.csv"))
+
 ## Graph it
 CTQ_Wave1_totals<-CTQ_Wave1 %>%
   select(tagid,CTQ_emotionalabuse_total,CTQ_emotionalneglect_total,CTQ_physicalabuse_total,
@@ -1753,7 +1815,7 @@ part2<-colnames(ndar_ctq_data)
 part3<-as.matrix(ndar_ctq_data)
 colnames(part3)<-NULL
 together<-rbind(ctq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/ctq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/ctq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ctq_df_header,ctq_temp,ctq_temp_df,CTQ,CTQ_Wave1,CTQ_Wave1_means,CTQ_Wave1_means_graph,CTQ_Wave1_totals,CTQ_Wave1_totals_graph)
 ```
 
@@ -1892,7 +1954,7 @@ part2<-colnames(ndar_dit_data)
 part3<-as.matrix(ndar_dit_data)
 colnames(part3)<-NULL
 together<-rbind(dit_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/dit01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/dit01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,dit_df_header,dit_temp,dit_temp_df,DIT,DIT_Wave1,DIT_Wave1_means,DIT_Wave1_means_graph,DIT_Wave1_totals,DIT_Wave1_totals_graph)
 ```
 
@@ -2299,7 +2361,7 @@ part2<-colnames(ndar_ehi_data)
 part3<-as.matrix(ndar_ehi_data)
 colnames(part3)<-NULL
 together<-rbind(ehi_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/edinburgh_hand01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/edinburgh_hand01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ehi_df_header,ehi_temp,ehi_temp_df,EHI,EHI_Wave1)
 ```
 
@@ -2404,7 +2466,7 @@ part2<-colnames(ndar_erq_data)
 part3<-as.matrix(ndar_erq_data)
 colnames(part3)<-NULL
 together<-rbind(erq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/emrq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/emrq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,erq_df_header,erq_temp,erq_temp_df,ERQ,ERQ_Wave1,ERQ_Wave1_means,ERQ_Wave1_means_graph,
    ERQ_Wave1_totals,ERQ_Wave1_totals_graph)
 
@@ -2483,6 +2545,9 @@ write.csv(IFS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/IFS_Wave1
 
 IFS_Wave2_outdf <- IFS_Wave1 %>% filter(grepl("W2",survey_name)) 
 write.csv(IFS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/IFS_Wave2.csv"))
+
+IFS_Wave3_outdf <- IFS_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(IFS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/IFS_Wave3.csv"))
 
 ## Graph it
 IFS_Wave1_totals<-IFS_Wave1 %>%
@@ -2597,7 +2662,7 @@ part2<-colnames(ndar_ifs_data)
 part3<-as.matrix(ndar_ifs_data)
 colnames(part3)<-NULL
 together<-rbind(ifs_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/ifs01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/ifs01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ifs_df_header,ifs_temp,ifs_temp_df,IFS,IFS_Wave1_means,IFS_Wave1,IFS_Wave1_totals,IFS_Wave1_totals_graph)
 
 ```
@@ -2775,14 +2840,13 @@ part2<-colnames(ndar_iri_data)
 part3<-as.matrix(ndar_iri_data)
 colnames(part3)<-NULL
 together<-rbind(iri_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/iri01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/iri01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,iri_df_header,iri_temp,iri_temp_df,IRI,IRI_Wave1,IRI_Wave1_means,IRI_Wave1_means_graph,IRI_Wave1_totals,IRI_Wave1_totals_graph)
 
 ```
 
 Prepare K-SRQ 
 ```{r}
-#duplicate identifiers - needs to be fixed
 KSRQ<-left_join(filter(cleaned_survey_data, grepl("K_SRQ",item)) %>%
                   mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value)) %>%
@@ -2792,17 +2856,6 @@ KSRQ<-left_join(filter(cleaned_survey_data, grepl("K_SRQ",item)) %>%
                   mutate(nrow = n(),
                          value = ifelse(nrow > 1, NA, value)) %>%
                   distinct(tagid,item,survey_name,value,.keep_all = FALSE) %>% 
-                  spread(item,value),
-                redcap_cleaned %>%
-                  filter(!is.na(dob),!is.na(sa_date)) %>%
-                  select(tagid, sa_date, sb_date, dob),by="tagid")
-
-KSRQ<-left_join(filter(cleaned_survey_data, grepl("K_SRQ",item)) %>%
-                  mutate(value=as.numeric(value)) %>% 
-                  filter(!is.na(value)) %>%
-                  filter(!value=="") %>%
-                  distinct(tagid,item,value,.keep_all = FALSE) %>% 
-                  mutate(survey_name="Sess 1") %>%
                   spread(item,value),
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
@@ -2906,7 +2959,7 @@ part2<-colnames(ndar_ksrq_data)
 part3<-as.matrix(ndar_ksrq_data)
 colnames(part3)<-NULL
 together<-rbind(ksrq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ksrq_df_header,ksrq_temp,ksrq_temp_df,KSRQ,KSRQ_Wave1,KSRQ_Wave1_means,KSRQ_Wave1_means_graph)
 ```
 
@@ -3048,23 +3101,24 @@ part2<-colnames(ndar_mspss_data)
 part3<-as.matrix(ndar_mspss_data)
 colnames(part3)<-NULL
 together<-rbind(mspss_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/mspss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/mspss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,mspss_df_header,mspss_temp,mspss_temp_df,MSPSS,MSPSS_Wave1,MSPSS_Wave1_means,MSPSS_Wave1_means_graph,
    MSPSS_Wave1_totals,MSPSS_Wave1_totals_graph)
 ```
 
 Prepare PSS
 ```{r}
-PSS<-filter(cleaned_survey_data, grepl("^PSS",item)) %>% #left_join(
+PSS<-left_join(filter(cleaned_survey_data, grepl("^PSS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 mutate(value=ifelse(tagid=="TAG132" & item=="PSS_5",4,
-                                     ifelse(tagid=="TAG132" & item=="PSS_6",2,
-                                            ifelse(tagid=="TAG132" & item=="PSS_7",3,
-                                                   ifelse(tagid=="TAG132" & item=="PSS_9",2,value))))
+                 mutate(value=ifelse((tagid=="TAG132" & item=="PSS_5"),4,
+                                     ifelse((tagid=="TAG132" & item=="PSS_6"),2,
+                                            ifelse((tagid=="TAG132" & item=="PSS_7"),3,
+                                                   ifelse((tagid=="TAG132" & item=="PSS_9"),2,value))))
                  ) %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 subset(!tagid=="TAG200" | !survey_name=="W2S1 - Current V1") %>% 
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
@@ -3186,7 +3240,7 @@ part2<-colnames(ndar_pss_data)
 part3<-as.matrix(ndar_pss_data)
 colnames(part3)<-NULL
 together<-rbind(pss_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/pss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/pss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,pss_df_header,pss_temp,pss_temp_df,PSS,PSS_Wave1,PSS_Wave1_means,PSS_Wave1_means_graph,
    PSS_Wave1_totals,PSS_Wave1_totals_graph)
 ```
@@ -3197,7 +3251,8 @@ RMET<-left_join(filter(cleaned_survey_data, grepl("RMET",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 subset(!tagid=="TAG200" | !survey_name=="W2S1 - Current V1") %>% 
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
@@ -3451,7 +3506,7 @@ part2<-colnames(ndar_rmet_data)
 part3<-as.matrix(ndar_rmet_data)
 colnames(part3)<-NULL
 together<-rbind(rmet_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/rmet_cv01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/rmet_cv01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,rmet_df_header,rmet_temp,rmet_temp_df,RMET,RMET_Wave1,RMET_Wave1_percentcorrect,RMET_Wave1_percentcorrect_graph)
 ```
 
@@ -3620,7 +3675,7 @@ part2<-colnames(ndar_rscs_data)
 part3<-as.matrix(ndar_rscs_data)
 colnames(part3)<-NULL
 together<-rbind(rscs_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/rscsc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/rscsc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,rscs_df_header,rscs_temp,rscs_temp_df,RSCS,RSCS_Wave1_means,RSCS_Wave1,RSCS_Wave1_totals,RSCS_Wave1_totals_graph,
    TAG023_special)
 
@@ -3672,6 +3727,7 @@ TAG002_special<-left_join(filter(cleaned_survey_data, grepl("SAQ",item)) %>%
 
 TAG002_w23_special <- filter(TAG002_special, grepl("W2|W3",survey_name))
 
+#fix this
 TAG002_w1_special <- TAG002_special %>% 
   filter(survey_name=="TAG - Sess 1 - V1 - (SAQ & on)"|survey_name=="TAG - Sess 1 - V1") %>%
                         gather("item","value") %>% 
@@ -3800,7 +3856,7 @@ part2<-colnames(ndar_saq_data)
 part3<-as.matrix(ndar_saq_data)
 colnames(part3)<-NULL
 together<-rbind(saq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/sag01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/sag01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,saq_df_header,saq_temp,saq_temp_df,SAQ,SAQ_Wave1,SAQ_Wave1_means,SAQ_Wave1_means_graph,SAQ_Wave1_socdev_items,
    SAQ_Wave1_socdev_items_graph,SAQ_Wave1_totals,SAQ_Wave1_totals_graph,TAG002_special,TAG023_special)
 
@@ -3851,6 +3907,9 @@ write.csv(SCARED_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/SCARED
 
 SCARED_Wave2_outdf <- SCARED_Wave1 %>% filter(grepl("W2",survey_name)) 
 write.csv(SCARED_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/SCARED_Wave2.csv"))
+
+SCARED_Wave3_outdf <- SCARED_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(SCARED_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/SCARED_Wave3.csv"))
 
 ## Graph it
 SCARED_Wave1_totals<-SCARED_Wave1 %>%
@@ -3915,7 +3974,7 @@ part2<-colnames(ndar_scared_data)
 part3<-as.matrix(ndar_scared_data)
 colnames(part3)<-NULL
 together<-rbind(scared_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/scared01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/scared01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,scared_df_header,scared_temp,scared_temp_df,SCARED,SCARED_Wave1,SCARED_Wave1_means,SCARED_Wave1_means_graph,
    SCARED_Wave1_totals,SCARED_Wave1_totals_graph)
 ```
@@ -4016,7 +4075,7 @@ SCC_Wave1<-left_join(SCC,survey_date, by = c("tagid","survey_name")) %>%
                                      ifelse(SCC_12==4,2,
                                             ifelse(SCC_12==5,1,
                                                    NA)))))) %>%
-  mutate(SCC_N=10,
+  mutate(SCC_N=12,
          SCC_missing=rowSums(is.na(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12))),
          SCC_total=rowSums(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=F),
          SCC_mean=rowMeans(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=T))
@@ -4032,12 +4091,40 @@ SCC_Wave3_outdf <- SCC_Wave1 %>% filter(grepl("W3",survey_name))
 write.csv(SCC_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/SCC_Wave3.csv"))
 
 ## Graph it
-SCC_Wave1_total<-SCC_Wave1 %>%
+SCC_Wave1_total<-SCC_Wave1_outdf %>%
   select(tagid,SCC_total) %>%
   gather('item','value',2:length(.)) 
 SCC_Wave1_total_graph<-ggplot(SCC_Wave1_total, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("Self-Concept Clarity total score for ",length(unique(SCC_Wave1$tagid[!is.na(SCC_Wave1$SCC_total)]))," participants"))
+  ggtitle(paste0("Self-Concept Clarity total score for ",length(unique(SCC_Wave1_outdf$tagid[!is.na(SCC_Wave1_outdf$SCC_total)]))," participants")) +
+  ylim(0,0.05) + geom_vline(aes(xintercept = median(SCC_Wave1_outdf$SCC_total, na.rm=T), 
+                                colour="SCC_total"))
+
+SCC_Wave2_total<-SCC_Wave2_outdf %>%
+  select(tagid,SCC_total) %>%
+  gather('item','value',2:length(.)) 
+SCC_Wave2_total_graph<-ggplot(SCC_Wave2_total, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Self-Concept Clarity total score for ",length(unique(SCC_Wave2_outdf$tagid[!is.na(SCC_Wave2_outdf$SCC_total)]))," participants")) +
+  ylim(0,0.05) + geom_vline(aes(xintercept = median(SCC_Wave2_outdf$SCC_total, na.rm=T), 
+                                colour="SCC_total"))
+
+require(gridExtra)
+grid.arrange(SCC_Wave1_total_graph, SCC_Wave2_total_graph, ncol=2)
+
+scc_change <- merge(SCC_Wave1_outdf, SCC_Wave2_outdf, by = "tagid", all = T)
+scc_change <- scc_change[c("tagid","SCC_total.x","SCC_total.y")]
+cor.test(scc_change$SCC_total.x, scc_change$SCC_total.y, use = "pairwise.complete.obs", method = "pearson")
+cor.test(scc_change$SCC_total.x, scc_change$SCC_total.y, use = "pairwise.complete.obs", method = "spearman")
+
+scc_long <- gather(scc_change, wave, scc_total, SCC_total.x:SCC_total.y, factor_key=TRUE)
+scc_long$wave <- ifelse(scc_long$wave=="SCC_total.x",1,2)
+
+tspag_scc = ggplot(scc_long, aes(x=wave, y=scc_total)) + 
+  geom_line() + guides(colour=FALSE) + xlab("Wave") +
+  ylab("SCC-Total Score")
+spag_scc = tspag_scc + aes(colour = factor(tagid)) + scale_x_continuous(breaks=c(1,2))
+spag2_scc <- spag_scc + geom_smooth(se=FALSE, colour="black", size=2)
 
 SCC_Wave1_mean<-SCC_Wave1 %>%
   select(tagid,SCC_mean)%>%
@@ -4086,9 +4173,9 @@ part2<-colnames(ndar_scc_data)
 part3<-as.matrix(ndar_scc_data)
 colnames(part3)<-NULL
 together<-rbind(scc_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/scc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
-rm(together,part2,part3,scc_df_header,scc_temp,scc_temp_df,SCC,SCC_Wave1,SCC_Wave1_mean,SCC_Wave1_mean_graph,
-   SCC_Wave1_total,SCC_Wave1_total_graph)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/scc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+#rm(together,part2,part3,scc_df_header,scc_temp,scc_temp_df,SCC,SCC_Wave1,SCC_Wave1_mean,SCC_Wave1_mean_graph,
+ #  SCC_Wave1_total,SCC_Wave1_total_graph)
 ```
 
 Prepare SPPA
@@ -4347,7 +4434,7 @@ SPPA_Wave3_outdf <- SPPA_Wave1 %>% filter(grepl("W3",survey_name))
 write.csv(SPPA_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/SPPA_Wave3.csv"))
 
 ## Graph it
-SPPA_Wave1_totals<-SPPA_Wave1 %>%
+SPPA_Wave1_totals<-SPPA_Wave1_outdf %>%
   select(tagid,SPPA_scholasticcomp_total,SPPA_socialcomp_total,SPPA_athleticcomp_total,
          SPPA_physicalappear_total,SPPA_behavconduct_total,SPPA_closefriend_total,
          SPPA_globalselfworth_total) %>%
@@ -4357,12 +4444,53 @@ SPPA_Wave1_totals<-SPPA_Wave1 %>%
          Physical_Appearance=SPPA_physicalappear_total,
          Behavioral_Conduct=SPPA_behavconduct_total,
          Close_Friendship=SPPA_closefriend_total,
-         Global_Self_Worht=SPPA_globalselfworth_total) %>%
+         Global_Self_Worth=SPPA_globalselfworth_total) %>%
   select(-contains("SPPA")) %>%
   gather('item','value',2:length(.)) 
 SPPA_Wave1_totals_graph<-ggplot(SPPA_Wave1_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("Self-Perception Profile for Adolescents total subscores for ",length(unique(SPPA_Wave1$tagid[!is.na(SPPA_Wave1$SPPA_scholasticcomp_total)]))," participants"))
+  ggtitle(paste0("Self-Perception Profile for Adolescents total subscores for ",length(unique(SPPA_Wave1_outdf$tagid[!is.na(SPPA_Wave1_outdf$SPPA_scholasticcomp_total)]))," participants")) + geom_vline(aes(xintercept = median(SPPA_Wave1_outdf$SPPA_globalselfworth_total, na.rm=T), colour="Global_Self_Worth"))
+
+SPPA_Wave2_totals<-SPPA_Wave2_outdf %>%
+  select(tagid,SPPA_scholasticcomp_total,SPPA_socialcomp_total,SPPA_athleticcomp_total,
+         SPPA_physicalappear_total,SPPA_behavconduct_total,SPPA_closefriend_total,
+         SPPA_globalselfworth_total) %>%
+  mutate(Scholastic_Competence=SPPA_scholasticcomp_total,
+         Social_Competence=SPPA_socialcomp_total,
+         Athletic_Competence=SPPA_athleticcomp_total,
+         Physical_Appearance=SPPA_physicalappear_total,
+         Behavioral_Conduct=SPPA_behavconduct_total,
+         Close_Friendship=SPPA_closefriend_total,
+         Global_Self_Worth=SPPA_globalselfworth_total) %>%
+  select(-contains("SPPA")) %>%
+  gather('item','value',2:length(.)) 
+SPPA_Wave2_totals_graph<-ggplot(SPPA_Wave2_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+ 
+  ggtitle(paste0("Self-Perception Profile for Adolescents total subscores for ",length(unique(SPPA_Wave2_outdf$tagid[!is.na(SPPA_Wave2_outdf$SPPA_scholasticcomp_total)]))," participants")) + geom_vline(aes(xintercept = median(SPPA_Wave2_outdf$SPPA_globalselfworth_total, na.rm=T), colour="Global_Self_Worth"))
+
+require(gridExtra)
+grid.arrange(SPPA_Wave1_totals_graph, SPPA_Wave2_totals_graph, ncol=2)
+
+grid.arrange(SPPA_Wave1_totals_graph, SCC_Wave1_total_graph, SPPA_Wave2_totals_graph, SCC_Wave2_total_graph, nrow=2, ncol=2)
+
+sppa_pds_wave1 <- merge(SPPA_Wave1_outdf, PDS_Wave1_outdf, by = "tagid", all = T)
+sppa_pds_wave1$pdsgroup <- ifelse(sppa_pds_wave1$pdss<=2, 1, ifelse(sppa_pds_wave1$pdss>=4, 3, ifelse(is.na(sppa_pds_wave1$pdss), NA, 2)))
+sppa_pds_wave2 <- merge(SPPA_Wave2_outdf, PDS_Wave2_outdf, by = "tagid", all = T)
+sppa_pds_wave2$pdsgroup <- ifelse(sppa_pds_wave2$pdss<=2, 1, ifelse(sppa_pds_wave2$pdss>=4, 3, ifelse(is.na(sppa_pds_wave2$pdss), NA, 2)))
+
+sppa_change <- merge(SPPA_Wave1_outdf, SPPA_Wave2_outdf, by = "tagid", all = T)
+sppa_change <- sppa_change[c("tagid","SPPA_globalselfworth_total.x","SPPA_globalselfworth_total.y")]
+cor.test(sppa_change$SPPA_globalselfworth_total.x, sppa_change$SPPA_globalselfworth_total.y, use = "pairwise.complete.obs", method = "pearson")
+cor.test(sppa_change$SPPA_globalselfworth_total.x, sppa_change$SPPA_globalselfworth_total.y, use = "pairwise.complete.obs", method = "spearman")
+
+sppa_long <- gather(sppa_change, wave, sppa_global_selfworth_total, SPPA_globalselfworth_total.x:SPPA_globalselfworth_total.y, factor_key=TRUE)
+sppa_long$wave <- ifelse(sppa_long$wave=="SPPA_globalselfworth_total.x",1,2)
+
+tspag_sppa = ggplot(sppa_long, aes(x=wave, y=sppa_global_selfworth_total)) + 
+  geom_line() + guides(colour=FALSE) + xlab("Wave") +
+  ylab("SPPA-Global_Self-Worth-Total Score")
+spag_sppa = tspag_sppa + aes(colour = factor(tagid)) + scale_x_continuous(breaks=c(1,2)) + ylim(4,22)
+spag2_sppa <- spag_sppa + geom_smooth(se=FALSE, colour="black", size=2)
 
 SPPA_Wave1_means<-SPPA_Wave1 %>%
   select(tagid,SPPA_scholasticcomp_mean,SPPA_socialcomp_mean,SPPA_athleticcomp_mean,
@@ -4381,7 +4509,7 @@ SPPA_Wave1_means_graph<-ggplot(SPPA_Wave1_means, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
   ggtitle(paste0("Self-Perception Profile for Adolescents mean subscores for ",length(unique(SPPA_Wave1$tagid[!is.na(SPPA_Wave1$SPPA_scholasticcomp_mean)]))," participants"))
 
-## Make RDOC ready file
+  ## Make RDOC ready file
 ndar_sppa_data <- left_join(SPPA_Wave1,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
@@ -4422,7 +4550,7 @@ part2<-colnames(ndar_sppa_data)
 part3<-as.matrix(ndar_sppa_data)
 colnames(part3)<-NULL
 together<-rbind(sppa_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/harterac01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/harterac01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,sppa_df_header,sppa_temp,sppa_temp_df,SPPA,SPPA_Wave1,SPPA_Wave1_means,SPPA_Wave1_means_graph,
    SPPA_Wave1_totals,SPPA_Wave1_totals_graph)
 ```
@@ -4533,6 +4661,9 @@ write.csv(SSDS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/SSDS_Wav
 
 SSDS_Wave2_outdf <- SSDS_Wave1 %>% filter(grepl("W2",survey_name)) 
 write.csv(SSDS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/SSDS_Wave2.csv"))
+
+SSDS_Wave3_outdf <- SSDS_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(SSDS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/SSDS_Wave3.csv"))
 
 ## Graph it
 SSDS_Wave1_totals<-SSDS_Wave1 %>%
@@ -4666,6 +4797,9 @@ write.csv(PANAS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PANAS_W
 PANAS_Wave2_outdf <- PANAS_Wave1 %>% filter(grepl("W2",survey_name)) 
 write.csv(PANAS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PANAS_Wave2.csv"))
 
+PANAS_Wave3_outdf <- PANAS_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(PANAS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/PANAS_Wave3.csv"))
+
 ## Graph it
 PANAS_Wave1_totals<-PANAS_Wave1 %>%
   select(tagid,PANAS_pos_total,PANAS_neg_total) %>%
@@ -4734,7 +4868,7 @@ part2<-colnames(ndar_panas_data)
 part3<-as.matrix(ndar_panas_data)
 colnames(part3)<-NULL
 together<-rbind(panas_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/panas_c01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/panas_c01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,panas_df_header,panas_temp,panas_temp_df,PANAS,PANAS_Wave1_means,PANAS_Wave1,PANAS_Wave1_totals,PANAS_Wave1_totals_graph,
    PANAS_Wave1_cor_graph)
 ```
@@ -4744,7 +4878,8 @@ Prepare SCS-C # Do not submit to RDOC
 SCSC_Roles <- left_join(filter(cleaned_survey_data, grepl("^SCS_C_Roles",item)) %>%
                  mutate(value=as.character(value)) %>%
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   subset(!tagid=="TAG200" | !survey_name=="W2S1 - Current V1") %>% 
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
@@ -4752,13 +4887,12 @@ SCSC_Roles <- left_join(filter(cleaned_survey_data, grepl("^SCS_C_Roles",item)) 
 SCSC_Adj <- left_join(filter(cleaned_survey_data, grepl("^SCS_C",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!value=="") %>%
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   subset(!tagid=="TAG200" | !survey_name=="W2S1 - Current V1") %>%
                  spread(item,value),
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
                  select(tagid, sa_date, sb_date, dob),by="tagid")
-#Change this if anyone endorses adjective "bad" in subsequent waves
-SCSC_Adj$SCS_C_1_9 <- NA
 
 SCSC <- left_join(SCSC_Roles, SCSC_Adj)
 
@@ -4840,31 +4974,7 @@ SCSC_Groups <- SCSC_Wave1 %>% select(SCS_C_Group_Happy, SCS_C_Group_Smart, SCS_C
 SCSC_Groups$patterncount <- apply(SCSC_Groups, 1, function(x)length(unique(x)))
   
 ```
-           mutate(SCS_C_HTotal=log2(20)-((xi(log2(xi))/20)))
-           # %>%
 
-  mutate(SCC_N=10,
-         SCC_missing=rowSums(is.na(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12))),
-         SCC_total=rowSums(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=F),
-         SCC_mean=rowMeans(cbind(SCC_1,SCC_2,SCC_3,SCC_4,SCC_5,SCC_6,SCC_7,SCC_8,SCC_9,SCC_10,SCC_11,SCC_12), na.rm=T))
-
-## Save it
-write.csv(SCC_Wave1, file = paste0(workdir,"Questionnaires/Wave_1/SCC_Wave1.csv"))
-
-## Graph it
-SCC_Wave1_total<-SCC_Wave1 %>%
-  select(tagid,SCC_total) %>%
-  gather('item','value',2:length(.)) 
-SCC_Wave1_total_graph<-ggplot(SCC_Wave1_total, aes(x=value, colour=item)) +
-  geom_density(alpha=.3)+
-  ggtitle(paste0("Self-Concept Clarity total score for ",length(unique(SCC_Wave1$tagid[!is.na(SCC_Wave1$SCC_total)]))," participants"))
-
-SCC_Wave1_mean<-SCC_Wave1 %>%
-  select(tagid,SCC_mean)%>%
-  gather('item','value',2:length(.)) 
-SCC_Wave1_mean_graph<-ggplot(SCC_Wave1_mean, aes(x=value, colour=item)) +
-  geom_density(alpha=.3)+
-  ggtitle(paste0("Self-Concept Clarity mean score for ",length(unique(SCC_Wave1$tagid[!is.na(SCC_Wave1$SCC_mean)]))," participants"))
     
 
 Prepare PSQI_MEQ # Do not submit to RDOC
@@ -4899,7 +5009,11 @@ YRBS_Wave1<-left_join(YRBS,survey_date, by = c("tagid","survey_name")) %>%
 YRBS_Wave1_outdf <- YRBS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
 write.csv(YRBS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/YRBS_Wave1.csv"))
 
+YRBS_Wave2_outdf <- YRBS_Wave1 %>% filter(grepl("W2",survey_name)) 
+write.csv(YRBS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/YRBS_Wave2.csv"))
 
+YRBS_Wave3_outdf <- YRBS_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(YRBS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/YRBS_Wave3.csv"))
 ```
 
 Prepare Parent CBCL
@@ -5001,125 +5115,125 @@ ndar_cbcl_data <- left_join(CBCL_Wave1,distinct(redcap_cleaned, tagid, dob),by="
          interp_kids=as.numeric(How_Well_Get_Along_Kids),
          interp_parents=as.numeric(How_Well_Behave_Parents),
          interp_alone=as.numeric(How_Well_Play_Work_Alone),
-         cbcl1=VIII_1,
-         cbcl2=VIII_2,
-         cbcl3=VIII_3,
-         cbcl4=VIII_4,
-         cbcl5=VIII_5,
-         cbcl6=VIII_6,
-         cbcl7=VIII_7,
-         cbcl8=VIII_8,
-         cbcl9=VIII_9,
+         cbcl1=ifelse(!is.na(VIII_1),VIII_1,999),
+         cbcl2=ifelse(!is.na(VIII_2),VIII_2,999),
+         cbcl3=ifelse(!is.na(VIII_3),VIII_3,999),
+         cbcl4=ifelse(!is.na(VIII_4),VIII_4,999),
+         cbcl5=ifelse(!is.na(VIII_5),VIII_5,999),
+         cbcl6=ifelse(!is.na(VIII_6),VIII_6,999),
+         cbcl7=ifelse(!is.na(VIII_7),VIII_7,999),
+         cbcl8=ifelse(!is.na(VIII_8),VIII_8,999),
+         cbcl9=ifelse(!is.na(VIII_9),VIII_9,999),
          cbcl10=ifelse(!is.na(VIII_10),VIII_10,999),
          cbcl11=ifelse(!is.na(VIII_11),VIII_11,999),
-         cbcl12=VIII_12,
-         cbcl13=VIII_13,
-         cbcl14=VIII_14,
-         cbcl15=VIII_15,
-         cbcl16=VIII_16,
-         cbcl17=VIII_17,
-         cbcl18=VIII_18,
-         cbcl19=VIII_19,
-         cbcl20=VIII_20,
-         cbcl21=VIII_21,
-         cbcl22=VIII_22,
-         cbcl23=VIII_23,
+         cbcl12=ifelse(!is.na(VIII_12),VIII_12,999),
+         cbcl13=ifelse(!is.na(VIII_13),VIII_13,999),
+         cbcl14=ifelse(!is.na(VIII_14),VIII_14,999),
+         cbcl15=ifelse(!is.na(VIII_15),VIII_15,999),
+         cbcl16=ifelse(!is.na(VIII_16),VIII_16,999),
+         cbcl17=ifelse(!is.na(VIII_17),VIII_17,999),
+         cbcl18=ifelse(!is.na(VIII_18),VIII_18,999),
+         cbcl19=ifelse(!is.na(VIII_19),VIII_19,999),
+         cbcl20=ifelse(!is.na(VIII_20),VIII_20,999),
+         cbcl21=ifelse(!is.na(VIII_21),VIII_21,999),
+         cbcl22=ifelse(!is.na(VIII_22),VIII_22,999),
+         cbcl23=ifelse(!is.na(VIII_23),VIII_23,999),
          cbcl24=ifelse(!is.na(VIII_24),VIII_24,999),
-         cbcl25=VIII_25,
-         cbcl26=VIII_26,
-         cbcl27=VIII_27,
-         cbcl28=VIII_28,
-         cbcl29=VIII_29,
+         cbcl25=ifelse(!is.na(VIII_25),VIII_25,999),
+         cbcl26=ifelse(!is.na(VIII_26),VIII_26,999),
+         cbcl27=ifelse(!is.na(VIII_27),VIII_27,999),
+         cbcl28=ifelse(!is.na(VIII_28),VIII_28,999),
+         cbcl29=ifelse(!is.na(VIII_29),VIII_29,999),
          cbcl30=ifelse(!is.na(VIII_30),VIII_30,999),
          cbcl31=ifelse(!is.na(VIII_31),VIII_31,999),
-         cbcl32=VIII_32,
-         cbcl33=VIII_33,
+         cbcl32=ifelse(!is.na(VIII_32),VIII_32,999),
+         cbcl33=ifelse(!is.na(VIII_33),VIII_33,999),
          cbcl34=ifelse(!is.na(VIII_34),VIII_34,999),
-         cbcl35=VIII_35,
-         cbcl36=VIII_36,
-         cbcl37=VIII_37,
+         cbcl35=ifelse(!is.na(VIII_35),VIII_35,999),
+         cbcl36=ifelse(!is.na(VIII_36),VIII_36,999),
+         cbcl37=ifelse(!is.na(VIII_37),VIII_37,999),
          cbcl38=ifelse(!is.na(VIII_38),VIII_38,999),
-         cbcl39=VIII_39,
+         cbcl39=ifelse(!is.na(VIII_39),VIII_39,999),
          cbcl40=ifelse(!is.na(VIII_40),VIII_40,999),
-         cbcl41=VIII_41,
-         cbcl42=VIII_42,
-         cbcl43=VIII_43,
-         cbcl44=VIII_44,
-         cbcl45=VIII_45,
-         cbcl46=VIII_46,
+         cbcl41=ifelse(!is.na(VIII_41),VIII_41,999),
+         cbcl42=ifelse(!is.na(VIII_42),VIII_42,999),
+         cbcl43=ifelse(!is.na(VIII_43),VIII_43,999),
+         cbcl44=ifelse(!is.na(VIII_44),VIII_44,999),
+         cbcl45=ifelse(!is.na(VIII_45),VIII_45,999),
+         cbcl46=ifelse(!is.na(VIII_46),VIII_46,999),
          cbcl47=ifelse(!is.na(VIII_47),VIII_47,999),
          cbcl48=ifelse(!is.na(VIII_48),VIII_48,999),
          cbcl49=ifelse(!is.na(VIII_49),VIII_49,999),
-         cbcl50=VIII_50,
-         cbcl51=VIII_51,
-         cbcl52=VIII_52,
-         cbcl53=VIII_53,
-         cbcl54=VIII_54,
-         cbcl55=VIII_55,
-         cbcl56a=VIII_56a,
-         cbcl56b=VIII_56b,
-         cbcl56c=VIII_56c,
-         cbcl56d=VIII_56d,
+         cbcl50=ifelse(!is.na(VIII_50),VIII_50,999),
+         cbcl51=ifelse(!is.na(VIII_51),VIII_51,999),
+         cbcl52=ifelse(!is.na(VIII_52),VIII_52,999),
+         cbcl53=ifelse(!is.na(VIII_53),VIII_53,999),
+         cbcl54=ifelse(!is.na(VIII_54),VIII_54,999),
+         cbcl55=ifelse(!is.na(VIII_55),VIII_55,999),
+         cbcl56a=ifelse(!is.na(VIII_56a),VIII_56a,999),
+         cbcl56b=ifelse(!is.na(VIII_56b),VIII_56b,999),
+         cbcl56c=ifelse(!is.na(VIII_56c),VIII_56c,999),
+         cbcl56d=ifelse(!is.na(VIII_56d),VIII_56d,999),
          cbcl56e=ifelse(!is.na(VIII_56e),VIII_56e,999),
-         cbcl56f=VIII_56f,
-         cbcl56g=VIII_56g,
+         cbcl56f=ifelse(!is.na(VIII_56f),VIII_56f,999),
+         cbcl56g=ifelse(!is.na(VIII_56g),VIII_56g,999),
          cbcl56h=ifelse(!is.na(VIII_56h),as.numeric(VIII_56h),999),
-         cbcl57=VIII_57,
-         cbcl58=VIII_58,
-         cbcl59=VIII_59,
-         cbcl60=VIII_60,
-         cbcl61=VIII_61,
-         cbcl62=VIII_62,
-         cbcl63=VIII_63,
-         cbcl64=VIII_64,
-         cbcl65=VIII_65,
-         cbcl66=VIII_66,
-         cbcl67=VIII_67,
-         cbcl68=VIII_68,
-         cbcl69=VIII_69,
+         cbcl57=ifelse(!is.na(VIII_57),VIII_57,999),
+         cbcl58=ifelse(!is.na(VIII_58),VIII_58,999),
+         cbcl59=ifelse(!is.na(VIII_59),VIII_59,999),
+         cbcl60=ifelse(!is.na(VIII_60),VIII_60,999),
+         cbcl61=ifelse(!is.na(VIII_61),VIII_61,999),
+         cbcl62=ifelse(!is.na(VIII_62),VIII_62,999),
+         cbcl63=ifelse(!is.na(VIII_63),VIII_63,999),
+         cbcl64=ifelse(!is.na(VIII_64),VIII_64,999),
+         cbcl65=ifelse(!is.na(VIII_65),VIII_65,999),
+         cbcl66=ifelse(!is.na(VIII_66),VIII_66,999),
+         cbcl67=ifelse(!is.na(VIII_67),VIII_67,999),
+         cbcl68=ifelse(!is.na(VIII_68),VIII_68,999),
+         cbcl69=ifelse(!is.na(VIII_69),VIII_69,999),
          cbcl70=ifelse(!is.na(VIII_70),as.numeric(VIII_70),999),
-         cbcl71=VIII_71,
-         cbcl72=VIII_72,
-         cbcl73=VIII_73,
+         cbcl71=ifelse(!is.na(VIII_71),VIII_71,999),
+         cbcl72=ifelse(!is.na(VIII_72),VIII_72,999),
+         cbcl73=ifelse(!is.na(VIII_73),VIII_73,999),
          cbcl74=ifelse(!is.na(VIII_74),VIII_74,999),
-         cbcl75=VIII_75,
-         cbcl76=VIII_76,
-         cbcl77=VIII_77,
-         cbcl78=VIII_78,
-         cbcl79=VIII_79,
+         cbcl75=ifelse(!is.na(VIII_75),VIII_75,999),
+         cbcl76=ifelse(!is.na(VIII_76),VIII_76,999),
+         cbcl77=ifelse(!is.na(VIII_77),VIII_77,999),
+         cbcl78=ifelse(!is.na(VIII_78),VIII_78,999),
+         cbcl79=ifelse(!is.na(VIII_79),VIII_79,999),
          cbcl80=ifelse(!is.na(VIII_80),VIII_80,999),
-         cbcl81=VIII_81,
-         cbcl82=VIII_82,
-         cbcl83=VIII_83,
-         cbcl84=VIII_84,
+         cbcl81=ifelse(!is.na(VIII_81),VIII_81,999),
+         cbcl82=ifelse(!is.na(VIII_82),VIII_82,999),
+         cbcl83=ifelse(!is.na(VIII_83),VIII_83,999),
+         cbcl84=ifelse(!is.na(VIII_84),VIII_84,999),
          cbcl85=ifelse(!is.na(VIII_85),VIII_85,999),
-         cbcl86=VIII_86,
-         cbcl87=VIII_87,
-         cbcl88=VIII_88,
-         cbcl89=VIII_89,
-         cbcl90=VIII_90,
-         cbcl91=VIII_91,
-         cbcl92=VIII_92,
-         cbcl93=VIII_93,
+         cbcl86=ifelse(!is.na(VIII_86),VIII_86,999),
+         cbcl87=ifelse(!is.na(VIII_87),VIII_87,999),
+         cbcl88=ifelse(!is.na(VIII_88),VIII_88,999),
+         cbcl89=ifelse(!is.na(VIII_89),VIII_89,999),
+         cbcl90=ifelse(!is.na(VIII_90),VIII_90,999),
+         cbcl91=ifelse(!is.na(VIII_91),VIII_91,999),
+         cbcl92=ifelse(!is.na(VIII_92),VIII_92,999),
+         cbcl93=ifelse(!is.na(VIII_93),VIII_93,999),
          cbcl94=ifelse(!is.na(VIII_94),VIII_94,999),
-         cbcl95=VIII_95,
-         cbcl96=VIII_96,
+         cbcl95=ifelse(!is.na(VIII_95),VIII_95,999),
+         cbcl96=ifelse(!is.na(VIII_96),VIII_96,999),
          cbcl97=ifelse(!is.na(VIII_97),VIII_97,999),
-         cbcl98=VIII_98,
-         cbcl99=VIII_99,
-         cbcl100=VIII_100,
-         cbcl101=VIII_101,
-         cbcl102=VIII_102,
-         cbcl103=VIII_103,
-         cbcl104=VIII_104,
-         cbcl105=VIII_105,
-         cbcl106=VIII_106,
-         cbcl107=VIII_107,
-         cbcl108=VIII_108,
-         cbcl109=VIII_109,
+         cbcl98=ifelse(!is.na(VIII_98),VIII_98,999),
+         cbcl99=ifelse(!is.na(VIII_99),VIII_99,999),VIII_99,
+         cbcl100=ifelse(!is.na(VIII_100),VIII_100,999),
+         cbcl101=ifelse(!is.na(VIII_101),VIII_101,999),
+         cbcl102=ifelse(!is.na(VIII_102),VIII_102,999),
+         cbcl103=ifelse(!is.na(VIII_103),VIII_103,999),
+         cbcl104=ifelse(!is.na(VIII_104),VIII_104,999),
+         cbcl105=ifelse(!is.na(VIII_105),VIII_105,999),
+         cbcl106=ifelse(!is.na(VIII_106),VIII_106,999),
+         cbcl107=ifelse(!is.na(VIII_107),VIII_107,999),
+         cbcl108=ifelse(!is.na(VIII_108),VIII_108,999),
+         cbcl109=ifelse(!is.na(VIII_109),VIII_109,999),
          cbcl110=ifelse(!is.na(VIII_110),VIII_110,999),
          cbcl111=ifelse(!is.na(VIII_111),VIII_111,999),
-         cbcl112=VIII_112,
+         cbcl112=ifelse(!is.na(VIII_112),VIII_112,999),
          cbcl_emotional_raw=999,
          cbcl_emotional=999,
          cbcl_anxious_raw=999,
@@ -5175,7 +5289,8 @@ ndar_cbcl_data <- left_join(CBCL_Wave1,distinct(redcap_cleaned, tagid, dob),by="
          cbcl_ptsd_raw=999,
          cbcl_ptsd=999,
          cbcl_depresspr=999,
-         cbcl_depresspr_raw=999)
+         cbcl_depresspr_raw=999, 
+         interp_kids=ifelse(interp_kids==3, 999, interp_kids))
 
 ndar_cbcl_data <- left_join(ndar_key,ndar_cbcl_data, by="tagid") %>%
   mutate(src_subject_id=anontagid,
@@ -5195,7 +5310,7 @@ part2<-colnames(ndar_cbcl_data)
 part3<-as.matrix(ndar_cbcl_data)
 colnames(part3)<-NULL
 together<-rbind(cbcl_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/cbcl01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/cbcl01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,cbcl_df_header,cbcl_temp,cbcl_temp_df,CBCL,CBCL_Wave1)
 ```
 
@@ -5203,13 +5318,24 @@ Prepare Parent-report PDS
 ```{r}
 #section completed by NV
 PDS_parent<-left_join(filter(cleaned_survey_data, grepl("Parent",survey_name)) %>%
-                  filter(grepl("PDS",item)) %>%
+                  filter(grepl("PDS",item)) %>% 
+                    mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value), !value=="") %>%
-                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
                   spread(item,value),
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
                   select(tagid, sa_date, sb_date, dob),by="tagid")
+
+PDS<-left_join(filter(cleaned_survey_data, grepl("PDS",item)) %>% 
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!grepl("Parent",survey_name)) %>%
+                 filter(!is.na(value)) %>% 
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
 
 PDS_parent_Wave1<-left_join(PDS_parent,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
