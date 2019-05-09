@@ -1,0 +1,164 @@
+---
+title: "R-SCS-C"
+author: "Marjolein"
+date: "9 May 2019"
+output: html_document
+---
+
+```
+Prepare R-SCS-C
+#NOTE: No total score calculated for this questionnaire
+```{r}
+RSCS<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
+                  mutate(value=as.numeric(value)) %>% 
+                  filter(!is.na(value)) %>%
+                  filter(!value=="") %>%
+                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                  group_by(tagid,item,survey_name) %>%
+                  mutate(nrow = n(),
+                         value = ifelse(nrow > 1, NA, value)) %>%
+                  distinct(tagid,item,survey_name,value,.keep_all = FALSE) %>% 
+                  spread(item,value),
+                redcap_cleaned %>%
+                  filter(!is.na(dob),!is.na(sa_date)) %>%
+                  select(tagid, sa_date, sb_date, dob),by="tagid")
+if (length(RSCS$tagid) == length(unique(RSCS$tagid))){
+  print("No duplicate TAGIDs in data")
+} else {
+  print("DUPLICATE TAGIDs in data")
+}
+TAG023_special<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
+                            mutate(value=as.numeric(value)) %>% 
+                            filter(!is.na(value)) %>%
+                            filter(!value=="") %>%
+                            filter(tagid=="TAG023") %>%
+                            distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                            spread(item,value),
+                          redcap_cleaned %>%
+                            filter(!is.na(dob),!is.na(sa_date),tagid=="TAG023") %>%
+                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
+  mutate(survey_name="TAG - Sess 1 - V1 - (EATQ-R_2 & on)")
+RSCS <- bind_rows(RSCS %>% filter(!tagid=="TAG023"),TAG023_special)
+
+if (length(RSCS$tagid) == length(unique(RSCS$tagid))){
+  print("No duplicate TAGIDs in data")
+} else {
+  print("DUPLICATE TAGIDs in data")
+}
+RSCS_Wave1<-left_join(RSCS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(RSCS_publicsc_total=rowSums(cbind(R_SCS_C_1,R_SCS_C_2,R_SCS_C_3,R_SCS_C_7,R_SCS_C_10,R_SCS_C_12,R_SCS_C_14,
+                                           R_SCS_C_15,R_SCS_C_16,R_SCS_C_21,R_SCS_C_28), na.rm=F),
+         RSCS_privatesc_total=rowSums(cbind(R_SCS_C_4,R_SCS_C_5,R_SCS_C_6,R_SCS_C_8,R_SCS_C_9,R_SCS_C_11,R_SCS_C_20,
+                                            R_SCS_C_22,R_SCS_C_23,R_SCS_C_24,R_SCS_C_27), na.rm=F),
+         RSCS_socanx_total=rowSums(cbind(R_SCS_C_13,R_SCS_C_17,R_SCS_C_18,R_SCS_C_19,R_SCS_C_25,R_SCS_C_26,R_SCS_C_29), na.rm=F),
+         RSCS_publicsc_mean=rowMeans(cbind(R_SCS_C_1,R_SCS_C_2,R_SCS_C_3,R_SCS_C_7,R_SCS_C_10,R_SCS_C_12,R_SCS_C_14,
+                                           R_SCS_C_15,R_SCS_C_16,R_SCS_C_21,R_SCS_C_28), na.rm=T),
+         RSCS_privatesc_mean=rowMeans(cbind(R_SCS_C_4,R_SCS_C_5,R_SCS_C_6,R_SCS_C_8,R_SCS_C_9,R_SCS_C_11,R_SCS_C_20,
+                                            R_SCS_C_22,R_SCS_C_23,R_SCS_C_24,R_SCS_C_27), na.rm=T),
+         RSCS_socanx_mean=rowMeans(cbind(R_SCS_C_13,R_SCS_C_17,R_SCS_C_18,R_SCS_C_19,R_SCS_C_25,R_SCS_C_26,R_SCS_C_29), na.rm=T))
+## Save it
+RSCS_Wave1_outdf <- RSCS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(RSCS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/RSCS_Wave1.csv"))
+RSCS_Wave2_outdf <- RSCS_Wave1 %>% filter(grepl("W2",survey_name)) 
+write.csv(RSCS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/RSCS_Wave2.csv"))
+RSCS_Wave3_outdf <- RSCS_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(RSCS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/RSCS_Wave3.csv"))
+## Everything after this line has not been checked
+## Graph it
+RSCS_Wave1_totals<-RSCS_Wave1 %>%
+  select(tagid,RSCS_publicsc_total,RSCS_privatesc_total,RSCS_socanx_total) %>%
+  mutate(Public_Self_Consicousness=RSCS_publicsc_total,
+         Private_Self_Consicousness=RSCS_privatesc_total,
+         Social_Anxiousness=RSCS_socanx_total) %>%
+  select(-contains("RSCS")) %>%
+  gather('item','value',2:length(.)) 
+RSCS_Wave1_totals_graph<-ggplot(RSCS_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("RSCS totals for ",length(unique(RSCS_Wave1$tagid[!is.na(RSCS_Wave1$RSCS_publicsc_total)]))," participants"))
+RSCS_Wave1_means<-RSCS_Wave1 %>%
+  select(tagid,RSCS_publicsc_mean,RSCS_privatesc_mean,RSCS_socanx_mean) %>%
+  mutate(Public_Self_Consicousness=RSCS_publicsc_mean,
+         Private_Self_Consicousness=RSCS_privatesc_mean,
+         Social_Anxiousness=RSCS_socanx_mean) %>%
+  select(-contains("RSCS")) %>%
+  gather('item','value',2:length(.)) 
+RSCS_Wave1_means_graph<-ggplot(RSCS_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("RSCS means for ",length(unique(RSCS_Wave1$tagid))," participants"))
+## Make RDOC ready file
+ndar_rscs_data <- left_join(RSCS_Wave1,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         comments_misc=ifelse(grepl("Sess 1",survey_name),"Session1",
+                              ifelse(grepl("Session 1",survey_name),"Session1",
+                                     ifelse(grepl("Sess 2",survey_name),"Session2",
+                                            ifelse(grepl("Session 2",survey_name),"Session2",
+                                                   ifelse(grepl("Home",survey_name),"Home Questionnaires",
+                                                          NA))))),
+         site="University of Oregon",
+         study="Transitions in Adolescent Girls (TAG) Study",
+         gender="F",
+         rscsc_1=R_SCS_C_1,
+         rscsc_2=R_SCS_C_2,
+         rscsc_3=R_SCS_C_3,
+         rscsc_4=R_SCS_C_4,
+         rscsc_5=R_SCS_C_5,
+         rscsc_6=R_SCS_C_6,
+         rscsc_7=R_SCS_C_7,
+         rscsc_8=R_SCS_C_8,
+         rscsc_9=R_SCS_C_9,
+         rscsc_10=R_SCS_C_10,
+         rscsc_11=R_SCS_C_11,
+         rscsc_12=R_SCS_C_12,
+         rscsc_13=R_SCS_C_13,
+         rscsc_14=R_SCS_C_14,
+         rscsc_15=R_SCS_C_15,
+         rscsc_16=R_SCS_C_16,
+         rscsc_17=R_SCS_C_17,
+         rscsc_18=R_SCS_C_18,
+         rscsc_19=R_SCS_C_19,
+         rscsc_20=R_SCS_C_20,
+         rscsc_21=R_SCS_C_21,
+         rscsc_22=R_SCS_C_22,
+         rscsc_23=R_SCS_C_23,
+         rscsc_24=R_SCS_C_24,
+         rscsc_25=R_SCS_C_25,
+         rscsc_26=R_SCS_C_26,
+         rscsc_27=R_SCS_C_27,
+         rscsc_28=R_SCS_C_28,
+         rscsc_29=R_SCS_C_29,
+         rscsc_publicsc=ifelse(!is.na(RSCS_publicsc_total),RSCS_publicsc_total,999),
+         rscsc_privatesc=ifelse(!is.na(RSCS_privatesc_total),RSCS_privatesc_total,999),
+         rscsc_socanx=ifelse(!is.na(RSCS_socanx_total),RSCS_socanx_total,999))
+ndar_rscs_data <- left_join(ndar_key,ndar_rscs_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("SCS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-guid,-survey_type)
+rscs_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+rscs_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+rscs_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+rscs_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/rscsc01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+rscs_temp_df<-data.frame(rscs_temp)
+ndar_rscs_data<-bind_rows(rscs_temp_df,ndar_rscs_data)
+part2<-colnames(ndar_rscs_data)
+part3<-as.matrix(ndar_rscs_data)
+colnames(part3)<-NULL
+together<-rbind(rscs_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/rscsc01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,rscs_df_header,rscs_temp,rscs_temp_df,RSCS,RSCS_Wave1_means,RSCS_Wave1,RSCS_Wave1_totals,RSCS_Wave1_totals_graph,
+   TAG023_special)
+```
