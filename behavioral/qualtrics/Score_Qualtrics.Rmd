@@ -1020,7 +1020,7 @@ PDS_Wave2_outdf <- PDS_Wave1 %>% filter(grepl("W2",survey_name))
 write.csv(PDS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PDS_Wave2.csv"))
 
 PDS_Wave3_outdf <- PDS_Wave1 %>% filter(grepl("W3",survey_name))
-write.csv(PDS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave3/PDS_Wave3.csv"))
+write.csv(PDS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/PDS_Wave3.csv"))
 
 ## Graph it
 PDS_Wave1_pdss_graph<-ggplot(PDS_Wave1_outdf, aes(x=pdss, colour="deeppink")) +
