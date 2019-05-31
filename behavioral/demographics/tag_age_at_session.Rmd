@@ -34,27 +34,34 @@ View(tag_age_session)
 ```{r}
 # Tidy into long format
 tag_age_session_gathered <- gather(tag_age_session, wave_session, 
-                                   date, -TAG_ID, -DOB)
+                                   date, -tagid, -dob)
 View(tag_age_session_gathered)
 
 tag_age_session_gathered$wave <- ifelse(tag_age_session_gathered$wave_session 
                                         == "W1S1_Date" | 
                                           tag_age_session_gathered$wave_session
-                                        =="W1S2_Date", 1, 2)
+                                        =="W1S2_Date", 1,
+                              ifelse(tag_age_session_gathered$wave_session 
+                                        == "W2S1_Date" | 
+                                          tag_age_session_gathered$wave_session
+                                        =="W2S2_Date", 2, 3))
 tag_age_session_gathered$session <- ifelse(tag_age_session_gathered$wave_session 
                                         == "W1S1_Date" | 
                                           tag_age_session_gathered$wave_session
-                                        =="W2S1_Date", 1, 2)
+                                        =="W2S1_Date" | 
+                                          tag_age_session_gathered$wave_session
+                                        =="W3S1_Date", 1, 2)
 tag_age_session_gathered <- tag_age_session_gathered[ -c(3) ]
+
 ```
 
 ```{r}
 # Calculate age at each session
-tag_age_session_gathered$DOB <- mdy(na.pass(tag_age_session_gathered$DOB))
+tag_age_session_gathered$dob <- mdy(na.pass(tag_age_session_gathered$dob))
 tag_age_session_gathered$date <- mdy(na.pass(tag_age_session_gathered$date))
 
 tag_age_session_gathered$age <- interval(start = 
-                                            tag_age_session_gathered$DOB, 
+                                            tag_age_session_gathered$dob, 
                                             end = 
                                             tag_age_session_gathered$date) / 
                                             duration(num = 1, units = "years")
@@ -64,7 +71,7 @@ View(tag_age_session_gathered)
 
 ```{r}
 # Summary age at each session 
-summary_age <- tag_age_session_gathered %>% mutate(TAG_ID = as.factor(TAG_ID)) %>%
+summary_age <- tag_age_session_gathered %>% mutate(tagid = as.factor(tagid)) %>%
   group_by(wave, session) %>% summarize(Mean = mean(age,na.rm=T), SD = sd(age,na.rm=T), 
                                         Min = min(age,na.rm=T), Max = max(age,na.rm=T), 
                                         N = sum(!is.na(age)))
