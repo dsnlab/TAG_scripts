@@ -5,15 +5,75 @@ date: "5/9/2019"
 output: html_document
 ---
 
+Set parameters, get the data
 ```{r}
-PSS<-left_join(filter(cleaned_survey_data, grepl("^PSS",item)) %>%
+
+# set these parameters
+datadir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/'
+scriptsdir <- '~/projects/dsnlab/TAG/TAG_scripts/'
+
+rerun_prep_for_measures <- TRUE # defaults to true, such that prep_for_measures is re-run each time. if you are confident that you have the most up to date cleaned_survey_data, then set to FALSE
+
+up_to_this_date <- "20190509" # on CAS in behavior/Questionnaires/RDOC/Confidential there are two files from redcap that should be labeled with the same date, e.g., redcap_anthro_20190405.csv and redcap_dates_20190509.csv. the data that you are pulling includes subjects up to this date for anthro and zip code (but for the other data? sam is not sure)
+
+# get cleaned_survey_data
+if (rerun_prep_for_measures == TRUE){
+  source(paste0(scriptsdir, "behavioral/qualtrics/prep_for_measures.R"))
+  cleaned_survey_data <- get_cleaned_survey_data(datadir)
+} else if (rerun_prep_for_measures == FALSE){
+  cleaned_survey_data <- loadRDS(paste0(datadir, "cleaned_survey_data.RDS"))
+}
+
+#get manual data modifications csv file
+mod_df <- read.csv(paste0(datadir, "Questionnaires/Modified_Answers.csv")) # import csv of modified answers
+```
+
+```{r}
+
+# note: there is manual replacement for subject 152 based on repeating the questionnaire twice and different answers on 5,6,7, and 9 only // 
+
+# subject 200 needs manual replacement to get the script to run. these are the values for the first time they took PSS
+
+replacement <- tibble(tagid = rep("TAG200", 10),
+                      survey_name = rep("W2S1 - Current V1", 10),
+                      item = c("PSS_1", "PSS_2", "PSS_3", "PSS_4", "PSS_5", "PSS_6", "PSS_7", "PSS_8", "PSS_9", "PSS_10"), 
+                      wave = rep(2, 10),
+                      kept_value = c(4, 2, 2, 3, 3, 2, 2, 2, 4, 4))
+
+survey_name = "PSS"
+
+apply(replacement, 1, kept_value)
+
+get(survey_name)$value <- case_when(which(replacement$tagid %in% temp2$tagid) &
+                                    replacement$survey_name == temp2$survey_name &
+                                    replacement$wave == temp2$wave &
+                                    replacement$item == temp2$item ~ replacement$kept_value)
+
+PSS <- filter(cleaned_survey_data, grepl("^PSS",item)) %>%
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>%
+                   filter(!value=="") %>%
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE))
+
+# clean PSS to remove the duplicated values for TAG200
+
+                   #spread(item, value), 
+                 redcap_cleaned %>% 
+                    filter(!is.na(dob), !is.na(sa_date)) %>%
+                    select(tagid, sa_date, sb_date, dob), by = "tagid")
+
+temp <- filter(PSS, tagid == "TAG200")
+
+temp2 <- filter(cleaned_survey_data, grepl("^PSS",item)) %>% 
+  filter(., tagid == "TAG200")
+
+subset(!tagid=="TAG200" | !survey_name == "W2S1 - Current V1")
+
+PSS <- left_join(filter(cleaned_survey_data, grepl("^PSS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
-                 filter(!value=="") %>%
-                 mutate(value=ifelse((tagid=="TAG132" & item=="PSS_5"),4,
-                                     ifelse((tagid=="TAG132" & item=="PSS_6"),2,
-                                            ifelse((tagid=="TAG132" & item=="PSS_7"),3,
-                                                   ifelse((tagid=="TAG132" & item=="PSS_9"),2,value))))
+                 filter(!value=="")) # %>%
+
                  ) %>%
                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
                  subset(!tagid=="TAG200" | !survey_name=="W2S1 - Current V1") %>% 
@@ -138,7 +198,7 @@ part2<-colnames(ndar_pss_data)
 part3<-as.matrix(ndar_pss_data)
 colnames(part3)<-NULL
 together<-rbind(pss_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/pss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/pss01_", up_to_this_date, ".csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,pss_df_header,pss_temp,pss_temp_df,PSS,PSS_Wave1,PSS_Wave1_means,PSS_Wave1_means_graph,
    PSS_Wave1_totals,PSS_Wave1_totals_graph)
 ```
