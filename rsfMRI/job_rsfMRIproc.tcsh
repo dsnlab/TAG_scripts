@@ -24,14 +24,16 @@ set subj="${SUBID}"
 echo $subj
 set group_id=tag
 echo $group_id
-set pipeline=rsfMRI_preproc_wave1
+set wave=2
+echo $wave
+set pipeline=rsfMRI_preproc_wave"$wave"
 
 # set data directories
 set top_dir=/projects/dsnlab/shared/"${group_id}"
 echo $top_dir
-set anat_dir=$top_dir/bids_data/derivatives/freesurfer/$subj/SUMA
+set anat_dir=$top_dir/bids_data/derivatives/freesurfer_w"$wave"/$subj/SUMA
 echo $anat_dir
-set epi_dir=$top_dir/bids_data/"$subj"/ses-wave1/func
+set epi_dir=$top_dir/bids_data/"$subj"/ses-wave"$wave"/func
 echo $epi_dir
 set rsfMRI_output=$top_dir/bids_data/derivatives/$pipeline
 echo $rsfMRI_output
@@ -60,7 +62,7 @@ afni_proc.py -subj_id $subj                                \
 -anat_follower_ROI FSvent epi $anat_dir/"${subj}"_vent.nii.gz           \
 -anat_follower_ROI FSWe epi $anat_dir/"${subj}"_WM.nii.gz            \
 -anat_follower_erode FSvent FSWe                           \
--dsets $epi_dir/"${subj}"_ses-wave1_task-rest_run-0?_bold.nii.gz \
+-dsets $epi_dir/"${subj}"_ses-wave"$wave"_task-rest_run-0?_bold.nii.gz \
 -tcat_remove_first_trs 5                                  \
 -volreg_align_to MIN_OUTLIER                               \
 -volreg_align_e2a                                          \
