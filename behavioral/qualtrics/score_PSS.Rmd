@@ -18,8 +18,9 @@ up_to_this_date <- "20190509" # on CAS in behavior/Questionnaires/RDOC/Confident
 
 # get cleaned_survey_data
 if (rerun_prep_for_measures == TRUE){
-  source(paste0(scriptsdir, "behavioral/qualtrics/prep_for_measures.R"))
-  cleaned_survey_data <- get_cleaned_survey_data(datadir)
+  source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
+  long_survey_data <- get_data_from_qualtrics(datadir)
+  cleaned_survey_data <- clean_tagids(long_survey_data, datadir, scriptsdir)
 } else if (rerun_prep_for_measures == FALSE){
   cleaned_survey_data <- loadRDS(paste0(datadir, "cleaned_survey_data.RDS"))
 }

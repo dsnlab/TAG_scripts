@@ -1,7 +1,11 @@
 # prep qualtrics data for export
 # T Cheng | started 06062019
 
-get_cleaned_survey_data <- function(datadir, up_to_this_date){
+# up_to_this_date
+
+get_data_from_qualtrics <- function(datadir){
+  # this function acquires data from qualtrics and transforms it into long format
+  
   ## Load required packages ##
   packages <- c("lme4", "nlme", "ggplot2", "dplyr", "tidyr", "knitr",
                 "parallel", "data.table", "lubridate","xml2","devtools")
@@ -9,9 +13,8 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
     install.packages(setdiff(packages, rownames(installed.packages())))  
   }
   lapply(packages, library, character.only = TRUE)
-  #install_github('jflournoy/qualtrics')
+  #install_github('jflournoy/qualtrics') # uncommenting this line results in a timeout error
   library(scorequaltrics)
-  rm(packages)
   
   # Extract qualtrics data from website
   credsFile<-file.path(datadir,"Questionnaires/RDOC/Confidential/credentials.yaml.DEFAULT", fsep="")
@@ -63,31 +66,46 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
                              "TAG - W1 Home Qs - Current V4")) 
   sortbyqid_data <- get_survey_data(embedded_qs,pid_col="qid") %>% mutate(value = ifelse(value == -99, NA, value))
   
-  rm(creds,credsFile,get_survey_data)
-  
-  # Clean qualtrics (from scratch)
+  return(long_survey_data, sortbyqid_data)
+}
+
+
+clean_tagids <- function(long_survey_data, datadir, scriptsdir){
+  # this function cleans tagid values
   
   library(data.table)
   cleaned_survey_data <- as.data.table(long_survey_data)
+  
+  # general tidying of tagids
   cleaned_survey_data[, tagid := ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID)]
   cleaned_survey_data[, SID := NULL]
   cleaned_survey_data <- cleaned_survey_data[!(tagid %in% c('TAG000', 'TAG999'))]
-  cleaned_survey_data[tagid == '013 ', tagid := 'TAG013']
-  cleaned_survey_data[tagid == '70', tagid := 'TAG070']
-  cleaned_survey_data[tagid == 'TAG255', tagid := 'TAG225'] #SJC updated
-  cleaned_survey_data[tagid == 'home', tagid := "TAG244"] #NV updated
-  cleaned_survey_data[tagid == '541695411', tagid := "TAG040"] #NV updated
-  cleaned_survey_data[tagid == "TAGHVU", tagid := "TAG070"] #NV updated
-  cleaned_survey_data <- as.data.frame(cleaned_survey_data)
-  #The above is much much quicker.
-  #  user  system elapsed 
-  # 0.228   0.012   0.241 
   
-  IDs<-unique(cleaned_survey_data$tagid)
+  # read csv file of bad tagid entries (col 1) and correct replacements (col 2)
+  tagid_replacements <- read.csv(paste0(scriptsdir,"behavioral/qualtrics/tagid_replacements.csv"), header = FALSE)
+  colnames(tagid_replacements) <- c("bad_tagids", "good_tagids")
+  tagid_replacements$bad_tagids <- as.character(tagid_replacements$bad_tagids)
+  tagid_replacements$good_tagids <- as.character(tagid_replacements$good_tagids)
+  #str_replace(tagid_replacements$bad_tagids, "\\\\", "\")
+  #gsub(pattern = "\\", replacement = '"\"', x = tagid_replacements$bad_tagids, fixed = TRUE)
   
-  # Need to fix the IDs of participants
-  # who showed an error with their qualtrics
-  # home questionnaires
+  cleaned_survey_data$tagid<- as.character(cleaned_survey_data$tagid)
+  
+  replace_tagid <-function(bad_tagid, good_tagid){
+    cleaned_survey_data[tagid == bad_tagid, tagid := good_tagid]} 
+
+  for (i in 1:nrow(tagid_replacements)){
+    replace_tagid(tagid_replacements[i, 1], tagid_replacements[i, 2])
+    }
+  
+  # automated way of doing this can't handle searching for single backslashes, doing one of the tagid replacements manually ... sorry
+  cleaned_survey_data <- cleaned_survey_data %>%
+    mutate(tagid=ifelse(tagid=="078\177","TAG078",tagid)) 
+
+  
+  IDs <- unique(cleaned_survey_data$tagid)
+  
+  # Need to fix the IDs of participants who showed an error with their qualtrics home questionnaires
   misIDkey<-read.csv(paste0(datadir,"Questionnaires/RDOC/Confidential/qidkey.csv"))
   TAGHomeQ<-sortbyqid_data
   for (i in 1:length(misIDkey$qid)){
@@ -96,7 +114,7 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
                           as.character(misIDkey$SID[i]),value))
   }
   gather_cols<-unique(TAGHomeQ$item)
-  TAGEmbeddedHomeQ_Gathered <- TAGHomeQ %>% 
+  TAGEmbeddedHomeQ_Gathered <- TAGHomeQ %>%
     spread(item,value) %>%
     mutate(tagid=ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID))
   test1 <- select(TAGEmbeddedHomeQ_Gathered, tagid, survey_name, qid, everything())
@@ -107,23 +125,19 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
   cleaned_survey_data3<-cleaned_survey_data2 %>% distinct(tagid,item,value,survey_name,.keep_all = TRUE)
   
   #Remove missing data and the duplicated data from the embedded ID home questionnaires
-  cleaned_survey_data<-cleaned_survey_data3 %>% 
-    filter(!tagid=="") %>% 
-    filter(!tagid=="SV_eqvWqPtsOO4uqPP") %>% 
+  cleaned_survey_data<-cleaned_survey_data3 %>%
+    filter(!tagid=="") %>%
+    filter(!tagid=="SV_eqvWqPtsOO4uqPP") %>%
     filter(grepl('TAG', tagid))
   
   # Change the one participant with a ghost SID
   cleaned_survey_data <- cleaned_survey_data %>%
-    mutate(tagid=ifelse(tagid=="078\177","TAG078",tagid)) 
+    mutate(tagid=ifelse(tagid=="078\177","TAG078",tagid))
   
   #Check odd IDs:
   #cleaned_survey_data %>% filter(item == 'qid') %>% distinct(tagid, survey_name, value) %>% filter(!grepl('TAG', tagid)) %>% write.csv('~/weirdIDs.csv')
   
-  rm(cleaned_survey_data2,cleaned_survey_data3,embedded_qs,misIDkey,missingID,sortbyqid_data,TAGEmbeddedHomeQ_Gathered,TAGHomeQ,test1,test2,i,gather_cols,IDs)
-  rm(long_survey_data)
-  
   surveyed<-unique(cleaned_survey_data$tagid)
-  surveyed
   
   print(paste0("A total of ",length(surveyed)," participants have completed surveys!"))
   print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("Home",survey_name)))$tagid))," participants have completed home surveys!"))
@@ -134,7 +148,25 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
   print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W3S1",survey_name)))$tagid))," participants have completed Wave 3 Session 1 surveys!"))
   print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W3S2",survey_name)))$tagid))," participants have completed Wave 3 Session 2 surveys!"))
   
+  return(cleaned_survey_data)
+}
   
+
+#   cleaned_survey_data[tagid == '013 ', tagid := 'TAG013']
+#   cleaned_survey_data[tagid == '70', tagid := 'TAG070']
+#   cleaned_survey_data[tagid == 'TAG255', tagid := 'TAG225'] #SJC updated
+#   cleaned_survey_data[tagid == 'home', tagid := "TAG244"] #NV updated
+#   cleaned_survey_data[tagid == '541695411', tagid := "TAG040"] #NV updated
+#   cleaned_survey_data[tagid == "TAGHVU", tagid := "TAG070"] #NV updated
+#   cleaned_survey_data <- as.data.frame(cleaned_survey_data)
+#   #The above is much much quicker.
+#   #  user  system elapsed 
+#   # 0.228   0.012   0.241 
+#   
+#   
+#   
+
+
   # Load and clean redcap info
   redcapData <- read.csv(paste0(datadir,"Questionnaires/RDOC/Confidential/redcap_dates_", up_to_this_date, ".csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
   # filter(!grepl("wave_2",redcap_event_name))
@@ -155,7 +187,7 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
   redcap_cleaned$sb_date <- as.Date(redcap_cleaned$sb_date, format = "%m/%d/%Y")
   redcap_cleaned$dob <- as.Date(redcap_cleaned$dob, format = "%m/%d/%Y")
   rm(redcapData_dob,redcapData,redcapData_sessiondates)
-  
+
   # Configure anthro information
   redcap_anthro <- read.csv(paste0(datadir,"Questionnaires/RDOC/Confidential/redcap_anthro_", up_to_this_date, ".csv"), header = TRUE, stringsAsFactors = FALSE) %>%
     filter(!anthro_doc=="") %>%
@@ -176,7 +208,7 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
            weight_1=ifelse(weight_system==2,(weight_1*0.453592),weight_1),
            weight_2=ifelse(weight_system==2,(weight_2*0.453592),weight_2),
            weight_3=ifelse(weight_system==2,(weight_3*0.453592),weight_3))
-  anthro<- left_join(anthro, 
+  anthro<- left_join(anthro,
                      anthro %>%
                        group_by(tagid, wave) %>%
                        summarise(height=ifelse(!is.na(height_1 & height_2 & height_3),
@@ -196,26 +228,26 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
                                               ifelse(!is.na(waist_1 & waist_2) & is.na(waist_3), mean(c(waist_1, waist_2)),
                                                      ifelse(!is.na(waist_1) & is.na(waist_2 & waist_3), waist_1, waist_1)))))
   anthro$anthro_doc <- as.Date(anthro$anthro_doc, format = "%m/%d/%Y")
-  anthro<-anthro %>% 
+  anthro<-anthro %>%
     filter(!is.na(anthro_doc)) %>%
     mutate(age=round((interval(start = dob, end = anthro_doc) / duration(num = 1, units = "years")),2)) %>%
     select(-sa_date,-sb_date,-contains("waist_"),-contains("height_"),-contains("weight_"),-dob)
-  
+
   heights_graph<-ggplot(anthro, aes(x=height)) +
     geom_histogram(alpha=.3)+
     ggtitle(paste0("Height (cm) for ",length(anthro$height[!is.na(anthro$height)])," participants"))+
     facet_grid(~wave)
-  
+
   weights_graph<-ggplot(anthro, aes(x=weight)) +
     geom_histogram(alpha=.3)+
     ggtitle(paste0("Weight (lb) for ",length(anthro$weight[!is.na(anthro$weight)])," participants"))+
     facet_grid(~wave)
-  
+
   waist_graph<-ggplot(anthro, aes(x=waist)) +
     geom_histogram(alpha=.3)+
     ggtitle(paste0("Waist measurement (cm) for ",length(anthro$waist[!is.na(anthro$waist)])," participants"))+
     facet_grid(~wave)
-  
+
   anthro_change_graph <- anthro %>%
     select(tagid, height, weight, waist, age) %>%
     gather(key='key', value='value', -tagid, -age) %>%
@@ -225,11 +257,11 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
     geom_line(aes(group=NULL), stat = 'smooth', method = 'loess', span=1, color = 'blue') +
     facet_wrap(~key, scales='free') +
     theme_bw()
-  
+
   rm(waist_graph,heights_graph,weights_graph,redcap_anthro,anthro_change_graph)
-  
-  # Get Survey Date info 
-  
+
+  # Get Survey Date info
+
   survey_startdate<-filter(cleaned_survey_data, grepl("StartDate",item)) %>%
     filter(!survey_name=="Sharing Task Experience Survey") %>%
     mutate(startdate=as.Date(value),
@@ -241,7 +273,7 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
     select(-value,-item) %>%
     # filter(!survey_type=="Parent") %>%
     dplyr::arrange(startdate)
-  
+
   survey_originaldate<-filter(cleaned_survey_data, grepl("original.date.timestamp",item)) %>%
     filter(!survey_name=="Sharing Task Experience Survey") %>%
     filter(!value=="") %>%
@@ -254,30 +286,30 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
     select(-value,-item) %>%
     # filter(!survey_type=="Parent") %>%
     dplyr::arrange(originaldate)
-  
+
   survey_date<-left_join(survey_startdate,survey_originaldate) %>%
     mutate(value=as.Date(ifelse(is.na(originaldate),startdate,originaldate),origin="1970-01-01 UTC")) %>%
     select(-originaldate,-startdate)
-  
+
   survey_date_sorted <- survey_date %>%
     mutate(tagid_sorted = factor(tagid, levels = unique(tagid[order(value)])))
-  
+
   graph_dates<-ggplot(survey_date_sorted, aes(x=value, y=tagid_sorted, group=tagid)) +
     geom_line(colour="black", alpha=.5) +
     geom_point(aes(colour = survey_type)) +
     scale_x_date(date_breaks = "1 month", date_labels =  "%b %Y") +
-    theme_minimal() + 
+    theme_minimal() +
     theme(axis.text.y=element_blank(),
           axis.text.x = element_text(hjust = 0, angle = 360-45))
   graph_dates
-  
+
   timebetween=function(subid){
     tag_id <- as.character(subid)
     start <- strptime((survey_date %>%
                          filter(tagid==tag_id) %>%
                          filter(survey_type=="Sess 1") %>%
                          select(value) %>%
-                         arrange(value))[[1]][[1]], format="%Y - %m - %d") 
+                         arrange(value))[[1]][[1]], format="%Y - %m - %d")
     if (nrow(survey_date %>%
              filter(tagid==tag_id) %>%
              filter(survey_type=="Sess 2"))>0) {
@@ -293,13 +325,13 @@ get_cleaned_survey_data <- function(datadir, up_to_this_date){
     }
     as.data.frame(cbind(tag_id, totaldays))
   }
-  
+
   # Prep for Export
   redcap_cleaned_dates <- redcap_cleaned
   redcap_cleaned$sa_date <- as.character(redcap_cleaned$sa_date)
   redcap_cleaned$sb_date <- as.character(redcap_cleaned$sb_date)
   redcap_cleaned$dob <- as.character(redcap_cleaned$dob)
-  
+
   save(cleaned_survey_data, file = paste0(datadir, "Questionnaires/cleaned_survey_data.RDS"))
   return(cleaned_survey_data)
-}
+#}
