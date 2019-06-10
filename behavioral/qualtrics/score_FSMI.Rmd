@@ -1,0 +1,217 @@
+---
+title: "score_FSMI"
+author: "SJC"
+date: "June 10, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#insert prep functions here
+```
+
+Prepare FSMI # Do not submit to RDOC
+```{r}
+FSMI <- left_join(filter(cleaned_survey_data, grepl("FSMI",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+
+FSMI_4_TEXT <- left_join(filter(cleaned_survey_data, grepl("FSMI_4_TEXT",item)) %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+FSMI_6_TEXT <- left_join(filter(cleaned_survey_data, grepl("FSMI_6_TEXT",item)) %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+
+FSMI_TEXT <- left_join(FSMI_4_TEXT, FSMI_6_TEXT)
+FSMI <- left_join(FSMI, FSMI_TEXT)
+
+if (length(FSMI$tagid) == length(unique(FSMI$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+FSMI_Wave3<-left_join(FSMI,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) 
+
+FSMI_Wave3 <- FSMI_Wave3 %>% 
+  mutate(FSMI_7_49=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_49)) %>% 
+    mutate(FSMI_7_50=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_50)) %>%  
+    mutate(FSMI_7_51=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_51)) %>% 
+    mutate(FSMI_7_52=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_52)) %>% 
+    mutate(FSMI_7_53=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_53)) %>% 
+    mutate(FSMI_7_54=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_54)) %>% 
+    mutate(FSMI_7_55=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_55)) %>% 
+    mutate(FSMI_7_56=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_56)) %>% 
+    mutate(FSMI_7_57=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_57)) %>% 
+    mutate(FSMI_7_58=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_58)) %>% 
+    mutate(FSMI_7_59=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_59)) %>% 
+    mutate(FSMI_7_60=ifelse(ncol(FSMI_Wave3)==60, NA, FSMI_7_60)) %>% 
+  mutate(FSMI_7_1=FSMI_7_1, 
+         FSMI_7_2=FSMI_7_2, 
+         FSMI_7_3=ifelse(FSMI_7_3==1,7, 
+                         ifelse(FSMI_7_3==2,6,
+                             ifelse(FSMI_7_3==3,5,
+                                    ifelse(FSMI_7_3==4,4,
+                                        ifelse(FSMI_7_3==5,3, 
+                                               ifelse(FSMI_7_3==6,2, 
+                                                 ifelse(FSMI_7_3==7,1,NA))))))), 
+         FSMI_7_4=FSMI_7_4, 
+         FSMI_7_5=FSMI_7_5, 
+         FSMI_7_6=FSMI_7_6, 
+         FSMI_7_7=FSMI_7_7, 
+         FSMI_7_8=FSMI_7_8, 
+         FSMI_7_9=FSMI_7_9, 
+         FSMI_7_10=ifelse(FSMI_7_10==1,7, 
+                         ifelse(FSMI_7_10==2,6,
+                             ifelse(FSMI_7_10==3,5,
+                                    ifelse(FSMI_7_10==4,4,
+                                        ifelse(FSMI_7_10==5,3, 
+                                               ifelse(FSMI_7_10==6,2, 
+                                                     ifelse(FSMI_7_10==7,1,NA))))))),
+         FSMI_7_11=ifelse(FSMI_7_11==1,7, 
+                         ifelse(FSMI_7_11==2,6,
+                             ifelse(FSMI_7_11==3,5,
+                                    ifelse(FSMI_7_11==4,4,
+                                        ifelse(FSMI_7_11==5,3, 
+                                               ifelse(FSMI_7_11==6,2, 
+                                                     ifelse(FSMI_7_11==7,1,NA))))))),
+         FSMI_7_12=ifelse(FSMI_7_12==1,7, 
+                         ifelse(FSMI_7_12==2,6,
+                             ifelse(FSMI_7_12==3,5,
+                                    ifelse(FSMI_7_12==4,4,
+                                        ifelse(FSMI_7_12==5,3, 
+                                               ifelse(FSMI_7_12==6,2, 
+                                                     ifelse(FSMI_7_12==7,1,NA))))))),
+
+         FSMI_7_13=FSMI_7_13, 
+         FSMI_7_14=FSMI_7_14, 
+         FSMI_7_15=FSMI_7_15, 
+         FSMI_7_16=ifelse(FSMI_7_16==1,7, 
+                         ifelse(FSMI_7_16==2,6,
+                             ifelse(FSMI_7_16==3,5,
+                                    ifelse(FSMI_7_16==4,4,
+                                        ifelse(FSMI_7_16==5,3, 
+                                               ifelse(FSMI_7_16==6,2, 
+                                                     ifelse(FSMI_7_16==7,1,NA))))))),
+         FSMI_7_17=FSMI_7_17, 
+         FSMI_7_18=FSMI_7_18, 
+         FSMI_7_19=FSMI_7_19, 
+         FSMI_7_20=FSMI_7_20, 
+         FSMI_7_21=FSMI_7_21, 
+         FSMI_7_22=FSMI_7_22, 
+         FSMI_7_23=FSMI_7_23, 
+         FSMI_7_24=FSMI_7_24, 
+         FSMI_7_25=FSMI_7_25, 
+         FSMI_7_26=FSMI_7_26, 
+         FSMI_7_27=FSMI_7_27, 
+         FSMI_7_28=FSMI_7_28, 
+         FSMI_7_29=FSMI_7_29, 
+         FSMI_7_30=FSMI_7_30, 
+         FSMI_7_31=FSMI_7_31, 
+         FSMI_7_32=FSMI_7_32, 
+         FSMI_7_33=FSMI_7_33, 
+         FSMI_7_34=FSMI_7_34, 
+         FSMI_7_35=FSMI_7_35, 
+         FSMI_7_36=ifelse(FSMI_7_36==1,7, 
+                         ifelse(FSMI_7_36==2,6,
+                             ifelse(FSMI_7_36==3,5,
+                                    ifelse(FSMI_7_36==4,4,
+                                        ifelse(FSMI_7_36==5,3, 
+                                               ifelse(FSMI_7_36==6,2, 
+                                                     ifelse(FSMI_7_36==7,1,NA))))))),
+         FSMI_7_37=FSMI_7_37, 
+         FSMI_7_38=FSMI_7_38, 
+         FSMI_7_39=ifelse(FSMI_7_39==1,7, 
+                         ifelse(FSMI_7_39==2,6,
+                             ifelse(FSMI_7_39==3,5,
+                                    ifelse(FSMI_7_39==4,4,
+                                        ifelse(FSMI_7_39==5,3, 
+                                               ifelse(FSMI_7_39==6,2, 
+                                                     ifelse(FSMI_7_39==7,1,NA))))))),
+         FSMI_7_40=ifelse(FSMI_7_40==1,7, 
+                         ifelse(FSMI_7_40==2,6,
+                             ifelse(FSMI_7_40==3,5,
+                                    ifelse(FSMI_7_40==4,4,
+                                        ifelse(FSMI_7_40==5,3, 
+                                               ifelse(FSMI_7_40==6,2, 
+                                                     ifelse(FSMI_7_40==7,1,NA))))))),
+         FSMI_7_41=ifelse(FSMI_7_41==1,7, 
+                         ifelse(FSMI_7_41==2,6,
+                             ifelse(FSMI_7_41==3,5,
+                                    ifelse(FSMI_7_41==4,4,
+                                        ifelse(FSMI_7_41==5,3, 
+                                               ifelse(FSMI_7_41==6,2, 
+                                                     ifelse(FSMI_7_41==7,1,NA))))))),
+         FSMI_7_42=FSMI_7_42, 
+         FSMI_7_43=NULL, 
+         FSMI_7_44=NULL, 
+         FSMI_7_45=NULL, 
+         FSMI_7_46=NULL, 
+         FSMI_7_47=NULL, 
+         FSMI_7_48=NULL,
+         FSMI_7_43=FSMI_7_49,
+         FSMI_7_44=FSMI_7_50, 
+         FSMI_7_45=ifelse(FSMI_7_51==1,7, 
+                         ifelse(FSMI_7_51==2,6,
+                             ifelse(FSMI_7_51==3,5,
+                                    ifelse(FSMI_7_51==4,4,
+                                        ifelse(FSMI_7_51==5,3, 
+                                               ifelse(FSMI_7_51==6,2, 
+                                                     ifelse(FSMI_7_51==7,1,NA))))))),
+         FSMI_7_46=ifelse(FSMI_7_52==1,7, 
+                         ifelse(FSMI_7_52==2,6,
+                             ifelse(FSMI_7_52==3,5,
+                                    ifelse(FSMI_7_52==4,4,
+                                        ifelse(FSMI_7_52==5,3, 
+                                               ifelse(FSMI_7_52==6,2, 
+                                                     ifelse(FSMI_7_52==7,1,NA))))))),
+         FSMI_7_47=ifelse(FSMI_7_53==1,7, 
+                         ifelse(FSMI_7_53==2,6,
+                             ifelse(FSMI_7_53==3,5,
+                                    ifelse(FSMI_7_53==4,4,
+                                        ifelse(FSMI_7_53==5,3, 
+                                               ifelse(FSMI_7_53==6,2, 
+                                                     ifelse(FSMI_7_53==7,1,NA))))))),
+         FSMI_7_48=ifelse(FSMI_7_54==1,7, 
+                         ifelse(FSMI_7_54==2,6,
+                             ifelse(FSMI_7_54==3,5,
+                                    ifelse(FSMI_7_54==4,4,
+                                        ifelse(FSMI_7_54==5,3, 
+                                               ifelse(FSMI_7_54==6,2, 
+                                                     ifelse(FSMI_7_54==7,1,NA))))))),
+         FSMI_7_49=FSMI_7_55, 
+         FSMI_7_50=FSMI_7_56, 
+         FSMI_7_51=FSMI_7_57, 
+         FSMI_7_52=FSMI_7_58, 
+         FSMI_7_53=FSMI_7_59, 
+         FSMI_7_54=FSMI_7_60) %>% 
+  mutate(self_protect_mean=rowMeans(cbind(FSMI_7_1, FSMI_7_2, FSMI_7_3, FSMI_7_4, FSMI_7_5, FSMI_7_6), na.rm = TRUE), 
+         disease_avoid_mean=rowMeans(cbind(FSMI_7_7, FSMI_7_8, FSMI_7_9, FSMI_7_10, FSMI_7_11, FSMI_7_12), na.rm = TRUE), 
+         affiliate_group_mean=rowMeans(cbind(FSMI_7_13, FSMI_7_14, FSMI_7_15, FSMI_7_16, FSMI_7_17, FSMI_7_18), na.rm = TRUE), 
+         affiliate_exclude_mean=rowMeans(cbind(FSMI_7_19, FSMI_7_20, FSMI_7_21, FSMI_7_22, FSMI_7_23, FSMI_7_24), na.rm = TRUE), 
+         affiliate_independent_mean=rowMeans(cbind(FSMI_7_25, FSMI_7_26, FSMI_7_27, FSMI_7_28, FSMI_7_29, FSMI_7_30), na.rm = TRUE), 
+         status_mean=rowMeans(cbind(FSMI_7_31, FSMI_7_32, FSMI_7_33, FSMI_7_34, FSMI_7_35, FSMI_7_36), na.rm = TRUE), 
+         mate_seek_mean=rowMeans(cbind(FSMI_7_37, FSMI_7_38,FSMI_7_39, FSMI_7_40, FSMI_7_41, FSMI_7_42), na.rm = TRUE), 
+         mate_retain_general_mean=rowMeans(cbind(FSMI_7_43, FSMI_7_44, FSMI_7_45, FSMI_7_46, FSMI_7_47, FSMI_7_48), na.rm = TRUE), 
+         mate_retain_breakup_mean=rowMeans(cbind(FSMI_7_49, FSMI_7_50, FSMI_7_51, FSMI_7_52, FSMI_7_53, FSMI_7_54), na.rm = TRUE))
+
+## Save it
+FSMI_Wave3_outdf <- FSMI_Wave3 %>% filter(grepl("W3",survey_name)) 
+write.csv(FSMI_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/FSMI_Wave3.csv"))
+```
