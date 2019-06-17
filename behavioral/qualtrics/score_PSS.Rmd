@@ -34,7 +34,7 @@ if (rerun_rdoc_cleaning == TRUE){
   source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
   write_guids_to_csv(datadir)
   ndar_key <- get_ndar_key(datadir, cleaned_survey_data, redcap_cleaned)
-} else if (rerun_prep_for_measures == FALSE){
+} else if (rerun_rdoc_cleaning == FALSE){
   ndar_key <- read.csv(paste0(datadir,"RDoCdb/output/may2019/ndar_subject01.csv"))
 }
 ```
