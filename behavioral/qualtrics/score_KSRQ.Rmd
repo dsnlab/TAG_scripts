@@ -1,7 +1,7 @@
 ---
 title: "TAG KSRQ"
-author: "Michelle Byrne"
-date: "May 9, 2019"
+author: "Michelle Byrne & Sam Chavez"
+date: "July 8, 2019"
 output: html_document
 ---
 Prepare K-SRQ 
@@ -19,7 +19,6 @@ KSRQ<-left_join(filter(cleaned_survey_data, grepl("K_SRQ",item)) %>%
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
                   select(tagid, sa_date, sb_date, dob),by="tagid")
-
 KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
@@ -30,10 +29,10 @@ KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name")) %>%
          KSRQ_negsoc_mean=round(rowMeans(cbind(K_SRQ_3,K_SRQ_5,K_SRQ_8,K_SRQ_13,K_SRQ_16), na.rm=T),3),
          KSRQ_pass_mean=round(rowMeans(cbind(K_SRQ_12,K_SRQ_20,K_SRQ_22), na.rm=T),3),
          KSRQ_prosoc_mean=round(rowMeans(cbind(K_SRQ_2,K_SRQ_6,K_SRQ_15,K_SRQ_18,K_SRQ_21), na.rm=T),3),
-         KSRQ_sex_mean=round(rowMeans(cbind(K_SRQ_9,K_SRQ_19), na.rm=T),3), # item 13 up to 5/9/19 was missing, will add new item #23 here (after 5/9/19) to replace item 13 - MLB
+         KSRQ_sex_mean=round(rowMeans(cbind(K_SRQ_9,K_SRQ_23,K_SRQ_19), na.rm=T),3), # item 13 up to 5/9/19 was missing, will add new item #23 here (after 5/9/19) to replace item 13 - MLB
+         #item 23 added - SJC
          KSRQ_social_mean=round(rowMeans(cbind(K_SRQ_4,K_SRQ_10,K_SRQ_14), na.rm=T),3))
 # Note above: Up to 5/09/2019, item 13 was missing completely from qualtrics, so subscales above reflect actual qualtrics item numbers - MLB
-
 ## Save it
 KSRQ_Wave1_outdf <- KSRQ_Wave1 %>% filter(!grepl("W2|W3",survey_name))
 write.csv(KSRQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/KSRQ_Wave1.csv"))
@@ -84,7 +83,7 @@ ndar_ksrq_data <- left_join(KSRQ_Wave1,distinct(redcap_cleaned, tagid, dob),by="
          ksrq_10=K_SRQ_10,
          ksrq_11=K_SRQ_11,
          ksrq_12=K_SRQ_12,
-         ksrq_13=-99, # will replace with new item #23 (from qualtrics) here from 5/9/19 onwards - MLB
+         ksrq_13=ifelse(is.na(K_SRQ_23),-99,K_SRQ_23),
          ksrq_14=K_SRQ_13,
          ksrq_15=K_SRQ_14,
          ksrq_16=K_SRQ_15,
@@ -119,6 +118,6 @@ part2<-colnames(ndar_ksrq_data)
 part3<-as.matrix(ndar_ksrq_data)
 colnames(part3)<-NULL
 together<-rbind(ksrq_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jul2019/srq01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ksrq_df_header,ksrq_temp,ksrq_temp_df,KSRQ,KSRQ_Wave1,KSRQ_Wave1_means,KSRQ_Wave1_means_graph)
 ```
