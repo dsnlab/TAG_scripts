@@ -473,45 +473,65 @@ If necessary, transform data
 ```{r}
  
 # if skew or kurtosis is < -2 or > 2 then calculate the natural log of that variable
+#Note: although it is common to do a natural log or square root transformation, these transfromations did not result in acceptable skew/kurtosis stats. Therefore, we chose to use the transform Tukey funciton, which uses iterative Shapiro-Wilk tests, and finds the lambda values that maximizes the W statistic from those tests. (e.g., find power trasnformation that makes the data fit the normal distribution as closely as possible). See info on rcompanion for more.
+
+library(rcompanion)
 
 if (crp_summary$skew > 2 | crp_summary$skew < -2 | crp_summary$kurtosis > 2 | crp_summary$kurtosis < -2) {
-  tag_w1_immune$ln_crp <- as.numeric(lapply(tag_w1_immune$crp_raw, log))
+  tag_w1_immune$ln_crp <- transformTukey(tag_w1_immune$crp_raw)
 }
+
 if (ifng_summary$skew > 2 | ifng_summary$skew < -2 | ifng_summary$kurtosis > 2 | ifng_summary$kurtosis < -2) {
-  tag_w1_immune$ln_ifng <- as.numeric(lapply(tag_w1_immune$ifng_raw, log))
+  tag_w1_immune$ln_ifng <- transformTukey(tag_w1_immune$ifng_raw)
 }
+
 if (il10_summary$skew > 2 | il10_summary$skew < -2 | il10_summary$kurtosis > 2 | il10_summary$kurtosis < -2) {
-  tag_w1_immune$ln_il10 <- as.numeric(lapply(tag_w1_immune$il10_raw, log))
+  tag_w1_immune$ln_il10 <- transformTukey(tag_w1_immune$il10_raw)
 }
+
 if (il12_summary$skew > 2 | il12_summary$skew < -2 | il12_summary$kurtosis > 2 | il12_summary$kurtosis < -2) {
-  tag_w1_immune$ln_il12 <- as.numeric(lapply(tag_w1_immune$il12_raw, log))
+  tag_w1_immune$ln_il12 <- transformTukey(tag_w1_immune$il12_raw)
 }
+
 if (il2_summary$skew > 2 | il2_summary$skew < -2 | il2_summary$kurtosis > 2 | il2_summary$kurtosis < -2) {
-  tag_w1_immune$ln_il2 <- as.numeric(lapply(tag_w1_immune$il2_raw, log))
+  tag_w1_immune$ln_il2 <- transformTukey(tag_w1_immune$il2_raw)
 }
+
 if (il4_summary$skew > 2 | il4_summary$skew < -2 | il4_summary$kurtosis > 2 | il4_summary$kurtosis < -2) {
-  tag_w1_immune$ln_il4 <- as.numeric(lapply(tag_w1_immune$il4_raw, log))
+  tag_w1_immune$ln_il4 <- transformTukey(tag_w1_immune$il4_raw)
 }
+
 if (il6_summary$skew > 2 | il6_summary$skew < -2 | il6_summary$kurtosis > 2 | il6_summary$kurtosis < -2) {
-  tag_w1_immune$ln_il6 <- as.numeric(lapply(tag_w1_immune$il6_raw, log))
+  tag_w1_immune$ln_il6 <- transformTukey(tag_w1_immune$il6_raw)
 }
+
 if (tnfa_summary$skew > 2 | tnfa_summary$skew < -2 | tnfa_summary$kurtosis > 2 | tnfa_summary$kurtosis < -2) {
-  tag_w1_immune$ln_tnfa <- as.numeric(lapply(tag_w1_immune$tnfa_raw, log))
+  tag_w1_immune$ln_tnfa <- transformTukey(tag_w1_immune$tnfa_raw)
 }
+
 if (siga_summary$skew > 2 | siga_summary$skew < -2 | siga_summary$kurtosis > 2 | siga_summary$kurtosis < -2) {
-  tag_w1_immune$ln_siga <- as.numeric(lapply(tag_w1_immune$siga_frc, log))
+  tag_w1_immune$ln_siga <- transformTukey(tag_w1_immune$iga_raw)
 }
 
 # Check everything post transformation for any transformed variables 
 final_crp_summary <- describe(tag_w1_immune$ln_crp)
-final_ifng_summary <- describe(tag_w1_immune$ln_ifng) #better but still above 2 both
+final_crp_summary
+final_ifng_summary <- describe(tag_w1_immune$ln_ifng)
+final_ifng_summary
 final_il10_summary <- describe(tag_w1_immune$ln_il10)
-final_il12_summary <- describe(tag_w1_immune$ln_il12) #still shithouse
-final_il2_summary <- describe(tag_w1_immune$ln_il2) #better but still above 2 both
-final_il4_summary <- describe(tag_w1_immune$ln_il4) # kurtosis still a little above
+final_il10_summary
+final_il12_summary <- describe(tag_w1_immune$ln_il12)
+final_il12_summary
+final_il2_summary <- describe(tag_w1_immune$ln_il2) 
+final_il2_summary
+final_il4_summary <- describe(tag_w1_immune$ln_il4) 
+final_il4_summary
 final_il6_summary <- describe(tag_w1_immune$ln_il6)
+final_il6_summary 
 final_tnfa_summary <- describe(tag_w1_immune$ln_tnfa)
+final_tnfa_summary
 final_siga_summary <- describe(tag_w1_immune$ln_siga)
+final_siga_summary
 
 hist(tag_w1_immune$ln_crp)
 hist(tag_w1_immune$ln_ifng)
@@ -665,14 +685,10 @@ siga_num_right_outliers
 siga_num_left_outliers <- length(na.omit(tag_w1_immune$ln_siga [tag_w1_immune$ln_siga < siga_lo_limit]))
 siga_num_left_outliers
 ```
-In this data, there are 6 IFN-g right outliers, 3 IL-12 right outliers, 5 IL-2 right outliers, 2 IL-4 right outliers, and 1 TNF-a right outlier. Winsorize these values.
+In this data, there is only 1 left outlier for IFN-g. Winsorize that.
 ```{r}
 library(DescTools)
 tag_w1_immune$ifng_w <- Winsorize(tag_w1_immune$ln_ifng, minval = ifng_lo_limit, maxval = ifng_up_limit, na.rm = TRUE)
-tag_w1_immune$il12_w <- Winsorize(tag_w1_immune$ln_il12, minval = il12_lo_limit, maxval = il12_up_limit, na.rm = TRUE)
-tag_w1_immune$il2_w <- Winsorize(tag_w1_immune$ln_il2, minval = il2_lo_limit, maxval = il2_up_limit, na.rm = TRUE)
-tag_w1_immune$il4_w <- Winsorize(tag_w1_immune$ln_il4, minval = il4_lo_limit, maxval = il4_up_limit, na.rm = TRUE)
-tag_w1_immune$tnfa_w <- Winsorize(tag_w1_immune$ln_tnfa, minval = tnfa_lo_limit, maxval = tnfa_up_limit, na.rm = TRUE)
 ```
 
 
@@ -681,11 +697,11 @@ Output final cleaned data
 tag_w1_immune$crp_cleaned <- tag_w1_immune$ln_crp
 tag_w1_immune$ifng_cleaned <- tag_w1_immune$ifng_w
 tag_w1_immune$il10_cleaned <- tag_w1_immune$ln_il10
-tag_w1_immune$il12_cleaned <- tag_w1_immune$il12_w
-tag_w1_immune$il2_cleaned <- tag_w1_immune$il2_w
-tag_w1_immune$il4_cleaned <- tag_w1_immune$il4_w
+tag_w1_immune$il12_cleaned <- tag_w1_immune$ln_il12
+tag_w1_immune$il2_cleaned <- tag_w1_immune$ln_il2
+tag_w1_immune$il4_cleaned <- tag_w1_immune$ln_il4
 tag_w1_immune$il6_cleaned <- tag_w1_immune$ln_il6
-tag_w1_immune$tnfa_cleaned <- tag_w1_immune$tnfa_w
+tag_w1_immune$tnfa_cleaned <- tag_w1_immune$ln_tnfa
 tag_w1_immune$siga_cleaned <- tag_w1_immune$ln_siga
 
 write.csv(tag_w1_immune, file="TAG_W1_immune_cleaned.csv")
