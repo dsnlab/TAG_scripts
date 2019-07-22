@@ -1,12 +1,12 @@
 # prep qualtrics data for export
 # T Cheng | started 06062019
 
-get_cleaned_survey_data <- function(datadir, up_to_this_dat){
+get_cleaned_survey_data <- function(datadir, up_to_this_date){
   # this function acquires data from qualtrics and transforms it into long format
   
   ## Load required packages ##
   packages <- c("lme4", "nlme", "ggplot2", "dplyr", "tidyr", "knitr",
-                "parallel", "data.table", "lubridate","xml2","devtools")
+                "parallel", "data.table", "lubridate","xml2","devtools", "stringr")
   if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
     install.packages(setdiff(packages, rownames(installed.packages())))  
   }
@@ -201,15 +201,16 @@ get_redcap_cleaned <- function(datadir, up_to_this_date){
            weight_1=ifelse(weight_system==2,(weight_1*0.453592),weight_1),
            weight_2=ifelse(weight_system==2,(weight_2*0.453592),weight_2),
            weight_3=ifelse(weight_system==2,(weight_3*0.453592),weight_3))
+  
   anthro<- left_join(anthro,
                      anthro %>%
                        group_by(tagid, wave) %>%
-                       summarise(height=ifelse(!is.na(height_1 & height_2 & height_3),
-                                               median(c(height_1,height_2,height_3)),
-                                               ifelse(!is.na(height_1 & height_2) & is.na(height_3),
-                                                      mean(c(height_1,height_2)),
-                                                      ifelse(!is.na(height_1) & is.na(height_2 & height_3), height_1,
-                                                             height_1)))))
+                       summarise(height = ifelse(!is.na(height_1 & height_2 & height_3),
+                                                 median(c(height_1,height_2,height_3)),
+                                                 ifelse(!is.na(height_1 & height_2) & is.na(height_3),
+                                                        mean(c(height_1,height_2)),
+                                                        ifelse(!is.na(height_1) & is.na(height_2 & height_3), height_1,
+                                                               height_1)))))
   anthro<- left_join(anthro, anthro %>%
                        group_by(tagid, wave) %>%
                        summarise(weight=round(ifelse(!is.na(weight_1 & weight_2 & weight_3), median(c(weight_1, weight_2, weight_3)),
@@ -330,8 +331,8 @@ get_redcap_cleaned <- function(datadir, up_to_this_date){
 }
 
 
-write_guids_to_csv <- function(datadir){
-  redcap_NDA_info <- read.csv(paste0(datadir,"RDoCdb/Confidential/redcap_nda_consent_20190509.csv"),
+write_guids_to_csv <- function(datadir, up_to_this_date){
+  redcap_NDA_info <- read.csv(paste0(datadir,"RDoCdb/Confidential/redcap_nda_consent_", up_to_this_date, ".csv"),
                               header = TRUE,
                               stringsAsFactors = FALSE)
   
@@ -408,7 +409,7 @@ write_guids_to_csv <- function(datadir){
   
 }
 
-get_ndar_key <- function(datadir, cleaned_survey_data, redcap_cleaned){
+get_ndar_key <- function(datadir, cleaned_survey_data, redcap_cleaned, up_to_this_month){
   #2018-09-14
   # Info on correspondences should be in REDCap. If not, here's some more info:
   # It is easier, and better for the NIH system if we keep a record of the correspondence between anonymized TAG ID and
@@ -456,7 +457,7 @@ get_ndar_key <- function(datadir, cleaned_survey_data, redcap_cleaned){
   # ndar_key <- left_join(ndar_key_, rawGUIDoutput_df, by = 'ID') 
   
   # ndar_key should contain the tagid, anontagid, and the guid columns - find this info on redcap
-  ndar_key <- readr::read_csv(file.path(datadir,'RDoCdb/confidential/ndar_key.csv'))
+  ndar_key <- read.csv(paste0(datadir,'RDoCdb/confidential/ndar_key.csv'))
   # careful below, some code may also expect "ID" column which is just the row number. 
   # I dont *think* this column matters, so you can add this by running:
   ndar_key$ID <- 1:nrow(ndar_key)
@@ -498,7 +499,7 @@ get_ndar_key <- function(datadir, cleaned_survey_data, redcap_cleaned){
     }
   }
   ndar_ethnicity<-lapply(as.list(unique(ethnicity_long$tagid)),figure_out_ethnicity)
-  ndar_ethnicity.df<-data.frame(matrix(unlist(ndar_ethnicity), nrow=length(ndar_ethnicity), byrow=T),stringsAsFactors=FALSE)
+  ndar_ethnicity.df <- data.frame(matrix(unlist(ndar_ethnicity), nrow=length(ndar_ethnicity), byrow=T),stringsAsFactors=FALSE)
   
   ndar_race<- ndar_ethnicity.df %>%
     mutate(tagid=.[[1]],
@@ -553,10 +554,41 @@ get_ndar_key <- function(datadir, cleaned_survey_data, redcap_cleaned){
   part3<-as.matrix(ndar_subject_df)
   colnames(part3)<-NULL
   together<-rbind(ndar_subject_df_header,part2,part3)
-  write.table(together,file = paste0(datadir,"RDoCdb/output/may2019/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+  write.table(together,file = paste0(datadir,"RDoCdb/output/", up_to_this_month, "/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
   rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
 }
 
 
-#get manual data modifications csv file
-#mod_df <- read.csv(paste0(datadir, "Questionnaires/Modified_Answers.csv")) # import csv of modified answers
+replace_values <- function(datadir, cleaned_survey_data){
+  # this function reads a csv with modified answers and replaces values in cleaned_survey_data with the replacement values when appropriate
+  
+  replacement <- read.csv(paste0(datadir, "Questionnaires/Modified_Answers.csv")) # import csv of modified answers
+  cleaned_replaced_survey_data <- cleaned_survey_data 
+  
+  # generate columns with all info to match on (ID, survey name, and item name)
+  replacement$all_match_info <- interaction(replacement$tagid, replacement$survey_name, replacement$item)
+  cleaned_replaced_survey_data$all_match_info <- interaction(cleaned_replaced_survey_data$tagid, cleaned_replaced_survey_data$survey_name, cleaned_replaced_survey_data$item)
+  
+  # replace values in cleaned_replaced_survey_data with those in the replacement dataframe if they match on the matching indices
+  replacement_exact <- replacement[!is.na(match(replacement$all_match_info, cleaned_replaced_survey_data$all_match_info)), ] # filter out non-matching values
+  cleaned_replaced_survey_data$value[match(replacement_exact$all_match_info, cleaned_replaced_survey_data$all_match_info)] <- replacement_exact$kept_value
+  
+  # CTQ is the most commonly replaced value, but its qualtrics output ends in "..1" for some weird reason... the next couple of lines account for that
+  no_exact_replacement <- replacement[is.na(match(replacement$all_match_info, cleaned_replaced_survey_data$all_match_info)), ]
+  replacement_dots <- no_exact_replacement
+  replacement_dots$item <- paste0(replacement_dots$item, "..1")
+  replacement_dots$all_match_info <- interaction(replacement_dots$tagid, replacement_dots$survey_name, replacement_dots$item)
+  replacement_dots <- replacement_dots[!is.na(match(replacement_dots$all_match_info, cleaned_replaced_survey_data$all_match_info)), ]
+  cleaned_replaced_survey_data$value[match(replacement_dots$all_match_info, cleaned_replaced_survey_data$all_match_info)] <- replacement_dots$kept_value
+
+  match(as.character(replacement_dots$all_match_info), as.character(no_exact_replacement$all_match_info))
+  
+  # print to console
+  ifelse((!no_exact_replacement$all_match_info %in% replacement_dots$all_match_info),
+         print(paste0("There is no ", replacement_dots$all_match_info, " in the cleaned_survey_data from qualtrics")), 
+         NA)
+               # print values with no tagid, survey_name, and item match between modified_answers.csv and the qualtrics output 
+
+  saveRDS(cleaned_replaced_survey_data, file = paste0(datadir, "Questionnaires/cleaned_replaced_survey_data.rds"))
+  return(cleaned_replaced_survey_data)
+}
