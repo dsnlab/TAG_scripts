@@ -335,7 +335,7 @@ Correct your data for flow rate
 #### Corrected concentration = *(observed concentration) x (Flow rate)*
 ##### CRP is *not* flow rate dependent
 ##### SIgA *is* flow rate dependent
-##### For all the other markers, there is no evidence (yet) that it is flow rate dependent but not really any work done to investigate this. Will only corret for SIgA for now.
+##### For all the other markers, there is no evidence (yet) that it is flow rate dependent but not really any work done to investigate this. Will only correct for SIgA for now.
 
 ```{r}
 vol_ml = 1.5
@@ -432,7 +432,7 @@ If necessary, transform data
 ```{r}
  
 # if skew or kurtosis is < -2 or > 2 then calculate the natural log of that variable
-#Note: although it is common to do a natural log or square root transformation, these transfromations did not result in acceptable skew/kurtosis stats. Therefore, we chose to use the transform Tukey funciton, which uses iterative Shapiro-Wilk tests, and finds the lambda values that maximizes the W statistic from those tests. (e.g., find power trasnformation that makes the data fit the normal distribution as closely as possible). See info on rcompanion for more.
+#Note: although it is common to do a natural log or square root transformation, these transfromations did not result in acceptable skew/kurtosis stats. Therefore, we chose to use the transform Tukey function, which uses iterative Shapiro-Wilk tests, and finds the lambda values that maximizes the W statistic from those tests. (e.g., find power transformation that makes the data fit the normal distribution as closely as possible). See info on rcompanion for more.
 library(rcompanion)
 if (crp_summary$skew > 2 | crp_summary$skew < -2 | crp_summary$kurtosis > 2 | crp_summary$kurtosis < -2) {
   tag_w1_immune$ln_crp <- transformTukey(tag_w1_immune$crp_raw)
@@ -491,48 +491,48 @@ hist(tag_w1_immune$ln_tnfa)
 hist(tag_w1_immune$ln_siga)
 ggplot(tag_w1_immune, aes(x = "", y = ln_crp)) +   
   geom_boxplot() +
-  ylab("log (CRP)") +
-  ggtitle("TAG W1 CRP (ln transformed)") +
+  ylab("transformed (CRP)") +
+  ggtitle("TAG W1 CRP (transformed)") +
   geom_smooth(method='lm', color="black")
 ggplot(tag_w1_immune, aes(x = "", y = ln_ifng)) +   
   geom_boxplot() +
-  ylab("log (IFN-g)") +
-  ggtitle("TAG W1 IFN-g (ln transformed)") +
+  ylab("transformed (IFN-g)") +
+  ggtitle("TAG W1 IFN-g (transformed)") +
   geom_smooth(method='lm', color="black")
 ggplot(tag_w1_immune, aes(x = "", y = ln_il10)) +   
   geom_boxplot() +
-  ylab("log (IL-10)") +
-  ggtitle("TAG W1 IL-10 (ln transformed)") +
+  ylab("transformed (IL-10)") +
+  ggtitle("TAG W1 IL-10 (transformed)") +
   geom_smooth(method='lm', color="black")
 ggplot(tag_w1_immune, aes(x = "", y = ln_il12)) +   
   geom_boxplot() +
-  ylab("log (IL-12)") +
-  ggtitle("TAG W1 IL-12 (ln transformed)") +
+  ylab("transformed (IL-12)") +
+  ggtitle("TAG W1 IL-12 (transformed)") +
   geom_smooth(method='lm', color="black")
 ggplot(tag_w1_immune, aes(x = "", y = ln_il2)) +   
   geom_boxplot() +
-  ylab("log (IL-2)") +
-  ggtitle("TAG W1 IL-2 (ln transformed)") +
+  ylab("transformed (IL-2)") +
+  ggtitle("TAG W1 IL-2 (transformed)") +
   geom_smooth(method='lm', color="black")
 ggplot(tag_w1_immune, aes(x = "", y = ln_il4)) +   
   geom_boxplot() +
-  ylab("log (IL-4)") +
-  ggtitle("TAG W1 IL-4 (ln transformed)") +
+  ylab("transformed (IL-4)") +
+  ggtitle("TAG W1 IL-4 (transformed)") +
   geom_smooth(method='lm', color="black")
 ggplot(tag_w1_immune, aes(x = "", y = ln_il6)) +   
   geom_boxplot() +
-  ylab("log (IL-6)") +
-  ggtitle("TAG W1 IL-6 (ln transformed)") +
+  ylab("transformed (IL-6)") +
+  ggtitle("TAG W1 IL-6 (transformed)") +
   geom_smooth(method='lm', color="black")
 ggplot(tag_w1_immune, aes(x = "", y = ln_tnfa)) +   
   geom_boxplot() +
-  ylab("log (TNF-a)") +
-  ggtitle("TAG W1 TNF-a (ln transformed)") +
+  ylab("transformed (TNF-a)") +
+  ggtitle("TAG W1 TNF-a (transformed)") +
   geom_smooth(method='lm', color="black")
 ggplot(tag_w1_immune, aes(x = "", y = ln_siga)) +   
   geom_boxplot() +
-  ylab("log (SIgA)") +
-  ggtitle("TAG W1 SIgA (ln transformed)") +
+  ylab("transformed (SIgA)") +
+  ggtitle("TAG W1 SIgA (transformed)") +
   geom_smooth(method='lm', color="black")
 ```
 
@@ -613,12 +613,12 @@ siga_num_right_outliers
 siga_num_left_outliers <- length(na.omit(tag_w1_immune$ln_siga [tag_w1_immune$ln_siga < siga_lo_limit]))
 siga_num_left_outliers
 ```
+
 In this data, there is only 1 left outlier for IFN-g. Winsorize that.
 ```{r}
 library(DescTools)
 tag_w1_immune$ifng_w <- Winsorize(tag_w1_immune$ln_ifng, minval = ifng_lo_limit, maxval = ifng_up_limit, na.rm = TRUE)
 ```
-
 
 Output final cleaned data
 ```{r}
