@@ -517,7 +517,7 @@ if (tnfa_summary$skew > 2 | tnfa_summary$skew < -2 | tnfa_summary$kurtosis > 2 |
 }
 
 if (siga_summary$skew > 2 | siga_summary$skew < -2 | siga_summary$kurtosis > 2 | siga_summary$kurtosis < -2) {
-  tag_w1_immune$ln_siga <- log(tag_w1_immune$iga_raw)
+  tag_w1_immune$ln_siga <- log(tag_w1_immune$siga_frc)
 }
 
 # Tukey:
@@ -555,7 +555,7 @@ if (tnfa_summary$skew > 2 | tnfa_summary$skew < -2 | tnfa_summary$kurtosis > 2 |
 }
 
 if (siga_summary$skew > 2 | siga_summary$skew < -2 | siga_summary$kurtosis > 2 | siga_summary$kurtosis < -2) {
-  tag_w1_immune$tu_siga <- transformTukey(tag_w1_immune$iga_raw)
+  tag_w1_immune$tu_siga <- transformTukey(tag_w1_immune$siga_frc)
 }
 
 # Check everything post transformation for any transformed variables 
