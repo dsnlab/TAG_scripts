@@ -14,7 +14,7 @@ if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
 }
 lapply(packages, library, character.only = TRUE)
 
-cas_dir <- '/Volumes/psych-cog/dsnlab/TAG/'
+cas_dir <- 'Z:/dsnlab/TAG/'
 saliva_dir <- paste0(cas_dir,'behavior/Puberty/Saliva/Wave1')
 options(digits=3)
 ```
@@ -37,16 +37,16 @@ overview <- overview %>%
   filter(Withdrawn_W1==0)
 ```
 
-###CALCULATE INTRA-ASSAY CVS
+###CALCULATE INTRA-ASSAY CVS. Note (MLB) - these are the variation between the indvidual duplicate samples. Concentration and optical density CVs are calculated here but we use and report OD CVs.
 ```{r}
 
 #batch 1
 #import files
-Saliva_DHEA_CV_1 <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=1)
-Saliva_TEST_CV_1 <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=5)
-Saliva_EST_CV_1 <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_Master_File.xlsx'), sheet=9)
+Saliva_DHEA_CV_1 <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_SALIVA_Master_File.xlsx'), sheet=1)
+Saliva_TEST_CV_1 <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_SALIVA_Master_File.xlsx'), sheet=5)
+Saliva_EST_CV_1 <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_SALIVA_Master_File.xlsx'), sheet=9)
 
-#clean and calculate interassay CV for concentrations and optical densities
+#clean and calculate intra-assay CV for concentrations and optical densities
 Saliva_DHEA_CV_1 <- Saliva_DHEA_CV_1 %>%
   rename(WellID = `Well ID`,
          ID = Name,
@@ -138,9 +138,9 @@ Saliva_EST_CV_1 <- Saliva_EST_CV_1 %>%
 
 #batch 2
 #import files
-Saliva_DHEA_CV_2 <- read_xlsx(paste0(saliva_dir,'/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=5)
-Saliva_TEST_CV_2 <- read_xlsx(paste0(saliva_dir,'/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=3)
-Saliva_EST_CV_2 <- read_xlsx(paste0(saliva_dir,'/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=1)
+Saliva_DHEA_CV_2 <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=5)
+Saliva_TEST_CV_2 <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=3)
+Saliva_EST_CV_2 <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=1)
 
 #clean and calculate interassay CV for concentrations and optical densities
 Saliva_DHEA_CV_2 <- Saliva_DHEA_CV_2 %>%
@@ -235,9 +235,9 @@ Saliva_TEST_CV <- rbind(Saliva_TEST_CV_1,Saliva_TEST_CV_2)
 Saliva_EST_CV <- rbind(Saliva_EST_CV_1,Saliva_EST_CV_2)
 
 #deal with reruns
-DHEA_reruns <- read_xlsx('~/Desktop/Saliva_repeats.xlsx', sheet=1)
-TEST_reruns <- read_xlsx('~/Desktop/Saliva_repeats.xlsx', sheet=2)
-EST_reruns <- read_xlsx('~/Desktop/Saliva_repeats.xlsx', sheet=3)
+DHEA_reruns <- read_xlsx(paste0(saliva_dir,'/Raw_conc/Saliva_repeats.xlsx'), sheet=1)
+TEST_reruns <- read_xlsx(paste0(saliva_dir,'/Raw_conc/Saliva_repeats.xlsx'), sheet=2)
+EST_reruns <- read_xlsx(paste0(saliva_dir,'/Raw_conc/Saliva_repeats.xlsx'), sheet=3)
 
 DHEA_reruns <- DHEA_reruns %>% 
   separate(ID, into =c("SID","week")) %>%
@@ -336,84 +336,415 @@ odCV_plot <- Saliva_CV_long %>% filter(OD < 100) %>%
 odCV_plot
 ```
 
-###CALCULATE INTER-ASSAY CVS
+###CALCULATE INTER-ASSAY CVS. Note (MLB) - these are the variation in the controls (high and low), which is a measure of the variation of the plates/kits. As above, we calculate both concentrations and OD but use the OD.
 ```{r}
 
 #import file of highs and lows
-Saliva_DHEA_interCV <- read_xlsx(paste0(saliva_dir,'/TAG_W1_Saliva_HighsLows_interassayCV.xlsx'), sheet=1)
-Saliva_TEST_interCV <- read_xlsx(paste0(saliva_dir,'/TAG_W1_Saliva_HighsLows_interassayCV.xlsx'), sheet=2)
-Saliva_EST_interCV <- read_xlsx(paste0(saliva_dir,'/TAG_W1_Saliva_HighsLows_interassayCV.xlsx'), sheet=3)
+Saliva_DHEA_interCV <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_W1_Saliva_HighsLows_interassayCV.xlsx'), sheet=1)
+Saliva_TEST_interCV <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_W1_Saliva_HighsLows_interassayCV.xlsx'), sheet=2)
+Saliva_EST_interCV <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_W1_Saliva_HighsLows_interassayCV.xlsx'), sheet=3)
 
 #clean and calculate interassay CV for concentrations and optical densities
-Saliva_DHEA_interCV <- Saliva_DHEA_interCV %>% 
-  rename(ID = `Well ID`,
-         Conc = `[Concentration]`,
-         OD = `450`) %>%
-  mutate(Conc = as.numeric(Conc),
-         OD = as.numeric(OD),
-         Conc_2 = lead(Conc),
-         OD_2 = lead(OD)) %>% 
-  filter(!is.na(ID)) %>%
-  select(ID,Conc,Conc_2,OD,OD_2) %>%
-  rowwise() %>%
-  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
-         OD_mean = mean(c(OD,OD_2),na.rm=T)) %>%
-  group_by(ID) %>%
-  summarise(ConcCV_mean = mean(Conc_mean),
-            ConcCV_sd = sd(Conc_mean),
-            ConcCV = 100*(ConcCV_sd/ConcCV_mean),
-            odCV_mean = mean(OD_mean),
-            odCV_sd = sd(OD_mean),
-            odCV = 100*(odCV_sd/odCV_mean)) %>%
-  group_by() %>%
-  summarise(ConcCV = mean(ConcCV),
-            odCV = mean(odCV))
 
-Saliva_TEST_interCV <- Saliva_TEST_interCV %>% 
-  rename(ID = `Well ID`,
-         Conc = `[Concentration]`,
-         OD = `450`) %>%
-  mutate(Conc = as.numeric(Conc),
-         OD = as.numeric(OD),
-         Conc_2 = lead(Conc),
-         OD_2 = lead(OD)) %>% 
-  filter(!is.na(ID)) %>%
-  select(ID,Conc,Conc_2,OD,OD_2) %>%
-  rowwise() %>%
-  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
-         OD_mean = mean(c(OD,OD_2),na.rm=T)) %>%
-  group_by(ID) %>%
-  summarise(ConcCV_mean = mean(Conc_mean),
-            ConcCV_sd = sd(Conc_mean),
-            ConcCV = 100*(ConcCV_sd/ConcCV_mean),
-            odCV_mean = mean(OD_mean),
-            odCV_sd = sd(OD_mean),
-            odCV = 100*(odCV_sd/odCV_mean)) %>%
-  group_by() %>%
-  summarise(ConcCV = mean(ConcCV),
-            odCV = mean(odCV))
+# NOTE - I have commented out the below because I think this version is just averaging ALL the controls (highs and lows) and then taking the SD of all of them over the mean of all of them. Instead, a % CV should be calculated for all the highs, and then another % CV for all the lows - and then take an average of that. Also, the standard deviation should be of the means across plates, instead of the individual high/low control samples. See:
+# https://salimetrics.com/calculating-inter-and-intra-assay-coefficients-of-variability/
+#Scroll down to see the new code. I have also separated out by batch in case we want to report that way. - MLB
 
-Saliva_EST_interCV <- Saliva_EST_interCV %>% 
-  rename(ID = `Well ID`,
-         Conc = `[Concentration]`,
-         OD = `450`) %>%
-  mutate(Conc = as.numeric(Conc),
-         OD = as.numeric(OD),
-         Conc_2 = lead(Conc),
-         OD_2 = lead(OD)) %>% 
-  filter(!is.na(ID)) %>%
-  select(ID,Conc,Conc_2,OD,OD_2) %>%
-  rowwise() %>%
-  mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
-         OD_mean = mean(c(OD,OD_2),na.rm=T)) %>%
-  group_by(ID) %>%
-  summarise(ConcCV_mean = mean(Conc_mean,na.rm=T),
-            ConcCV_sd = sd(Conc_mean,na.rm=T),
-            ConcCV = 100*(ConcCV_sd/ConcCV_mean),
-            odCV_mean = mean(OD_mean),
-            odCV_sd = sd(OD_mean),
-            odCV = 100*(odCV_sd/odCV_mean)) %>%
-  group_by() %>%
-  summarise(ConcCV = mean(ConcCV),
-            odCV = mean(odCV))
+# Saliva_DHEA_interCV <- Saliva_DHEA_interCV %>%
+#  rename(ID = `Well_ID`,
+#          Conc = `[Concentration]`,
+#          OD = `OD_450`) %>%
+#   mutate(Conc = as.numeric(Conc),
+#          OD = as.numeric(OD),
+#          Conc_2 = lead(Conc),
+#          OD_2 = lead(OD)) %>%
+#   filter(!is.na(ID)) %>%
+#   select(ID,Conc,Conc_2,OD,OD_2) %>%
+#   rowwise() %>%
+#   mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+#          OD_mean = mean(c(OD,OD_2),na.rm=T)) %>%
+#   group_by(ID) %>%
+#   summarise(ConcCV_mean = mean(Conc_mean),
+#             ConcCV_sd = sd(Conc_mean),
+#             ConcCV = 100*(ConcCV_sd/ConcCV_mean),
+#             odCV_mean = mean(OD_mean),
+#             odCV_sd = sd(OD_mean),
+#             odCV = 100*(odCV_sd/odCV_mean)) %>%
+#   group_by() %>%
+#   summarise(ConcCV = mean(ConcCV),
+#             odCV = mean(odCV))
+# 
+# Saliva_TEST_interCV <- Saliva_TEST_interCV %>%
+#   rename(ID = `Well_ID`,
+#          Conc = `[Concentration]`,
+#          OD = `OD_450`) %>%
+#   mutate(Conc = as.numeric(Conc),
+#          OD = as.numeric(OD),
+#          Conc_2 = lead(Conc),
+#          OD_2 = lead(OD)) %>%
+#   filter(!is.na(ID)) %>%
+#   select(ID,Conc,Conc_2,OD,OD_2) %>%
+#   rowwise() %>%
+#   mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+#          OD_mean = mean(c(OD,OD_2),na.rm=T)) %>%
+#   group_by(ID) %>%
+#   summarise(ConcCV_mean = mean(Conc_mean),
+#             ConcCV_sd = sd(Conc_mean),
+#             ConcCV = 100*(ConcCV_sd/ConcCV_mean),
+#             odCV_mean = mean(OD_mean),
+#             odCV_sd = sd(OD_mean),
+#             odCV = 100*(odCV_sd/odCV_mean)) %>%
+#   group_by() %>%
+#   summarise(ConcCV = mean(ConcCV),
+#             odCV = mean(odCV))
+# 
+# Saliva_EST_interCV <- Saliva_EST_interCV %>%
+#   rename(ID = `Well_ID`,
+#          Conc = `[Concentration]`,
+#          OD = `OD_450`) %>%
+#   mutate(Conc = as.numeric(Conc),
+#          OD = as.numeric(OD),
+#          Conc_2 = lead(Conc),
+#          OD_2 = lead(OD)) %>%
+#   filter(!is.na(ID)) %>%
+#   select(ID,Conc,Conc_2,OD,OD_2) %>%
+#   rowwise() %>%
+#   mutate(Conc_mean = mean(c(Conc,Conc_2),na.rm=T),
+#          OD_mean = mean(c(OD,OD_2),na.rm=T)) %>%
+#   group_by(ID) %>%
+#   summarise(ConcCV_mean = mean(Conc_mean,na.rm=T),
+#             ConcCV_sd = sd(Conc_mean,na.rm=T),
+#             ConcCV = 100*(ConcCV_sd/ConcCV_mean),
+#             odCV_mean = mean(OD_mean),
+#             odCV_sd = sd(OD_mean),
+#             odCV = 100*(odCV_sd/odCV_mean)) %>%
+#   group_by() %>%
+#   summarise(ConcCV = mean(ConcCV),
+#             odCV = mean(odCV))
+
+#-----------------------------
+# NEW INTRA ASSAYS (ODs only) (MLB added later)
+
+# --- DHEA ---
+# Mean of high controls within plates:
+dhea_high_mean1 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="1","OD_450"]))
+dhea_high_mean2 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="2","OD_450"]))
+dhea_high_mean3 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="3","OD_450"]))
+dhea_high_mean4 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="4","OD_450"]))
+dhea_high_mean5 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="5","OD_450"]))
+dhea_high_mean6 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="6","OD_450"]))
+dhea_high_mean7 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="7","OD_450"]))
+dhea_high_mean8 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="8","OD_450"]))
+dhea_high_mean9 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="9","OD_450"]))
+dhea_high_mean10 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="10","OD_450"]))
+dhea_high_mean11 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="11","OD_450"]))
+dhea_high_mean12 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="12","OD_450"]))
+dhea_high_mean13 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="13","OD_450"]))
+dhea_high_mean14 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="14","OD_450"]))
+dhea_high_mean15 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="15","OD_450"]))
+dhea_high_mean16 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="16","OD_450"]))
+dhea_high_mean17 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="17","OD_450"]))
+dhea_high_mean18 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="18","OD_450"]))
+dhea_high_mean19 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="19","OD_450"]))
+dhea_high_mean20 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlH"&Saliva_DHEA_interCV$plate=="20","OD_450"]))
+
+# High controls mean of means:
+dhea_high_mean <- mean(c(dhea_high_mean1, dhea_high_mean2, dhea_high_mean3, dhea_high_mean4, dhea_high_mean5, dhea_high_mean6, dhea_high_mean7, dhea_high_mean8, dhea_high_mean9, dhea_high_mean10, dhea_high_mean11, dhea_high_mean12, dhea_high_mean13, dhea_high_mean14, dhea_high_mean15, dhea_high_mean16, dhea_high_mean17, dhea_high_mean18, dhea_high_mean19, dhea_high_mean20))
+
+# Separate by batch
+# batch 1
+dhea_high_mean_b1 <- mean(c(dhea_high_mean8, dhea_high_mean9, dhea_high_mean10, dhea_high_mean11, dhea_high_mean12, dhea_high_mean13, dhea_high_mean14, dhea_high_mean15, dhea_high_mean16, dhea_high_mean17, dhea_high_mean18, dhea_high_mean19, dhea_high_mean20))
+# batch 2
+dhea_high_mean_b2 <- mean(c(dhea_high_mean1, dhea_high_mean2, dhea_high_mean3, dhea_high_mean4, dhea_high_mean5, dhea_high_mean6, dhea_high_mean7))
+
+# High controls SD of means:
+dhea_high_sd <- sd(c(dhea_high_mean1, dhea_high_mean2, dhea_high_mean3, dhea_high_mean4, dhea_high_mean5, dhea_high_mean6, dhea_high_mean7, dhea_high_mean8, dhea_high_mean9, dhea_high_mean10, dhea_high_mean11, dhea_high_mean12, dhea_high_mean13, dhea_high_mean14, dhea_high_mean15, dhea_high_mean16, dhea_high_mean17, dhea_high_mean18, dhea_high_mean19, dhea_high_mean20))
+
+# batch 1
+dhea_high_sd_b1 <- sd(c(dhea_high_mean8, dhea_high_mean9, dhea_high_mean10, dhea_high_mean11, dhea_high_mean12, dhea_high_mean13, dhea_high_mean14, dhea_high_mean15, dhea_high_mean16, dhea_high_mean17, dhea_high_mean18, dhea_high_mean19, dhea_high_mean20))
+# batch 2
+dhea_high_sd_b2 <- sd(c(dhea_high_mean1, dhea_high_mean2, dhea_high_mean3, dhea_high_mean4, dhea_high_mean5, dhea_high_mean6, dhea_high_mean7))
+
+# % CV high across plates. Note this is NOT the same as just averaging each of the individual CVs for the result 1 and 2 of each high and low control (i.e., we don't want to just average the "OD_450_CV_perc" column from the HighsLows sheet):
+dhea_high_cv <- (dhea_high_sd/dhea_high_mean)*100
+
+#batch 1
+dhea_high_cv_b1 <- (dhea_high_sd_b1/dhea_high_mean_b1)*100
+#batch 2
+dhea_high_cv_b2 <- (dhea_high_sd_b2/dhea_high_mean_b2)*100
+
+# Mean of low controls within plates:
+dhea_low_mean1 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="1","OD_450"]))
+dhea_low_mean2 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="2","OD_450"]))
+dhea_low_mean3 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="3","OD_450"]))
+dhea_low_mean4 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="4","OD_450"]))
+dhea_low_mean5 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="5","OD_450"]))
+dhea_low_mean6 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="6","OD_450"]))
+dhea_low_mean7 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="7","OD_450"]))
+dhea_low_mean8 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="8","OD_450"]))
+dhea_low_mean9 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="9","OD_450"]))
+dhea_low_mean10 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="10","OD_450"]))
+dhea_low_mean11 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="11","OD_450"]))
+dhea_low_mean12 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="12","OD_450"]))
+dhea_low_mean13 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="13","OD_450"]))
+dhea_low_mean14 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="14","OD_450"]))
+dhea_low_mean15 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="15","OD_450"]))
+dhea_low_mean16 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="16","OD_450"]))
+dhea_low_mean17 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="17","OD_450"]))
+dhea_low_mean18 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="18","OD_450"]))
+dhea_low_mean19 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="19","OD_450"]))
+dhea_low_mean20 <- mean(data.matrix(Saliva_DHEA_interCV[Saliva_DHEA_interCV$Well_ID=="CtrlL"&Saliva_DHEA_interCV$plate=="20","OD_450"]))
+
+# low controls mean of means:
+dhea_low_mean <- mean(c(dhea_low_mean1, dhea_low_mean2, dhea_low_mean3, dhea_low_mean4, dhea_low_mean5, dhea_low_mean6, dhea_low_mean7, dhea_low_mean8, dhea_low_mean9, dhea_low_mean10, dhea_low_mean11, dhea_low_mean12, dhea_low_mean13, dhea_low_mean14, dhea_low_mean15, dhea_low_mean16, dhea_low_mean17, dhea_low_mean18, dhea_low_mean19, dhea_low_mean20))
+
+# batch 1
+dhea_low_mean_b1 <- mean(c(dhea_low_mean8, dhea_low_mean9, dhea_low_mean10, dhea_low_mean11, dhea_low_mean12, dhea_low_mean13, dhea_low_mean14, dhea_low_mean15, dhea_low_mean16, dhea_low_mean17, dhea_low_mean18, dhea_low_mean19, dhea_low_mean20))
+
+#batch 2
+dhea_low_mean_b2 <- mean(c(dhea_low_mean1, dhea_low_mean2, dhea_low_mean3, dhea_low_mean4, dhea_low_mean5, dhea_low_mean6, dhea_low_mean7))
+
+# low controls SD of means:
+dhea_low_sd <- sd(c(dhea_low_mean1, dhea_low_mean2, dhea_low_mean3, dhea_low_mean4, dhea_low_mean5, dhea_low_mean6, dhea_low_mean7, dhea_low_mean8, dhea_low_mean9, dhea_low_mean10, dhea_low_mean11, dhea_low_mean12, dhea_low_mean13, dhea_low_mean14, dhea_low_mean15, dhea_low_mean16, dhea_low_mean17, dhea_low_mean18, dhea_low_mean19, dhea_low_mean20))
+
+# batch 1
+dhea_low_sd_b1 <- sd(c(dhea_low_mean8, dhea_low_mean9, dhea_low_mean10, dhea_low_mean11, dhea_low_mean12, dhea_low_mean13, dhea_low_mean14, dhea_low_mean15, dhea_low_mean16, dhea_low_mean17, dhea_low_mean18, dhea_low_mean19, dhea_low_mean20))
+
+#batch 2
+dhea_low_sd_b2 <- sd(c(dhea_low_mean1, dhea_low_mean2, dhea_low_mean3, dhea_low_mean4, dhea_low_mean5, dhea_low_mean6, dhea_low_mean7))
+
+# % CV low across plates:
+dhea_low_cv <- (dhea_low_sd/dhea_low_mean)*100
+
+#batch 1
+dhea_low_cv_b1 <- (dhea_low_sd_b1/dhea_low_mean_b1)*100
+#batch 2
+dhea_low_cv_b2 <- (dhea_low_sd_b2/dhea_low_mean_b2)*100
+
+# AVERAGE DHEA % CV:
+dhea_inter_cv <- (dhea_high_cv + dhea_low_cv)/2
+
+#batch 1
+dhea_inter_cv_b1 <- (dhea_high_cv_b1 + dhea_low_cv_b1)/2
+# batch 2
+dhea_inter_cv_b2 <- (dhea_high_cv_b2 + dhea_low_cv_b2)/2
+
+# --- TEST ---
+# Mean of high controls within plates:
+test_high_mean1 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="1","OD_450"]))
+test_high_mean2 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="2","OD_450"]))
+test_high_mean3 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="3","OD_450"]))
+test_high_mean4 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="4","OD_450"]))
+test_high_mean5 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="5","OD_450"]))
+test_high_mean6 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="6","OD_450"]))
+test_high_mean7 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="7","OD_450"]))
+test_high_mean8 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="8","OD_450"]))
+test_high_mean9 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="9","OD_450"]))
+test_high_mean10 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="10","OD_450"]))
+test_high_mean11 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="11","OD_450"]))
+test_high_mean12 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="12","OD_450"]))
+test_high_mean13 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="13","OD_450"]))
+test_high_mean14 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="14","OD_450"]))
+test_high_mean15 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="15","OD_450"]))
+test_high_mean16 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="16","OD_450"]))
+test_high_mean17 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="17","OD_450"]))
+test_high_mean18 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="18","OD_450"]))
+test_high_mean19 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="19","OD_450"]))
+test_high_mean20 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlH"&Saliva_TEST_interCV$plate=="20","OD_450"]))
+
+# High controls mean of means:
+test_high_mean <- mean(c(test_high_mean1, test_high_mean2, test_high_mean3, test_high_mean4, test_high_mean5, test_high_mean6, test_high_mean7, test_high_mean8, test_high_mean9, test_high_mean10, test_high_mean11, test_high_mean12, test_high_mean13, test_high_mean14, test_high_mean15, test_high_mean16, test_high_mean17, test_high_mean18, test_high_mean19, test_high_mean20))
+
+#batch 1:
+test_high_mean_b1 <- mean(c(test_high_mean8, test_high_mean9, test_high_mean10, test_high_mean11, test_high_mean12, test_high_mean13, test_high_mean14, test_high_mean15, test_high_mean16, test_high_mean17, test_high_mean18, test_high_mean19, test_high_mean20))
+#batch 2:
+test_high_mean_b2 <- mean(c(test_high_mean1, test_high_mean2, test_high_mean3, test_high_mean4, test_high_mean5, test_high_mean6, test_high_mean7))
+
+# High controls SD of means:
+test_high_sd <- sd(c(test_high_mean1, test_high_mean2, test_high_mean3, test_high_mean4, test_high_mean5, test_high_mean6, test_high_mean7, test_high_mean8, test_high_mean9, test_high_mean10, test_high_mean11, test_high_mean12, test_high_mean13, test_high_mean14, test_high_mean15, test_high_mean16, test_high_mean17, test_high_mean18, test_high_mean19, test_high_mean20))
+
+#batch 1:
+test_high_sd_b1 <- sd(c(test_high_mean8, test_high_mean9, test_high_mean10, test_high_mean11, test_high_mean12, test_high_mean13, test_high_mean14, test_high_mean15, test_high_mean16, test_high_mean17, test_high_mean18, test_high_mean19, test_high_mean20))
+#batch 2:
+test_high_sd_b2 <- sd(c(test_high_mean1, test_high_mean2, test_high_mean3, test_high_mean4, test_high_mean5, test_high_mean6, test_high_mean7))
+
+# % CV high across plates
+test_high_cv <- (test_high_sd/test_high_mean)*100
+
+#batch 1:
+test_high_cv_b1 <- (test_high_sd_b1/test_high_mean_b1)*100
+
+#batch 2:
+test_high_cv_b2 <- (test_high_sd_b2/test_high_mean_b2)*100
+
+# Mean of low controls within plates:
+test_low_mean1 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="1","OD_450"]))
+test_low_mean2 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="2","OD_450"]))
+test_low_mean3 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="3","OD_450"]))
+test_low_mean4 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="4","OD_450"]))
+test_low_mean5 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="5","OD_450"]))
+test_low_mean6 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="6","OD_450"]))
+test_low_mean7 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="7","OD_450"]))
+test_low_mean8 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="8","OD_450"]))
+test_low_mean9 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="9","OD_450"]))
+test_low_mean10 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="10","OD_450"]))
+test_low_mean11 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="11","OD_450"]))
+test_low_mean12 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="12","OD_450"]))
+test_low_mean13 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="13","OD_450"]))
+test_low_mean14 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="14","OD_450"]))
+test_low_mean15 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="15","OD_450"]))
+test_low_mean16 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="16","OD_450"]))
+test_low_mean17 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="17","OD_450"]))
+test_low_mean18 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="18","OD_450"]))
+test_low_mean19 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="19","OD_450"]))
+test_low_mean20 <- mean(data.matrix(Saliva_TEST_interCV[Saliva_TEST_interCV$Well_ID=="CtrlL"&Saliva_TEST_interCV$plate=="20","OD_450"]))
+
+# low controls mean of means:
+test_low_mean <- mean(c(test_low_mean1, test_low_mean2, test_low_mean3, test_low_mean4, test_low_mean5, test_low_mean6, test_low_mean7, test_low_mean8, test_low_mean9, test_low_mean10, test_low_mean11, test_low_mean12, test_low_mean13, test_low_mean14, test_low_mean15, test_low_mean16, test_low_mean17, test_low_mean18, test_low_mean19, test_low_mean20))
+
+#batch 1:
+test_low_mean_b1 <- mean(c(test_low_mean8, test_low_mean9, test_low_mean10, test_low_mean11, test_low_mean12, test_low_mean13, test_low_mean14, test_low_mean15, test_low_mean16, test_low_mean17, test_low_mean18, test_low_mean19, test_low_mean20))
+
+#batch 2:
+test_low_mean_b2 <- mean(c(test_low_mean1, test_low_mean2, test_low_mean3, test_low_mean4, test_low_mean5, test_low_mean6, test_low_mean7))
+
+# low controls SD of means:
+test_low_sd <- sd(c(test_low_mean1, test_low_mean2, test_low_mean3, test_low_mean4, test_low_mean5, test_low_mean6, test_low_mean7, test_low_mean8, test_low_mean9, test_low_mean10, test_low_mean11, test_low_mean12, test_low_mean13, test_low_mean14, test_low_mean15, test_low_mean16, test_low_mean17, test_low_mean18, test_low_mean19, test_low_mean20))
+
+#batch 1:
+test_low_sd_b1 <- sd(c(test_low_mean8, test_low_mean9, test_low_mean10, test_low_mean11, test_low_mean12, test_low_mean13, test_low_mean14, test_low_mean15, test_low_mean16, test_low_mean17, test_low_mean18, test_low_mean19, test_low_mean20))
+
+#batch 2:
+test_low_sd_b2 <- sd(c(test_low_mean1, test_low_mean2, test_low_mean3, test_low_mean4, test_low_mean5, test_low_mean6, test_low_mean7))
+
+# % CV low across plates:
+test_low_cv <- (test_low_sd/test_low_mean)*100
+
+#batch 1:
+test_low_cv_b1 <- (test_low_sd_b1/test_low_mean_b1)*100
+
+#batch 2:
+test_low_cv_b2 <- (test_low_sd_b2/test_low_mean_b2)*100
+
+# AVERAGE TEST % CV:
+test_inter_cv <- (test_high_cv + test_low_cv)/2
+
+#batch 1:
+test_inter_cv_b1 <- (test_high_cv_b1 + test_low_cv_b1)/2
+
+#batch 2:
+test_inter_cv_b2 <- (test_high_cv_b2 + test_low_cv_b2)/2
+
+
+# --- EST ---
+# Mean of high controls within plates:
+est_high_mean1 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="1","OD_450"]))
+est_high_mean2 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="2","OD_450"]))
+est_high_mean3 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="3","OD_450"]))
+est_high_mean4 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="4","OD_450"]))
+est_high_mean5 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="5","OD_450"]))
+est_high_mean6 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="6","OD_450"]))
+est_high_mean7 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="7","OD_450"]))
+est_high_mean8 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="8","OD_450"]))
+est_high_mean9 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="9","OD_450"]))
+est_high_mean10 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="10","OD_450"]))
+est_high_mean11 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="11","OD_450"]))
+est_high_mean12 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="12","OD_450"]))
+est_high_mean13 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="13","OD_450"]))
+est_high_mean14 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="14","OD_450"]))
+est_high_mean15 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="15","OD_450"]))
+est_high_mean16 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="16","OD_450"]))
+est_high_mean17 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="17","OD_450"]))
+est_high_mean18 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="18","OD_450"]))
+est_high_mean19 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="19","OD_450"]))
+est_high_mean20 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="20","OD_450"]))
+est_high_mean21 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlH"&Saliva_EST_interCV$plate=="21","OD_450"]))
+
+# High controls mean of means:
+est_high_mean <- mean(c(est_high_mean1, est_high_mean2, est_high_mean3, est_high_mean4, est_high_mean5, est_high_mean6, est_high_mean7, est_high_mean8, est_high_mean9, est_high_mean10, est_high_mean11, est_high_mean12, est_high_mean13, est_high_mean14, est_high_mean15, est_high_mean16, est_high_mean17, est_high_mean18, est_high_mean19, est_high_mean20, est_high_mean21))
+
+#batch 1:
+est_high_mean_b1 <- mean(c(est_high_mean8, est_high_mean9, est_high_mean10, est_high_mean11, est_high_mean12, est_high_mean13, est_high_mean14, est_high_mean15, est_high_mean16, est_high_mean17, est_high_mean18, est_high_mean19, est_high_mean20, est_high_mean21))
+
+#batch 2:
+est_high_mean_b2 <- mean(c(est_high_mean1, est_high_mean2, est_high_mean3, est_high_mean4, est_high_mean5, est_high_mean6, est_high_mean7))
+
+# High controls SD of means:
+est_high_sd <- sd(c(est_high_mean1, est_high_mean2, est_high_mean3, est_high_mean4, est_high_mean5, est_high_mean6, est_high_mean7, est_high_mean8, est_high_mean9, est_high_mean10, est_high_mean11, est_high_mean12, est_high_mean13, est_high_mean14, est_high_mean15, est_high_mean16, est_high_mean17, est_high_mean18, est_high_mean19, est_high_mean20, est_high_mean21))
+
+#batch 1:
+est_high_sd_b1 <- sd(c(est_high_mean8, est_high_mean9, est_high_mean10, est_high_mean11, est_high_mean12, est_high_mean13, est_high_mean14, est_high_mean15, est_high_mean16, est_high_mean17, est_high_mean18, est_high_mean19, est_high_mean20, est_high_mean21))
+
+#batch 2:
+est_high_sd_b2 <- sd(c(est_high_mean1, est_high_mean2, est_high_mean3, est_high_mean4, est_high_mean5, est_high_mean6, est_high_mean7))
+
+# % CV high across plates
+est_high_cv <- (est_high_sd/est_high_mean)*100
+
+#batch 1:
+est_high_cv_b1 <- (est_high_sd_b1/est_high_mean_b1)*100
+
+#batch 2:
+est_high_cv_b2 <- (est_high_sd_b2/est_high_mean_b2)*100
+
+# Mean of low controls within plates:
+est_low_mean1 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="1","OD_450"]))
+est_low_mean2 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="2","OD_450"]))
+est_low_mean3 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="3","OD_450"]))
+est_low_mean4 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="4","OD_450"]))
+est_low_mean5 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="5","OD_450"]))
+est_low_mean6 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="6","OD_450"]))
+est_low_mean7 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="7","OD_450"]))
+est_low_mean8 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="8","OD_450"]))
+est_low_mean9 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="9","OD_450"]))
+est_low_mean10 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="10","OD_450"]))
+est_low_mean11 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="11","OD_450"]))
+est_low_mean12 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="12","OD_450"]))
+est_low_mean13 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="13","OD_450"]))
+est_low_mean14 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="14","OD_450"]))
+est_low_mean15 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="15","OD_450"]))
+est_low_mean16 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="16","OD_450"]))
+est_low_mean17 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="17","OD_450"]))
+est_low_mean18 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="18","OD_450"]))
+est_low_mean19 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="19","OD_450"]))
+est_low_mean20 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="20","OD_450"]))
+est_low_mean21 <- mean(data.matrix(Saliva_EST_interCV[Saliva_EST_interCV$Well_ID=="CtrlL"&Saliva_EST_interCV$plate=="21","OD_450"]))
+
+# low controls mean of means:
+est_low_mean <- mean(c(est_low_mean1, est_low_mean2, est_low_mean3, est_low_mean4, est_low_mean5, est_low_mean6, est_low_mean7, est_low_mean8, est_low_mean9, est_low_mean10, est_low_mean11, est_low_mean12, est_low_mean13, est_low_mean14, est_low_mean15, est_low_mean16, est_low_mean17, est_low_mean18, est_low_mean19, est_low_mean20, est_low_mean21))
+
+#batch 1:
+est_low_mean_b1 <- mean(c(est_low_mean8, est_low_mean9, est_low_mean10, est_low_mean11, est_low_mean12, est_low_mean13, est_low_mean14, est_low_mean15, est_low_mean16, est_low_mean17, est_low_mean18, est_low_mean19, est_low_mean20, est_low_mean21))
+
+#batch 2:
+est_low_mean_b2 <- mean(c(est_low_mean1, est_low_mean2, est_low_mean3, est_low_mean4, est_low_mean5, est_low_mean6, est_low_mean7))
+
+# low controls SD of means:
+est_low_sd <- sd(c(est_low_mean1, est_low_mean2, est_low_mean3, est_low_mean4, est_low_mean5, est_low_mean6, est_low_mean7, est_low_mean8, est_low_mean9, est_low_mean10, est_low_mean11, est_low_mean12, est_low_mean13, est_low_mean14, est_low_mean15, est_low_mean16, est_low_mean17, est_low_mean18, est_low_mean19, est_low_mean20, est_low_mean21))
+
+#batch 1:
+est_low_sd_b1 <- sd(c(est_low_mean8, est_low_mean9, est_low_mean10, est_low_mean11, est_low_mean12, est_low_mean13, est_low_mean14, est_low_mean15, est_low_mean16, est_low_mean17, est_low_mean18, est_low_mean19, est_low_mean20, est_low_mean21))
+
+#batch 2:
+est_low_sd_b2 <- sd(c(est_low_mean1, est_low_mean2, est_low_mean3, est_low_mean4, est_low_mean5, est_low_mean6, est_low_mean7))
+
+# % CV low across plates:
+est_low_cv <- (est_low_sd/est_low_mean)*100
+
+#batch 1:
+est_low_cv_b1 <- (est_low_sd_b1/est_low_mean_b1)*100
+
+#batch 2:
+est_low_cv_b2 <- (est_low_sd_b2/est_low_mean_b2)*100
+
+# AVERAGE EST % CV:
+est_inter_cv <- (est_high_cv + est_low_cv)/2
+
+#batch 1:
+est_inter_cv_b1 <- (est_high_cv_b1 + est_low_cv_b1)/2
+
+#batch 2:
+est_inter_cv_b2 <- (est_high_cv_b2 + est_low_cv_b2)/2
+
+
 ```
