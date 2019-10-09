@@ -1,0 +1,199 @@
+---
+title: "score_IFS"
+author: "SJC"
+date: "June 10, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#insert setup code here
+```
+
+Prepare IFS
+```{r}
+IFS<-left_join(filter(cleaned_survey_data, grepl("IFS",item)) %>%
+                 mutate(value=as.numeric(value)) %>% 
+                 filter(!is.na(value)) %>%
+                 filter(!value=="") %>%
+                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                 spread(item,value),
+               redcap_cleaned %>%
+                 filter(!is.na(dob),!is.na(sa_date)) %>%
+                 select(tagid, sa_date, sb_date, dob),by="tagid")
+
+if (length(IFS$tagid) == length(unique(IFS$tagid))){
+  print("No duplicate TAGIDs in data")
+  } else {
+      print("DUPLICATE TAGIDs in data")
+  }
+
+IFS_cleaned<-left_join(IFS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                          ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(IFS_frankness_total=rowSums(cbind(IFS_1,IFS_2,IFS_3,IFS_4),na.rm=FALSE),
+         IFS_frankness_mean=round(rowMeans(cbind(IFS_1,IFS_2,IFS_3,IFS_4),na.rm=TRUE),3),
+         IFS_sensitivity_total=rowSums(cbind(IFS_5,IFS_6,IFS_7,IFS_8),na.rm=FALSE),
+         IFS_sensitivity_mean=round(rowMeans(cbind(IFS_5,IFS_6,IFS_7,IFS_8),na.rm=TRUE),3),
+         IFS_attachment_total=rowSums(cbind(IFS_9,IFS_10,IFS_11,IFS_12),na.rm=FALSE),
+         IFS_attachment_mean=round(rowMeans(cbind(IFS_9,IFS_10,IFS_11,IFS_12),na.rm=TRUE),3),
+         IFS_exclusiveness_total=rowSums(cbind(IFS_13,IFS_14,IFS_15,IFS_16),na.rm=FALSE),
+         IFS_exclusiveness_mean=round(rowMeans(cbind(IFS_13,IFS_14,IFS_15,IFS_16),na.rm=TRUE),3),
+         IFS_sharing_total=rowSums(cbind(IFS_17,IFS_18,IFS_19,IFS_20),na.rm=FALSE),
+         IFS_sharing_mean=round(rowMeans(cbind(IFS_17,IFS_18,IFS_19,IFS_20),na.rm=TRUE),3),
+         IFS_impose_total=rowSums(cbind(IFS_21,IFS_22,IFS_23,IFS_24),na.rm=FALSE),
+         IFS_impose_mean=round(rowMeans(cbind(IFS_21,IFS_22,IFS_23,IFS_24),na.rm=TRUE),3),
+         IFS_common_total=rowSums(cbind(IFS_25,IFS_26,IFS_27,IFS_28),na.rm=FALSE),
+         IFS_common_mean=round(rowMeans(cbind(IFS_25,IFS_26,IFS_27,IFS_28),na.rm=TRUE),3),
+         IFS_trust_total=rowSums(cbind(IFS_29,IFS_30,IFS_31,IFS_32),na.rm=FALSE),
+         IFS_trust_mean=round(rowMeans(cbind(IFS_29,IFS_30,IFS_31,IFS_32),na.rm=TRUE),3),
+         IFS_total_mean=round(rowMeans(cbind(IFS_frankness_mean, IFS_sensitivity_mean, IFS_attachment_mean, IFS_exclusiveness_mean, IFS_sharing_mean, IFS_impose_mean, IFS_common_mean, IFS_trust_mean),na.rm=TRUE),3),
+         IFS_N=32,
+         IFS_missing=rowSums(is.na(cbind(IFS_1,IFS_2,IFS_3,IFS_4,
+                                            IFS_9,IFS_10,IFS_11,IFS_12,
+                                            IFS_13,IFS_14,IFS_15,IFS_16,
+                                            IFS_17,IFS_18,IFS_19,IFS_20,
+                                            IFS_21,IFS_22,IFS_23,IFS_24,
+                                            IFS_25,IFS_26,IFS_27,IFS_28,
+                                            IFS_29,IFS_30,IFS_31,IFS_32))),
+         IFS_missing_perc=100*(rowSums(is.na(cbind(IFS_1,IFS_2,IFS_3,IFS_4,
+                                            IFS_9,IFS_10,IFS_11,IFS_12,
+                                            IFS_13,IFS_14,IFS_15,IFS_16,
+                                            IFS_17,IFS_18,IFS_19,IFS_20,
+                                            IFS_21,IFS_22,IFS_23,IFS_24,
+                                            IFS_25,IFS_26,IFS_27,IFS_28,
+                                            IFS_29,IFS_30,IFS_31,IFS_32))))/32) #NV added info on % missing items
+
+## Save it
+IFS_Wave1_outdf <- IFS_cleaned %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(IFS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/IFS_Wave1.csv"))
+
+IFS_Wave2_outdf <- IFS_cleaned %>% filter(grepl("W2",survey_name)) 
+write.csv(IFS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/IFS_Wave2.csv"))
+
+IFS_Wave3_outdf <- IFS_cleaned %>% filter(grepl("W3",survey_name)) 
+write.csv(IFS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/IFS_Wave3.csv"))
+
+## Graph it
+IFS_Wave1_totals<-IFS_Wave1 %>%
+  select(tagid,IFS_frankness_total,IFS_trust_total,IFS_common_total,
+         IFS_impose_total,IFS_sharing_total,IFS_exclusiveness_total,
+         IFS_attachment_total,IFS_sensitivity_total) %>%
+  mutate(Frankness_Spontaneity=IFS_frankness_total,
+         Trust_Loyalty=IFS_trust_total,
+         Common_Activities=IFS_common_total,
+         Imposition=IFS_impose_total,
+         Giving_Sharing=IFS_sharing_total,
+         Exclusiveness=IFS_exclusiveness_total,
+         Sensitivity_Knowing=IFS_sensitivity_total,
+         Attachment=IFS_attachment_total) %>%
+  select(-contains("IFS")) %>%
+  gather('item','value',2:length(.)) 
+IFS_Wave1_totals_graph<-ggplot(IFS_Wave1_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("IFS totals for ",length(unique(IFS_Wave1$tagid[!is.na(IFS_Wave1$IFS_attachment_total)]))," participants"))
+
+IFS_Wave1_means<-IFS_Wave1 %>%
+  select(tagid,IFS_frankness_mean,IFS_trust_mean,IFS_common_mean,
+         IFS_impose_mean,IFS_sharing_mean,IFS_exclusiveness_mean,
+         IFS_attachment_mean,IFS_sensitivity_mean) %>%
+  mutate(Frankness_Spontaneity=IFS_frankness_mean,
+         Trust_Loyalty=IFS_trust_mean,
+         Common_Activities=IFS_common_mean,
+         Imposition=IFS_impose_mean,
+         Giving_Sharing=IFS_sharing_mean,
+         Exclusiveness=IFS_exclusiveness_mean,
+         Sensitivity_Knowing=IFS_sensitivity_mean,
+         Attachment=IFS_attachment_mean) %>%
+  select(-contains("IFS")) %>%
+  gather('item','value',2:length(.)) 
+IFS_Wave1_means_graph<-ggplot(IFS_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("IFS means for ",length(unique(IFS_Wave1$tagid[!is.na(IFS_Wave1$IFS_attachment_mean)]))," participants"))
+
+
+## Make RDOC ready file
+ndar_ifs_data <- left_join(IFS_Wave1,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         comments_misc=ifelse(grepl("Sess 1",survey_name),"Session1",
+                      ifelse(grepl("Session 1",survey_name),"Session1",
+                             ifelse(grepl("Sess 2",survey_name),"Session2",
+                                    ifelse(grepl("Session 2",survey_name),"Session2",
+                                           ifelse(grepl("Home",survey_name),"Home Questionnaires",
+                                                  NA))))),
+         site="University of Oregon",
+         study="Transitions in Adolescent Girls (TAG) Study",
+         gender="F",
+         ifs_1=IFS_1,
+         ifs_2=IFS_2,
+         ifs_3=IFS_3,
+         ifs_4=IFS_4,
+         ifs_5=IFS_5,
+         ifs_6=IFS_6,
+         ifs_7=IFS_7,
+         ifs_8=IFS_8,
+         ifs_9=IFS_9,
+         ifs_10=IFS_10,
+         ifs_11=IFS_11,
+         ifs_12=IFS_12,
+         ifs_13=IFS_13,
+         ifs_14=IFS_14,
+         ifs_15=IFS_15,
+         ifs_16=IFS_16,
+         ifs_17=IFS_17,
+         ifs_18=IFS_18,
+         ifs_19=IFS_19,
+         ifs_20=IFS_20,
+         ifs_21=IFS_21,
+         ifs_22=IFS_22,
+         ifs_23=IFS_23,
+         ifs_24=IFS_24,
+         ifs_25=IFS_25,
+         ifs_26=IFS_26,
+         ifs_27=IFS_27,
+         ifs_28=IFS_28,
+         ifs_29=IFS_29,
+         ifs_30=IFS_30,
+         ifs_31=IFS_31,
+         ifs_32=IFS_32,
+         ifs_fs=as.integer(IFS_frankness_mean),
+         ifs_sk=as.integer(IFS_sensitivity_mean),
+         ifs_aa=as.integer(IFS_attachment_mean),
+         ifs_e=as.integer(IFS_exclusiveness_mean),
+         ifs_gh=as.integer(IFS_sharing_mean),
+         ifs_it=as.integer(IFS_impose_mean),
+         ifs_ca=as.integer(IFS_common_mean),
+         ifs_tl=as.integer(IFS_trust_mean),
+         ifs_ts=as.integer(IFS_total_mean))
+
+ndar_ifs_data <- left_join(ndar_key,ndar_ifs_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("IFS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-guid,-survey_type)
+ifs_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/ifs01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+ifs_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/ifs01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+ifs_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/ifs01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+ifs_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/ifs01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+ifs_temp_df<-data.frame(ifs_temp)
+ndar_ifs_data<-bind_rows(ifs_temp_df,ndar_ifs_data)
+
+part2<-colnames(ndar_ifs_data)
+part3<-as.matrix(ndar_ifs_data)
+colnames(part3)<-NULL
+together<-rbind(ifs_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/may2019/ifs01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,ifs_df_header,ifs_temp,ifs_temp_df,IFS,IFS_Wave1_means,IFS_Wave1,IFS_Wave1_totals,IFS_Wave1_totals_graph)
+
+```
