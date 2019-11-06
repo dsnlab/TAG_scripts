@@ -31,7 +31,7 @@ rsync -aiv -e ssh FP@10.109.34.8:/Users/FP/Desktop/TAG-fMRI-tasks/task/output/* 
 
 #### Mock scanner to CAS
 rsync -aiv -e ssh dsnlab@simulatum:/Users/dsnlab/Studies/TAG/task/DRS/task/input/tag*_info.mat /Volumes/psych-cog/dsnlab/TAG/behavior/task/info/ # inputs
-rsync -aiv -e ssh dsnlab@simulatum:/Users/dsnlab/Studies/TAG/task/DRS/task/output/* /Volumes/psych-cog/dsnlab/TAG/behavior/task/output/ # outputs
+rsync -aiv -e ssh dsnlab@simulatum:/Users/dsnlab/Studies/TAG/task/DRS/task/output/* /Volumes/psych-cog/dsnlab/TAG/behavior/task/output/simulatum_data # outputs
 
 ## COPY ALL FILES FROM TAG TO EXTERNAL HARDDRIVE ("Chief")
 rsync -aiv -P /Volumes/psych-cog/dsnlab/TAG/ /Volumes/Chief/TAG/ # tag
