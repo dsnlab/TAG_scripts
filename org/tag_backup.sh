@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # This script copies (a) DICOMS from lcni to our lab, on Talapas, (b) DICOMS & physio from Talapas to CAS server
+# You also need to run the line of text in copy_lcni_dicoms_to_dsnlab.txt that is NOT on git (contains subject IDs + session dates)
 
 ## TASK BEH DATA (laptops first)
 #### Sherri to CAS
