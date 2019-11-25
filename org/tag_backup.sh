@@ -21,7 +21,7 @@ rsync -aiv -e ssh dsnlab@simulatormac:/Users/dsnlab/Studies/TAG/task/DRS/task/ou
 
 ## NEURO + PHYSIO DATA
 ## COPY TALAPAS LCNI DICOMS TO TALAPAS DSNLAB ARCHIVE
-ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/TAG/TAG???_20* /projects/dsnlab/shared/tag/archive/DICOMS/ # for tag
+# RUN THIS LINE USING THE VERSION IN THE TEXT FILE copy_lcni_dicoms_to_dsnlab.txt TO AVOID BACKING UP SOS FILES - it has extra options that are omitted for privacy reasons (ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/TAG/TAG???_20* /projects/dsnlab/shared/tag/archive/DICOMS/) # for tag
 ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/SOS/TAG???_20* /projects/dsnlab/shared/sos/archive/DICOMS/ # for SOS (named correctly)
 ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/SOS/SOS???_20* /projects/dsnlab/shared/sos/archive/DICOMS/ # for SOS (named incorrectly)
 
@@ -32,7 +32,7 @@ ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfe
 
 # OTHER DATA SHUFFLING
 ## COPY TALAPAS DSNLAB ARCHIVE TO CAS
-rsync -aiv -e ssh jpfeifer@talapas-ln1.uoregon.edu:/projects/dsnlab/shared/tag/archive/ /Volumes/psych-cog/dsnlab/TAG/archive/ # tag dicoms and physio
+rsync -aiv -e ssh jpfeifer@talapas-ln1.uoregon.edu:/projects/dsnlab/shared/tag/archive/ /Volumes/psych-cog/dsnlab/TAG/archive/ --exclude 'sos_subjects' # tag dicoms and physio
 rsync -aiv -e ssh jpfeifer@talapas-ln1.uoregon.edu:/projects/dsnlab/shared/sos/archive/ /Volumes/psych-cog/dsnlab/SOS/archive/ # sos dicoms and physio
 
 ## COPY ALL FILES FROM TAG TO EXTERNAL HARDDRIVE ("Chief")
