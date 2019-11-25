@@ -35,6 +35,26 @@ ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfe
 rsync -aiv -e ssh jpfeifer@talapas-ln1.uoregon.edu:/projects/dsnlab/shared/tag/archive/ /Volumes/psych-cog/dsnlab/TAG/archive/ # tag dicoms and physio
 rsync -aiv -e ssh jpfeifer@talapas-ln1.uoregon.edu:/projects/dsnlab/shared/sos/archive/ /Volumes/psych-cog/dsnlab/SOS/archive/ # sos dicoms and physio
 
+<<<<<<< HEAD
+=======
+## TASK BEH DATA 
+#### LCNI Desktop (backup) to CAS
+rsync -aiv -e ssh dsnlab@controlroommac.uoregon.edu:/Users/dsnlab/Desktop/TAG-fMRI-tasks/task/input/tag*_info.mat /Volumes/psych-cog/dsnlab/TAG/behavior/task/info/ # inputs
+rsync -aiv -e ssh dsnlab@controlroommac.uoregon.edu:/Users/dsnlab/Desktop/TAG-fMRI-tasks/task/output/* /Volumes/psych-cog/dsnlab/TAG/behavior/task/output/ # outputs
+
+#### Sherri to CAS
+rsync -aiv -e ssh FP@10.109.94.238:/Users/FP/Desktop/TAG-fMRI-task/task/input/tag*_info.mat /Volumes/psych-cog/dsnlab/TAG/behavior/task/info/ # inputs
+rsync -aiv -e ssh FP@10.109.94.238:/Users/FP/Desktop/TAG-fMRI-task/task/output/* /Volumes/psych-cog/dsnlab/TAG/behavior/task/output/ # outputs
+
+#### Terri to CAS - note that foldername is plural (taskS)
+rsync -aiv -e ssh FP@10.109.34.8:/Users/FP/Desktop/TAG-fMRI-tasks/task/input/tag*_info.mat /Volumes/psych-cog/dsnlab/TAG/behavior/task/info/ # inputs
+rsync -aiv -e ssh FP@10.109.34.8:/Users/FP/Desktop/TAG-fMRI-tasks/task/output/* /Volumes/psych-cog/dsnlab/TAG/behavior/task/output/ # outputs
+
+#### Mock scanner to CAS
+rsync -aiv -e ssh dsnlab@simulatum:/Users/dsnlab/Studies/TAG/task/DRS/task/input/tag*_info.mat /Volumes/psych-cog/dsnlab/TAG/behavior/task/info/ # inputs
+rsync -aiv -e ssh dsnlab@simulatum:/Users/dsnlab/Studies/TAG/task/DRS/task/output/* /Volumes/psych-cog/dsnlab/TAG/behavior/task/output/simulatum_data # outputs
+
+>>>>>>> 621087a0754fcdcfc0293c397396ea9e21ed2b55
 ## COPY ALL FILES FROM TAG TO EXTERNAL HARDDRIVE ("Chief")
 rsync -aiv -P /Volumes/psych-cog/dsnlab/TAG/ /Volumes/Chief/TAG/ # tag
 rsync -aiv -P /Volumes/psych-cog/dsnlab/SOS/ /Volumes/Chief/SOS/ # sos

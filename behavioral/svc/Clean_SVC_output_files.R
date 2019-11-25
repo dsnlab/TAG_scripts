@@ -31,7 +31,7 @@ dataHeader <- c('trial', 'condition.and.factor', 'onset', 'RT.seconds',
 # %           [1,4] = Prosocial; [2, 5] = Withdrawn; [3,6] Antisocial
 # %       3. Time since trigger
 # %       4. Reaction time
-# %       5. Response 1=yes, 2=no ??? 0=no response
+# %       5. Response 1=yes, 2=no, 0=no response
 # %       6. Reverse coding 1=not reverse coded, 0=reverse coded (i.e. if it loads negatively on the adjective factor)
 # %       7. Number of syllables in the word
 # %       8. The presented word/adjective
@@ -85,6 +85,16 @@ wave1DF <- longDF %>%
   filter(wave==1)
 write.csv(wave1DF,paste0(outDataDir,'svc_trials_wave1.csv'),row.names=F)
 
+wave1DF2 <- wave1DF %>%
+  mutate(valence = ifelse(condition.and.factor == 1 | condition.and.factor == 4, "positive",
+                          ifelse(condition.and.factor == 3 | condition.and.factor == 6, "negative",
+                             ifelse(condition.and.factor == 2 & reverse.coding == 1, "negative",
+                                   ifelse(condition.and.factor == 5 & reverse.coding == 1, "negative",
+                                      ifelse(condition.and.factor == 2 & reverse.coding == 0, "positive", 
+                                          ifelse(condition.and.factor == 5 & reverse.coding == 0, "positive",NA)))))),
+         valence = as.factor(valence)) %>%
+  mutate(response01 = ifelse(response.0NA == 2, 0, response.0NA))
+write.csv(wave1DF2,paste0(outDataDir,'svc_trials_wave1_valence.csv'),row.names=F)
 
 #Get mean and distribution of responses and RTs for self and change
 responsetable <- table(wave1DF$condition.and.factor, wave1DF$response.recoded)
