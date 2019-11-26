@@ -142,7 +142,7 @@ Saliva_DHEA_CV_2 <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_MasterSheet_Saliv
 Saliva_TEST_CV_2 <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=3)
 Saliva_EST_CV_2 <- read_xlsx(paste0(saliva_dir,'/Raw_conc/TAG_MasterSheet_Saliva_2ndRun.xlsx'), sheet=1)
 
-#clean and calculate interassay CV for concentrations and optical densities
+#clean and calculate intra-assay CV for concentrations and optical densities
 Saliva_DHEA_CV_2 <- Saliva_DHEA_CV_2 %>%
   rename(ID = Name,
          Conc = `[Concentration]`,
