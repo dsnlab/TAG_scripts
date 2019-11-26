@@ -1,7 +1,11 @@
 #!/bin/bash
 
 # This script copies (a) DICOMS from lcni to our lab, on Talapas, (b) DICOMS & physio from Talapas to CAS server
-# You also need to run the line of text in copy_lcni_dicoms_to_dsnlab.txt that is NOT on git (contains subject IDs + session dates)
+
+# the following inputs should be the directory names (subject ID + session dates) of the three SOS subjects whose DICOMS are in the TAG folder
+EXCLUDED_SESS_1=$1
+EXCLUDED_SESS_2=$2
+EXCLUDED_SESS_3=$3
 
 ## TASK BEH DATA (laptops first)
 #### Sherri to CAS
@@ -22,7 +26,7 @@ rsync -aiv -e ssh dsnlab@simulatormac:/Users/dsnlab/Studies/TAG/task/DRS/task/ou
 
 ## NEURO + PHYSIO DATA
 ## COPY TALAPAS LCNI DICOMS TO TALAPAS DSNLAB ARCHIVE
-# RUN THIS LINE USING THE VERSION IN THE TEXT FILE copy_lcni_dicoms_to_dsnlab.txt TO AVOID BACKING UP SOS FILES - it has extra options that are omitted for privacy reasons (ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/TAG/TAG???_20* /projects/dsnlab/shared/tag/archive/DICOMS/) # for tag
+ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/TAG/TAG???_20* /projects/dsnlab/shared/tag/archive/DICOMS/ --exclude $EXCLUDED_SESS_1 --exclude $EXCLUDED_SESS_2 --exclude $EXCLUDED_SESS_3  # for tag
 ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/SOS/TAG???_20* /projects/dsnlab/shared/sos/archive/DICOMS/ # for SOS (named correctly)
 ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/SOS/SOS???_20* /projects/dsnlab/shared/sos/archive/DICOMS/ # for SOS (named incorrectly)
 
