@@ -52,120 +52,38 @@ overview <- overview %>%
   filter(Withdrawn_W1==0)
 ```
 
-###IMPORT "FINAL" SALIVA CONCENTRATIONS & IDENTIFY '?????'
+###IMPORT "FINAL" SALIVA CONCENTRATIONS & IDENTIFY UNDETECTABLES
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
 #this section #1) import 2 rounds of hormone concentrations assayed by Birdie, 2) updates non-identifiable hormone concentrations based on MB and NV's decisions (see google doc "TAG_salivary_hormones_methods_draft" for more info), and 3) formats and joins different hormones into one master file called "Saliva"
 
 #import W2 master file
+master <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_W2_Master_File_clean.xlsx'), sheet=1)
 
-master <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_W2_Master_File.xlsx'), sheet=1)
-odd_rows <- -seq(3, nrow(master), 2)
-master <- data.frame(x=master[odd_rows])
 
 #check entries with '<0.000' (left censored - in W2 there were no right censored values) listed in concentration columns. 
-DHEA_check1 <- filter(Sal_DHEA_final1, grepl('\\?',Concentration)) %>% rename(Mean=Concentration)
-DHEA_check2 <- filter(Sal_DHEA_final2, grepl('\\?',Mean))
-DHEA_check <- rbind(DHEA_check1,DHEA_check2)
+master_check1 <- filter(master, grepl('<', DHEA) | grepl('<', Estradiol) | grepl('<', Testosterone))) 
+master_check2 <- filter(master, grepl('<', DHEA) | grepl('<', Estradiol) | grepl('<', Testosterone)))
+master_check <- rbind(master_check1,master_check2)
 
-TEST_check1 <- filter(Sal_TEST_final1, grepl('\\?',Concentration)) %>% rename(Mean=Concentration)
-TEST_check2 <- filter(Sal_TEST_final2, grepl('\\?',Mean)) 
-TEST_check <- rbind(TEST_check1,TEST_check2)
-
-EST_check1 <- filter(Sal_EST_final1, grepl('\\?',Concentration)) %>% rename(Mean=Concentration)
-EST_check2 <- filter(Sal_EST_final2, grepl('\\?',Mean)) 
-EST_check <- rbind(EST_check1,EST_check2)
-
-#import decisions made by NV and MB for '????' 
-decisions <- read_xlsx(paste0(saliva_dir,'/TAG_Saliva_decisions.xlsx'), sheet=1)
+#import decisions made by MEAB and MLB for undetectables 
+decisions <- read_xlsx(paste0(saliva_dir,'/TAG_W2_Saliva_decisions.xlsx'), sheet=1)
 decisions <- decisions %>% mutate(SID = as.factor(round(as.numeric(ID),2)))
-decisions_TEST <- decisions %>% filter(Hormone=="TEST")
-decisions_EST <- decisions %>% filter(Hormone=="EST")
-decisions_DHEA <- decisions %>% filter(Hormone=="DHEA") 
 
-#format imported DFs for each hormone, update with decisions, create SID as 3 digit numeric factor (i.e. "001"), combine all three hormones in one dataframe. 
-Sal_DHEA_final1 <- Sal_DHEA_final1 %>% 
+#format imported DFs, update with decisions, create SID as 3 digit numeric factor (i.e. "001"). 
+Sal_final <- master_check %>% 
   mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
-  left_join(.,decisions_DHEA,by="SID") %>%
-  mutate(sal_DHEA = ifelse(grepl('\\?',Concentration), Decision,Concentration)) %>%
+  left_join(.,decisions,by=c("SID","Sample")) %>%
+  mutate(sal_DHEA = ifelse(grepl('<',DHEA), Decision,DHEA)) %>%
   mutate(sal_DHEA = round(as.numeric(sal_DHEA),3)) %>%
-  select(SID,sal_DHEA) %>%
-  filter(!is.na(SID)) %>%
-  separate(SID, into =c("SID","week")) %>%
-  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
-  mutate(SID = as.factor(SID),
-         week = as.factor(week))
-
-Sal_DHEA_final2 <- Sal_DHEA_final2 %>% 
-  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
-  left_join(.,decisions_DHEA,by="SID") %>%
-  mutate(sal_DHEA = ifelse(grepl('\\?',Mean), Decision,Mean)) %>%
-  mutate(sal_DHEA = round(as.numeric(sal_DHEA),3)) %>%
-  select(SID,sal_DHEA) %>%
-  filter(!is.na(SID)) %>%
-  separate(SID, into =c("SID","week")) %>%
-  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
-  mutate(SID = as.factor(SID),
-         week = as.factor(week))
-
-Sal_TEST_final1 <- Sal_TEST_final1 %>% 
-  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
-  left_join(.,decisions_TEST,by="SID") %>%
-  mutate(sal_TEST = ifelse(grepl('\\?',Concentration), Decision,Concentration)) %>%
-  mutate(sal_TEST = round(as.numeric(sal_TEST),3)) %>%
-  select(SID,sal_TEST) %>%
-  filter(!is.na(SID)) %>%
-  separate(SID, into =c("SID","week")) %>%
-  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
-  mutate(SID = as.factor(SID),
-         week = as.factor(week))
-
-Sal_TEST_final2 <- Sal_TEST_final2 %>% 
-  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
-  left_join(.,decisions_TEST,by="SID") %>%
-  mutate(sal_TEST = ifelse(grepl('\\?',Mean), Decision,Mean)) %>%
-  mutate(sal_TEST = round(as.numeric(sal_TEST),3)) %>%
-  select(SID,sal_TEST) %>%
-  filter(!is.na(SID)) %>%
-  separate(SID, into =c("SID","week")) %>%
-  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
-  mutate(SID = as.factor(SID),
-         week = as.factor(week))
-
-Sal_EST_final1 <- Sal_EST_final1 %>% 
-  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
-  left_join(.,decisions_EST,by="SID") %>%
-  mutate(sal_EST = ifelse(grepl('\\?',Concentration), Decision,Concentration)) %>%
+  mutate(sal_EST = ifelse(grepl('<',Estradiol), Decision,Estradiol)) %>%
   mutate(sal_EST = round(as.numeric(sal_EST),3)) %>%
-  select(SID,sal_EST) %>%
+  mutate(sal_TEST = ifelse(grepl('<',Testosterone), Decision,Testosterone)) %>%
+  mutate(sal_TEST = round(as.numeric(sal_TEST),3)) %>%
+  select(SID,Sample,sal_DHEA,sal_TEST,sal_EST) %>%
   filter(!is.na(SID)) %>%
-  separate(SID, into =c("SID","week")) %>%
-  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
-  mutate(SID = as.factor(SID),
-         week = as.factor(week))
-
-Sal_EST_final2 <- Sal_EST_final2 %>% 
-  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
-  left_join(.,decisions_EST,by="SID") %>%
-  mutate(sal_EST = ifelse(grepl('\\?',Mean), Decision,Mean)) %>%
-  mutate(sal_EST = round(as.numeric(sal_EST),3)) %>%
-  select(SID,sal_EST) %>%
-  filter(!is.na(SID)) %>%
-  separate(SID, into =c("SID","week")) %>%
-  mutate(SID = str_pad(SID, 3, pad = "0")) %>%
-  mutate(SID = as.factor(SID),
-         week = as.factor(week))
-
-Sal_DHEA_final <- rbind(Sal_DHEA_final1,Sal_DHEA_final2)
-Sal_TEST_final <- rbind(Sal_TEST_final1,Sal_TEST_final2)
-Sal_EST_final <- rbind(Sal_EST_final1,Sal_EST_final2)
-
-Saliva <- Sal_DHEA_final %>% full_join(.,Sal_TEST_final) %>% full_join(.,Sal_EST_final) %>% 
-  mutate(ID = paste(SID,week,sep="_")) %>% 
-  filter(SID %in% overview$SID)
-
+  
 #remove
 rm(list = ls()[grepl("check", ls())])
-rm(list = ls()[grepl("final", ls())])
 rm(list = ls()[grepl("decisions", ls())])
 ```
 
