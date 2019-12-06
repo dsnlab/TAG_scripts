@@ -8,7 +8,7 @@ output: html_document
 #!!!!!!!!!!
 #NOTE: before you begin - please do not re-run the imputation models. As this will obviously change the final hormone values ever-so-slightly, which we want to keep consistent across papers!! Instead, please load in the workspace from '/Volumes/psych-cog/dsnlab/TAG/behavior/Puberty/Saliva/Wave1/TAG_W1_Saliva.RData'
 
-#step1: import "final" mean concentrations, edit "????" based on raw concentrations (i.e. too low or too high for assay). and also based on other samples provided by the participant.
+#step1: import "final" mean concentrations, edit undetectables based on raw concentrations (i.e. too low or too high for assay). and also based on other samples provided by the participant.
 
 #step2: examine all repeats (re-runs) and make decision on whether to use original mean or repeat mean. edit "final" mean concentrations accordingly.
 
@@ -70,7 +70,7 @@ decisions <- read_xlsx(paste0(saliva_dir,'/TAG_W2_Saliva_decisions.xlsx'), sheet
 decisions <- decisions %>% mutate(SID = as.factor(round(as.numeric(ID),2)))
 
 #format imported DFs, update with decisions, create SID as 3 digit numeric factor (i.e. "001"). 
-Sal_final <- master_check %>% 
+Saliva <- master_check %>% 
   mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
   left_join(.,decisions,by=c("SID","Sample")) %>%
   mutate(sal_DHEA = ifelse(grepl('<',DHEA), Decision,DHEA)) %>%
@@ -251,11 +251,11 @@ win_plot
 
 ###CREATE DF OF SALIVA CONC AND FORMS
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
-control <- read.csv(paste0(saliva_dir,'/TAG_W1_at_home_saliva_overview.csv'))
+control <- read.csv(paste0(saliva_dir,'/TAG_W2_at_home_saliva_overview.csv'))
 control <- control %>% 
-  mutate(SID=gsub("[^0-9\\.]", "", subject_spit_id)) %>%
+  mutate(SID=gsub("[^0-9\\.]", "", subjectspitid)) %>%
   mutate(SID = as.factor(SID)) %>%
-  select(SID, s1_complete, s1_doc, s1_wake_up_time, s1_start_time, s1_time_to_collect, s1_medicines_y_n, s1_sick_y_n, s2_complete, s2_doc, s2_wake_up_time, s2_start_time, s2_time_to_collect, s2_medicines_y_n, s2_sick_y_n, s3_complete, s3_doc, s3_wake_up_time, s3_start_time, s3_time_to_collect, s3_medicines_y_n, s3_sick_y_n, s4_complete, s4_doc, s4_wake_up_time, s4_start_time, s4_time_to_collect, s4_medicines_y_n, s4_sick_y_n, s5_complete, s5_doc, s5_wake_up_time, s5_start_time, s5_time_to_collect, s5_medicines_y_n, s5_sick_y_n, s6_complete, s6_doc, s6_wake_up_time, s6_start_time, s6_time_to_collect, s6_medicines_y_n, s6_sick_y_n, s7_complete, s7_doc, s7_wake_up_time, s8_wake_up_time, s7_start_time, s7_time_to_collect, s7_medicines_y_n, s7_sick_y_n, s8_complete, s8_doc, s8_time_to_collect, s8_medicines_y_n, s8_sick_y_n) %>% 
+  select(SID, s1_complete, s1_doc, s1_wake_up_time, s1_start_time, s1_time_to_collect, s1_medicines_y_n, s1_sick_y_n, s2_complete, s2_doc, s2_wake_up_time, s2_start_time, s2_time_to_collect, s2_medicines_y_n, s2_sick_y_n, s3_complete, s3_doc, s3_wake_up_time, s3_start_time, s3_time_to_collect, s3_medicines_y_n, s3_sick_y_n, s4_complete, s4_doc, s4_wake_up_time, s4_start_time, s4_time_to_collect, s4_medicines_y_n, s4_sick_y_n, s5_complete, s5_doc, s5_wake_up_time, s5_start_time, s5_time_to_collect, s5_medicines_y_n, s5_sick_y_n, s6_complete, s6_doc, s6_wake_up_time, s6_start_time, s6_time_to_collect, s6_medicines_y_n, s6_sick_y_n, s7_complete, s7_doc, s7_wake_up_time, s8_wake_up_time, s7_start_time, s7_time_to_collect, s7_medicines_y_n, s7_sick_y_n) %>% 
   filter(!SID=="") 
 
 control <- gather(control, weeks, measurement, -SID) %>%
@@ -264,15 +264,15 @@ control <- gather(control, weeks, measurement, -SID) %>%
   mutate(week=gsub("[^0-9\\.]", "", week)) %>%
   mutate(ID = paste0(SID,'_',week))
 
-#import and format med "full" dataset
-control_meds <- read.csv('~/Desktop/TAG_W1_Saliva_meds_processed_full.csv')
+#import and format med "full" dataset ##NEED TO CREATE THIS FILE!!
+control_meds <- read.csv('~/Desktop/TAG_W2_Saliva_meds_processed_full.csv')
 
 control_meds <- control_meds %>% mutate(SID=gsub("[^0-9\\.]", "", TAGID)) %>% 
   select(-contains("taken")) %>% 
   replace_na(list(s1_medcode1 = 0,s1_medcode2 = 0,s2_medcode1 = 0,s2_medcode2 = 0,
                   s3_medcode1 = 0,s3_medcode2 = 0,s4_medcode1 = 0,s4_medcode2 = 0,
                   s5_medcode1 = 0,s5_medcode2 = 0,s6_medcode1 = 0,s6_medcode2 = 0,
-                  s7_medcode1 = 0,s7_medcode2 = 0,s8_medcode1 = 0,s8_medcode2 = 0)) %>%
+                  s7_medcode1 = 0,s7_medcode2 = 0)) %>%
   mutate(s1_medcode1 = ifelse(is.na(s1_medicines_y_n),NA,s1_medcode1),
          s1_medcode2 = ifelse(is.na(s1_medicines_y_n),NA,s1_medcode2),
          s2_medcode1 = ifelse(is.na(s2_medicines_y_n),NA,s2_medcode1),
@@ -286,9 +286,7 @@ control_meds <- control_meds %>% mutate(SID=gsub("[^0-9\\.]", "", TAGID)) %>%
          s6_medcode1 = ifelse(is.na(s6_medicines_y_n),NA,s6_medcode1),
          s6_medcode2 = ifelse(is.na(s6_medicines_y_n),NA,s6_medcode2),  
          s7_medcode1 = ifelse(is.na(s7_medicines_y_n),NA,s7_medcode1),
-         s7_medcode2 = ifelse(is.na(s7_medicines_y_n),NA,s7_medcode2),
-         s8_medcode1 = ifelse(is.na(s8_medicines_y_n),NA,s8_medcode1),
-         s8_medcode2 = ifelse(is.na(s8_medicines_y_n),NA,s8_medcode2)) %>% 
+         s7_medcode2 = ifelse(is.na(s7_medicines_y_n),NA,s7_medcode2)) %>% 
   right_join(.,overview) %>% 
   select(-TAGID,-W1S2_Completed,-Withdrawn_W1,-Exclusionary_Withdrawl) %>%
   gather(code,use,-SID) %>%
@@ -321,7 +319,7 @@ control_meds <- control_meds %>% select(-`code_-9`,-code_NA,-code_0) %>%
   mutate(SID = as.factor(SID), week = as.factor(week))
 
 #import and format days that saliva samples were provided
-control_days <- read.csv(paste0(saliva_dir,'/TAG_W1_Saliva_sample_dates.csv'))
+control_days <- read.csv(paste0(saliva_dir,'/TAG_W2_Saliva_dates.csv'))
 control_days <- control_days %>% mutate(week = gsub("[^0-9\\.]","",week)) %>% 
   filter(!week=="") %>% 
   mutate(SID = str_pad(SID, 3, pad="0"), 
@@ -329,18 +327,17 @@ control_days <- control_days %>% mutate(week = gsub("[^0-9\\.]","",week)) %>%
          day = as.factor(day))
 
 #import puberty and age for imputation of time variables
-puberty <- read.csv(paste0(puberty_dir,'/TAG_W1_PubertyComposite.csv'))
+puberty <- read.csv(paste0(puberty_dir,'/TAG_W2_PubertyComposite.csv'))
 puberty <- puberty %>% select(SID,PUBcomp) %>% mutate(SID = str_pad(SID, 3, pad="0"))
 
-age <- read.xlsx(paste0(age_dir,'/TAG_W1W2_DOB_SessionDates.xlsx'), sheetIndex=1)
+age <- read.xlsx(paste0(age_dir,'/TAG_Age.xlsx'), sheetIndex=1)
 age <- age %>% mutate(SID=str_replace(TAG_ID,"TAG","")) %>% 
   filter(!is.na(SID)) %>%
-  mutate(ageS1 = round((W1S1_Date - DOB)/365,3),
-         ageS2 = round((W1S2_Date - DOB)/365,3)) %>%
-  mutate(ageS2 = as.numeric(ageS2)) %>%
+  filter(wave==2 & session==2) %>%
+  rename(ageS2=age_excel)
   select(SID,ageS2)
 
-#join control variables and make them into appropriate factors - R seems to import time variables (i.e. waking time and colleciton[aka start] time) with today's date. But this is fine, because all data has the same "date", which is removed when centering. In order to use time variables in imputation, I converted the them to numeric. This still maintains variability between participants, but is in a more usable format.
+#join control variables and make them into appropriate factors - R seems to import time variables (i.e. waking time and colleciton[aka start] time) with today's date. But this is fine, because all data has the same "date", which is removed when centering. In order to use time variables in imputation, I converted them to numeric. This still maintains variability between participants, but is in a more usable format.
 
 control <- control %>% left_join(.,control_meds) %>% left_join(.,control_days) %>% left_join(.,age) %>% left_join(.,puberty)
 
@@ -770,14 +767,14 @@ Saliva <- Saliva %>% rename(completed_form = complete,
                             medcode_yn = meds,
                             sample_date = sample,
                             interval_priorsample = interval)
-write.csv(Saliva,paste0(saliva_dir,'/TAG_W1_Saliva_processed.csv'),row.names=F)
+write.csv(Saliva,paste0(saliva_dir,'/TAG_W2_Saliva_processed.csv'),row.names=F)
 
 #save basal concentrations
 Saliva_basal <- Saliva_basal %>% select(-grp) 
-write.csv(Saliva_basal,paste0(saliva_dir,'/TAG_W1_Saliva_basalestimates.csv'),row.names=F)
+write.csv(Saliva_basal,paste0(saliva_dir,'/TAG_W2_Saliva_basalestimates.csv'),row.names=F)
 
 #save workspace
-save.image(paste0(saliva_dir,"/TAG_W1_Saliva.RData"))
+save.image(paste0(saliva_dir,"/TAG_W2_Saliva.RData"))
 ```
 
 ###-------------------------------TBC------------------------------------###
