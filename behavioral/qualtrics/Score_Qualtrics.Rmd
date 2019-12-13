@@ -5,10 +5,6 @@ date: "9 July 2019"
 output: html_document
 ---
 
-```{r}
-
-```
-
 Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
@@ -170,7 +166,7 @@ print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("
 
 Load and clean redcap info
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
-redcapData <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_dates_20190708.csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
+redcapData <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_dates_20191213.csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
   # filter(!grepl("wave_2",redcap_event_name))
 redcapData_dob<-redcapData %>%
   select(dob,subject_spit_id) %>%
@@ -193,7 +189,7 @@ rm(redcapData_dob,redcapData,redcapData_sessiondates)
 
 Configure anthro information
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
-redcap_anthro <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_anthro_20190708.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
+redcap_anthro <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_anthro_20191213.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
   filter(!anthro_doc=="") %>%
   extract(redcap_event_name, c('wave'), 'wave_([\\d]).*') %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
@@ -267,7 +263,7 @@ rm(waist_graph,heights_graph,weights_graph,redcap_anthro,anthro_change_graph)
 
 ONLY RUN IF Prepping for NDA Submission: Prepare GUIDs
 ```{r, eval=FALSE, include=FALSE}
-redcap_NDA_info <- read.csv(paste0(workdir,"RDoCdb/Confidential/redcap_nda_consent_20190708.csv"),
+redcap_NDA_info <- read.csv(paste0(workdir,"RDoCdb/Confidential/redcap_nda_consent_20191213.csv"),
                             header = TRUE,
                             stringsAsFactors = FALSE)
 
@@ -564,16 +560,10 @@ part2<-colnames(ndar_subject_df)
 part3<-as.matrix(ndar_subject_df)
 colnames(part3)<-NULL
 together<-rbind(ndar_subject_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jul2019/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/dec2019/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
 ```
 
-
-Modified Answers
-```{r}
-mod_df <- read.csv(paste0(workdir, "Questionnaires/Modified_Answers.csv"))
-
-```
 
 Prep for Export
 ```{r}
@@ -701,6 +691,20 @@ BFI10_Wave2_totals_graph<-ggplot(BFI10_Wave2_totals, aes(x=value, colour=item)) 
   geom_density(alpha=.3)+
   ggtitle(paste0("BFI Wave2 total for ",length(BFI10_Wave2_outdf$tagid[!is.na(BFI10_Wave2_outdf$tagid)])," participants"))
 
+BFI10_Wave3_totals<-BFI10_Wave3_outdf %>%
+  select(tagid,BFI10_neuro_total,BFI10_open_total,BFI10_consc_total,BFI10_agree_total,BFI10_extra_total) %>%
+  mutate(Neuroticism=BFI10_neuro_total,
+         Opennes=BFI10_open_total,
+         Conscientiousness=BFI10_consc_total,
+         Agreeableness=BFI10_agree_total,
+         Extraversion=BFI10_extra_total) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("BFI10",item))
+
+BFI10_Wave3_totals_graph<-ggplot(BFI10_Wave3_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("BFI Wave2 total for ",length(BFI10_Wave3_outdf$tagid[!is.na(BFI10_Wave3_outdf$tagid)])," participants"))
+
 BFI10_Wave1_means<-BFI10_Wave1 %>%
   select(tagid,BFI10_neuro_mean,BFI10_open_mean,BFI10_consc_mean,BFI10_agree_mean,BFI10_extra_mean) %>%
   mutate(Neuroticism=BFI10_neuro_mean,
@@ -748,7 +752,7 @@ part2<-colnames(ndar_bfi10_data)
 part3<-as.matrix(ndar_bfi10_data)
 colnames(part3)<-NULL
 together<-rbind(bfi10_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jul2019/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/dec2019/bfi1001.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(BFI10,BFI10_Wave1,BFI10_Wave1_means,BFI10_Wave1_means_graph,BFI10_Wave1_totals,BFI10_Wave1_totals_graph,
    bfi10_df_header,bfi10_temp,bfi10_temp_df,part3,part2,together)
 ```
