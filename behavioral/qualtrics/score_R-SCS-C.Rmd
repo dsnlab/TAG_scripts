@@ -5,7 +5,39 @@ date: "9 May 2019"
 output: html_document
 ---
 
+General setup
+```{r set params}
+# set these parameters for regular script use
+datadir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/'
+scriptsdir <- '~/projects/dsnlab/TAG/TAG_scripts/'
+up_to_this_date <- "20190708" # on CAS in behavior/Questionnaires/RDOC/Confidential there are two files from redcap that should be labeled with the same date, e.g., redcap_anthro_20190405.csv and redcap_dates_20190509.csv. the data that you are pulling includes subjects up to this date for anthro and zip code (but for the other data? sam is not sure)
+rereun_data_cleaning <- FALSE # default is TRUE, such that get_cleaned_survey_data and get_redcap_cleaned is re-run each time. if you are confident that you have the most up to date cleaned_survey_data, then set to FALSE
+# set these parameters for submitting nda data
+rerun_rdoc_cleaning <- TRUE # default is FALSE, unless you are submitting NDA/rdoc do not set to TRUE
+up_to_this_month <- "may2019" # Do NOT change unless submitting NDA data. First 3 letters of the month, no space, and then the full year. if you are submitting to nda/rdoc, it should be identical in month to the "up_to_this_date" variable above; otherwise the default is "may2019"
 ```
+
+```{r get needed dataframes}
+# get cleaned_survey_data and redcap_cleaned
+if (rereun_data_cleaning == TRUE){
+  source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
+  cleaned_survey_data  <- get_cleaned_survey_data(datadir, scriptsdir)
+  redcap_cleaned <- get_redcap_cleaned(datadir, up_to_this_date)
+  cleaned_replaced_survey_data <- replace_values(datadir, cleaned_survey_data)
+} else if (rereun_data_cleaning == FALSE){
+  cleaned_survey_data <- readRDS(paste0(datadir, "Questionnaires/cleaned_survey_data.rds"))
+  redcap_cleaned <- readRDS(paste0(datadir, "Questionnaires/redcap_cleaned.rds"))
+}
+# write guids and get ndar_key
+if (rerun_rdoc_cleaning == TRUE){
+  source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
+  write_guids_to_csv(datadir, up_to_this_date)
+  ndar_key <- get_ndar_key(datadir, cleaned_survey_data, redcap_cleaned, up_to_this_month)
+} else if (rerun_rdoc_cleaning == FALSE){
+  ndar_key <- read.csv(paste0(datadir,"RDoCdb/output/", up_to_this_month, "/ndar_subject01.csv"))
+}
+```
+
 Prepare R-SCS-C
 #NOTE: No total score calculated for this questionnaire
 ```{r}
@@ -23,10 +55,10 @@ RSCS<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
                   select(tagid, sa_date, sb_date, dob),by="tagid")
 if (length(RSCS$tagid) == length(unique(RSCS$tagid))){
-  print("No duplicate TAGIDs in data")
-} else {
-  print("DUPLICATE TAGIDs in data")
-}
+  print("No duplicate TAGIDs in data") }
+else {
+  print("DUPLICATE TAGIDs in data")}
+
 TAG023_special<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
                             mutate(value=as.numeric(value)) %>% 
                             filter(!is.na(value)) %>%
@@ -41,10 +73,10 @@ TAG023_special<-left_join(filter(cleaned_survey_data, grepl("R_SCS",item)) %>%
 RSCS <- bind_rows(RSCS %>% filter(!tagid=="TAG023"),TAG023_special)
 
 if (length(RSCS$tagid) == length(unique(RSCS$tagid))){
-  print("No duplicate TAGIDs in data")
-} else {
-  print("DUPLICATE TAGIDs in data")
-}
+  print("No duplicate TAGIDs in data")}
+ else {
+  print("DUPLICATE TAGIDs in data")}
+  
 RSCS_Wave1<-left_join(RSCS,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>%
@@ -66,6 +98,7 @@ RSCS_Wave1<-left_join(RSCS,survey_date, by = c("tagid","survey_name")) %>%
          RSCS_privatesc_mean=rowMeans(cbind(R_SCS_C_4,R_SCS_C_5,R_SCS_C_6,R_SCS_C_8,R_SCS_C_9,R_SCS_C_11,R_SCS_C_20,
                                             R_SCS_C_22,R_SCS_C_23,R_SCS_C_24,R_SCS_C_27), na.rm=T),
          RSCS_socanx_mean=rowMeans(cbind(R_SCS_C_13,R_SCS_C_17,R_SCS_C_18,R_SCS_C_19,R_SCS_C_25,R_SCS_C_26,R_SCS_C_29), na.rm=T))
+
 ## Save it
 RSCS_Wave1_outdf <- RSCS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
 write.csv(RSCS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/RSCS_Wave1.csv"))
@@ -73,7 +106,10 @@ RSCS_Wave2_outdf <- RSCS_Wave1 %>% filter(grepl("W2",survey_name))
 write.csv(RSCS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/RSCS_Wave2.csv"))
 RSCS_Wave3_outdf <- RSCS_Wave1 %>% filter(grepl("W3",survey_name)) 
 write.csv(RSCS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/RSCS_Wave3.csv"))
+```
+
 ## Everything after this line has not been checked
+```{r}
 ## Graph it
 RSCS_Wave1_totals<-RSCS_Wave1 %>%
   select(tagid,RSCS_publicsc_total,RSCS_privatesc_total,RSCS_socanx_total) %>%
@@ -95,6 +131,7 @@ RSCS_Wave1_means<-RSCS_Wave1 %>%
 RSCS_Wave1_means_graph<-ggplot(RSCS_Wave1_means, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
   ggtitle(paste0("RSCS means for ",length(unique(RSCS_Wave1$tagid))," participants"))
+
 ## Make RDOC ready file
 ndar_rscs_data <- left_join(RSCS_Wave1,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
