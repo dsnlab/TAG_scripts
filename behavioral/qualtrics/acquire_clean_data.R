@@ -327,7 +327,10 @@ get_redcap_cleaned <- function(datadir, up_to_this_date){
   redcap_cleaned$dob <- as.character(redcap_cleaned$dob)
   
   saveRDS(redcap_cleaned, file = paste0(datadir, "Questionnaires/redcap_cleaned.rds"))
-  return(redcap_cleaned)
+  saveRDS(survey_date, file = paste0(datadir, "Questionnaires/survey_date.rds"))
+  
+  redcap_cleaned_and_survey_date = list(redcap_cleaned, survey_date)
+  return(redcap_cleaned_and_survey_date)
 }
 
 
