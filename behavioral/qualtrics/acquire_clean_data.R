@@ -595,3 +595,36 @@ replace_values <- function(datadir, cleaned_survey_data){
   saveRDS(cleaned_replaced_survey_data, file = paste0(datadir, "Questionnaires/cleaned_replaced_survey_data.rds"))
   return(cleaned_replaced_survey_data)
 }
+
+
+
+manual_replacement <- function(datadir, questionnaire_name){
+  manual_replacement <- read.csv(paste0(datadir, "Qualtrics_and_MRI_Issues/Qualtrics_and_MRI_Issues.csv")) %>% 
+    filter(!is.na(discarded_value))
+  manual_replacement$tagid <- as.character(manual_replacement$tagid) 
+  manual_replacement$survey_name <- as.character(manual_replacement$survey_name)
+  manual_replacement$item <- as.character(manual_replacement$item)
+  manual_replacement$item[startsWith(manual_replacement$item, "CTQ")] <- paste0(manual_replacement$item[startsWith(manual_replacement$item, "CTQ")], "..1") # for CTQ items, add "..1" to the end of the manual replacements, because that's what the cleaned survey data look like
+  
+  manual_replacement_ftq <- filter(manual_replacement, stringr::str_detect(manual_replacement$item, paste0("^", questionnaire_name))) # ftq = "for this questionnaire
+  
+  # a lot of the manual replacements are for CTQ, which are CTQ_## appended by "..1", so figure out how to get that to match
+  for (i in 1:nrow(manual_replacement_ftq)){ #
+    idx = which(cleaned_survey_data$tagid == manual_replacement_ftq$tagid[i] & 
+                  (cleaned_survey_data$survey_name == manual_replacement_ftq$survey_name[i] |  cleaned_survey_data$survey_name == manual_replacement_ftq$survey_name_alt[i]) & 
+                  cleaned_survey_data$item == manual_replacement_ftq$item[i])
+    
+    if (length(idx) == 1){  
+      cleaned_survey_data[idx, ]$value = manual_replacement_ftq$kept_value[i] # otherwise, replace with the correct value
+    } else if (length(idx) == 0) {
+      # one common problem is that the survey_name was entered incorrectly in manual replacements. uncommenting this piece of code will help you check what survey_names participants took, so that you can see if they match
+      # filter(cleaned_survey_data, (tagid == "INDICATE_TAGID_HERE")) %>% distinct(survey_name)
+      print("Problematic: One of the manual replacements indicated is NOT being made, because it doesn't match the data. Check the entry for typos, including extra spaces. Use filter(cleaned_survey_data, (tagid == \"INDICATE_TAGID_HERE\")) %>% distinct(survey_name)\" to see the names of surveys taken by the subject in question.")
+      print(paste0("There are no entries matching ", manual_replacement_ftq$survey_name[i], " for ", manual_replacement_ftq$tagid[i], " for the following item: ", manual_replacement_ftq$item[i]))
+    } else if (length(idx) > 1) {
+      print(paste0("There is more than one entry matching ", manual_replacement_ftq$survey_name[i], " for ", manual_replacement_ftq$tagid[i], " for the following item: ", manual_replacement_ftq$item[i], ". This is not necessarily problematic. Some subjects took a questionnaire >1x; this will replace all instances with the kept_value specified in the csv file.")) 
+    }
+  }
+
+  return(cleaned_survey_data)
+}
