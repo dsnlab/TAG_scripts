@@ -3,7 +3,47 @@ title: "PANAS-C"
 date: "9 May 2019"
 output: html_document
 ---
+General setup
+```{r set params}
+## Load required packages ##
+packages <- c("dplyr", "tidyr", "lubridate")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+    install.packages(setdiff(packages, rownames(installed.packages())))  
+  }
+lapply(packages, library, character.only = TRUE)
+
+# set these parameters for regular script use
+questionnaire_name <- 'PANAS-C'
+datadir <- 'Y:/dsnlab/TAG/behavior/'
+scriptsdir <- '~/projects/dsnlab/TAG/TAG_scripts/'
+up_to_this_date <- "20191213" # on CAS in behavior/Questionnaires/RDOC/Confidential there are two files from redcap that should be labeled with the same date, e.g., redcap_anthro_20190405.csv and redcap_dates_20190509.csv. the data that you are pulling includes subjects up to this date for anthro and zip code (but for the other data? sam is not sure)
+rereun_data_cleaning <- TRUE # default is TRUE, such that get_cleaned_survey_data and get_redcap_cleaned is re-run each time. if you are confident that you have the most up to date cleaned_survey_data, then set to FALSE
+# set these parameters for submitting nda data
+rerun_rdoc_cleaning <- FALSE # default is FALSE, unless you are submitting NDA/rdoc do not set to TRUE
+up_to_this_month <- "may2019" # Do NOT change unless submitting NDA data. First 3 letters of the month, no space, and then the full year. if you are submitting to nda/rdoc, it should be identical in month to the "up_to_this_date" variable above; otherwise the default is "may2019"
 ```
+
+```{r get needed dataframes}
+# get cleaned_survey_data and redcap_cleaned
+if (rereun_data_cleaning == TRUE){
+  source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
+  cleaned_survey_data  <- get_cleaned_survey_data(datadir, scriptsdir)
+  redcap_cleaned <- get_redcap_cleaned(datadir, up_to_this_date)
+  cleaned_replaced_survey_data <- replace_values(datadir, cleaned_survey_data)
+} else if (rereun_data_cleaning == FALSE){
+  cleaned_survey_data <- readRDS(paste0(datadir, "Questionnaires/cleaned_survey_data.rds"))
+  redcap_cleaned <- readRDS(paste0(datadir, "Questionnaires/redcap_cleaned.rds"))
+}
+# write guids and get ndar_key
+if (rerun_rdoc_cleaning == TRUE){
+  source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
+  write_guids_to_csv(datadir, up_to_this_date)
+  ndar_key <- get_ndar_key(datadir, cleaned_survey_data, redcap_cleaned, up_to_this_month)
+} else if (rerun_rdoc_cleaning == FALSE){
+  ndar_key <- read.csv(paste0(datadir,"RDoCdb/output/", up_to_this_month, "/ndar_subject01.csv"))
+}
+```
+
 Prepare PANAS-C
 ```{r}
 PANAS<-left_join(filter(cleaned_survey_data, grepl("PANAS",item)) %>%
@@ -41,8 +81,11 @@ PANAS_Wave2_outdf <- PANAS_Wave1 %>% filter(grepl("W2",survey_name))
 write.csv(PANAS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PANAS_Wave2.csv"))
 PANAS_Wave3_outdf <- PANAS_Wave1 %>% filter(grepl("W3",survey_name)) 
 write.csv(PANAS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/PANAS_Wave3.csv"))
+```
+
 ## Anything below this line has not been checked
 ## Graph it
+```{r}
 PANAS_Wave1_totals<-PANAS_Wave1 %>%
   select(tagid,PANAS_pos_total,PANAS_neg_total) %>%
   mutate(Positive_Affect=PANAS_pos_total,
@@ -70,7 +113,9 @@ PANAS_Wave1_cor_graph<-ggplot(PANAS_Wave1, aes(x=PANAS_neg_mean,y=PANAS_pos_mean
                  " Wave 1 participants. r = ",
                  round(cor.test(x = PANAS_Wave1$PANAS_pos_mean,y=PANAS_Wave1$PANAS_neg_mean,use=na.or.complete)[[4]],3)," p = ",
                  cor.test(x=PANAS_Wave1$PANAS_pos_mean,y=PANAS_Wave1$PANAS_neg_mean,use=na.or.complete)[[3]]))
+```
 ## Make RDOC ready file
+```{r}
 ndar_panas_data <- left_join(PANAS_Wave1,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
   filter(!is.na(survey_date),!survey_date=="") %>%
   mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
