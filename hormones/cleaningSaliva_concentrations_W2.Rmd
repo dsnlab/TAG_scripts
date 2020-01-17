@@ -34,8 +34,6 @@ saliva_dir <- paste0(cas_dir,'behavior/Puberty/Saliva/Wave2')
 ```{r, include = F}
 #import "overview" document so that we can filter analyses to subjects that were not excluded
 
-library(readxl)
-library(dplyr)
 overview <- read_excel(paste0(cas_dir,'behavior/Overview/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'), 
     sheet = "Overview")
 
