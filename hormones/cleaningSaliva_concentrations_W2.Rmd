@@ -15,7 +15,7 @@ output: html_document
 ```{r, include=FALSE}
 #LOAD PACKAGES AND SET DIRECTORIES
 
-packages <- c("Amelia", "lme4" , "merTools", "ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx","jomo","mice","Hmisc","DescTools", )
+packages <- c("Amelia", "lme4" , "merTools", "ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx","jomo","mice","Hmisc","DescTools")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
