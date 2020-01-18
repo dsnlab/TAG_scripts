@@ -23,7 +23,7 @@ lapply(packages, library, character.only = TRUE)
 
 options(digits=10)
 
-cas_dir <- 'Z:/dsnlab/TAG/'
+cas_dir <- 'Y:/dsnlab/TAG/'
 saliva_dir <- paste0(cas_dir,'behavior/Puberty/Saliva/Wave2')
 #med_dir <- paste0(cas_dir,'behavior/Medications')
 #age_dir <- paste0(cas_dir,'behavior/Demographics/Age')
@@ -66,22 +66,33 @@ decisions <- read_xlsx(paste0(saliva_dir,'/TAG_W2_Saliva_decisions.xlsx'), sheet
 decisions <- decisions %>% mutate(SID = as.factor(round(as.numeric(ID),2)))
 
 #format imported DFs, update with decisions, create SID as 3 digit numeric factor (i.e. "001"). 
-#!!!creates conflict for one sample with undetectables in 2 hormones
-Saliva <- master_check %>% 
-  mutate(SID = as.factor(round(as.numeric(ID),2))) %>%
-  left_join(.,decisions,by=c("SID","Sample")) %>%
+#Hormones separated here to deal with samples with undetectables in multiple hormones
+master_DHEA <- master %>% dplyr::select(ID,Sample,Collection_date,DHEA)
+master_EST <- master %>% dplyr::select(ID,Sample,Collection_date,Estradiol)
+master_TEST <- master %>% dplyr::select(ID,Sample,Collection_date,Testosterone)
+Saliva_DHEA <- master_DHEA %>% 
+  left_join(.,decisions[decisions$Hormone=="DHEA",],by=c("ID","Sample")) %>%
   mutate(sal_DHEA = ifelse(grepl('<',DHEA), Decision,DHEA)) %>%
   mutate(sal_DHEA = round(as.numeric(sal_DHEA),3)) %>%
+  dplyr::select(ID,Sample,Collection_date,sal_DHEA) %>%
+  filter(!is.na(ID))
+Saliva_EST <- master_EST %>% 
+  left_join(.,decisions[decisions$Hormone=="Estradiol",],by=c("ID","Sample")) %>%
   mutate(sal_EST = ifelse(grepl('<',Estradiol), Decision,Estradiol)) %>%
   mutate(sal_EST = round(as.numeric(sal_EST),3)) %>%
+  dplyr::select(ID,Sample,Collection_date,sal_EST) %>%
+  filter(!is.na(ID))
+Saliva_TEST <- master_TEST %>% 
+  mutate(SID = as.factor(sprintf("%03d", ID))) %>%
+  left_join(.,decisions[decisions$Hormone=="Tesosterone",],by=c("ID","Sample")) %>%
   mutate(sal_TEST = ifelse(grepl('<',Testosterone), Decision,Testosterone)) %>%
   mutate(sal_TEST = round(as.numeric(sal_TEST),3)) %>%
-  dplyr::select(SID,Sample,sal_DHEA,sal_TEST,sal_EST) %>%
-  filter(!is.na(SID))
-  
-#remove
-rm(list = ls()[grepl("check", ls())])
-rm(list = ls()[grepl("decisions", ls())])
+  dplyr::select(ID,Sample,Collection_date,sal_TEST) %>%
+  filter(!is.na(ID))
+
+Saliva <- Saliva_DHEA %>% full_join(.,Saliva_TEST) %>% full_join(.,Saliva_EST) %>% 
+  mutate(SID = as.factor(sprintf("%03d", ID))) %>%
+  filter(SID %in% overview$SID)
 ```
 
 ###FINAL MEAN CONCENTRATIONS & DISTRIBUTIONS
@@ -123,96 +134,94 @@ log_plot
 ```{r}
 #this section provided by MB and Johnny
 #set outlier limits for winsoring
+DHEA_up_limit <- (mean(Saliva$sal_DHEA_conc_ln,na.rm=T) + 3*(sd(Saliva$sal_DHEA_conc_ln,na.rm=T)))
+DHEA_lo_limit <- (mean(Saliva$sal_DHEA_conc_ln,na.rm=T) - 3*(sd(Saliva$sal_DHEA_conc_ln,na.rm=T)))
+DHEA_lo_limit <- ifelse(DHEA_lo_limit<0, 0, DHEA_lo_limit)
 TEST_up_limit <- (mean(Saliva$sal_TEST_conc_ln,na.rm=T) + 3*(sd(Saliva$sal_TEST_conc_ln,na.rm=T)))
 TEST_lo_limit <- (mean(Saliva$sal_TEST_conc_ln,na.rm=T) - 3*(sd(Saliva$sal_TEST_conc_ln,na.rm=T)))
 TEST_lo_limit <- ifelse(TEST_lo_limit<0, 0, TEST_lo_limit)
-
 EST_up_limit <- (mean(Saliva$sal_EST_conc_ln,na.rm=T) + 3*(sd(Saliva$sal_EST_conc_ln,na.rm=T)))
 EST_lo_limit <- (mean(Saliva$sal_EST_conc_ln,na.rm=T) - 3*(sd(Saliva$sal_EST_conc_ln,na.rm=T)))
 EST_lo_limit <- ifelse(EST_lo_limit<0, 0, EST_lo_limit)
 
-DHEA_up_limit <- (mean(Saliva$sal_DHEA_conc_ln,na.rm=T) + 3*(sd(Saliva$sal_DHEA_conc_ln,na.rm=T)))
-DHEA_lo_limit <- (mean(Saliva$sal_DHEA_conc_ln,na.rm=T) - 3*(sd(Saliva$sal_DHEA_conc_ln,na.rm=T)))
-DHEA_lo_limit <- ifelse(DHEA_lo_limit<0, 0, DHEA_lo_limit)
-
 #Prep data & plot outliers
-hist(Saliva$sal_EST_conc_ln, main="", xlab="EST")
-abline(v=EST_up_limit,col="red")
-abline(v=EST_lo_limit,col="red")
-hist(Saliva$sal_TEST_conc_ln, main="", xlab="TEST")
-abline(v=TEST_up_limit,col="red")
-abline(v=TEST_lo_limit,col="red")
 hist(Saliva$sal_DHEA_conc_ln, main="", xlab="DHEA")
 abline(v=DHEA_up_limit,col="red")
 abline(v=DHEA_lo_limit,col="red")
+hist(Saliva$sal_TEST_conc_ln, main="", xlab="TEST")
+abline(v=TEST_up_limit,col="red")
+abline(v=TEST_lo_limit,col="red")
+hist(Saliva$sal_EST_conc_ln, main="", xlab="EST")
+abline(v=EST_up_limit,col="red")
+abline(v=EST_lo_limit,col="red")
 
-#no DHEA outliers
+#yes DHEA lo outliers
 summary(Saliva$sal_DHEA_conc_ln)
-#yes TEST lo and hi outliers
+#yes TEST lo outliers
 summary(Saliva$sal_TEST_conc_ln)
 #yes EST hi outliers
 summary(Saliva$sal_EST_conc_ln)
-
 #Winsorize data with min and max values
-Saliva$sal_EST_conc_ln_w <- Winsorize(Saliva$sal_EST_conc_ln, minval = EST_lo_limit, maxval = EST_up_limit, na.rm = TRUE)
-Saliva$sal_TEST_conc_ln_w <- Winsorize(Saliva$sal_TEST_conc_ln, minval = TEST_lo_limit, maxval = TEST_up_limit, na.rm = TRUE)
 Saliva$sal_DHEA_conc_ln_w <- Winsorize(Saliva$sal_DHEA_conc_ln, minval = DHEA_lo_limit, maxval = DHEA_up_limit, na.rm = TRUE)
+Saliva$sal_TEST_conc_ln_w <- Winsorize(Saliva$sal_TEST_conc_ln, minval = TEST_lo_limit, maxval = TEST_up_limit, na.rm = TRUE)
+Saliva$sal_EST_conc_ln_w <- Winsorize(Saliva$sal_EST_conc_ln, minval = EST_lo_limit, maxval = EST_up_limit, na.rm = TRUE)
 
 #Code from here to end of chunk thank you to Johnny
-
 #identify the points that were changed to the min and max
 #(aka those points that are equal to the min and max but weren't before)
-
-cleaned_EST <- na.omit(Saliva$sal_EST_conc_ln_w)
-original_EST <- na.omit(Saliva$sal_EST_conc_ln)
-
-min_pts_EST <- which(cleaned_EST == min(cleaned_EST) & original_EST != min(cleaned_EST))
-max_pts_EST <- which(cleaned_EST == max(cleaned_EST) & original_EST != max(cleaned_EST))
-
+cleaned_DHEA <- na.omit(Saliva$sal_DHEA_conc_ln_w)
+original_DHEA <- na.omit(Saliva$sal_DHEA_conc_ln)
+min_pts_DHEA <- which(cleaned_DHEA == min(cleaned_DHEA) & original_DHEA != min(cleaned_DHEA))
+max_pts_DHEA <- which(cleaned_DHEA == max(cleaned_DHEA) & original_DHEA != max(cleaned_DHEA))
 cleaned_TEST <- na.omit(Saliva$sal_TEST_conc_ln_w)
 original_TEST <- na.omit(Saliva$sal_TEST_conc_ln)
-
 min_pts_TEST <- which(cleaned_TEST == min(cleaned_TEST) & original_TEST != min(cleaned_TEST))
 max_pts_TEST <- which(cleaned_TEST == max(cleaned_TEST) & original_TEST != max(cleaned_TEST))
-
-# NOTE: Rank-preserving changes below are only done for hi and lo TEST, and hi EST, values. The rest either didn't have any outliers.
-
+cleaned_EST <- na.omit(Saliva$sal_EST_conc_ln_w)
+original_EST <- na.omit(Saliva$sal_EST_conc_ln)
+min_pts_EST <- which(cleaned_EST == min(cleaned_EST) & original_EST != min(cleaned_EST))
+max_pts_EST <- which(cleaned_EST == max(cleaned_EST) & original_EST != max(cleaned_EST))
+# NOTE: Rank-preserving changes below are only done for lo TEST, lo DHEA and hi EST, values. The rest didn't have any outliers.
 # then rank them
 # rank will give you smallest -> largest ranks, 
 # so to get least-> most outlierish we just reverse min_ranks
 min_ranks_TEST <- rank(original_TEST[min_pts_TEST])
 min_ranks_TEST <- max(min_ranks_TEST) - min_ranks_TEST + 1
-max_ranks_TEST <- rank(original_TEST[max_pts_TEST])
+min_ranks_DHEA <- rank(original_DHEA[min_pts_DHEA])
+min_ranks_DHEA <- max(min_ranks_DHEA) - min_ranks_DHEA + 1
 max_ranks_EST <- rank(original_EST[max_pts_EST])
-
 # now you can replace them with whatever you want
 increment=0.01
-
+rank_preserving_DHEA <- cleaned_DHEA
+rank_preserving_DHEA[min_pts_DHEA] <- rank_preserving_DHEA[min_pts_DHEA]-(increment * min_ranks_DHEA)
 rank_preserving_TEST <- cleaned_TEST
 rank_preserving_TEST[min_pts_TEST] <- rank_preserving_TEST[min_pts_TEST]-(increment * min_ranks_TEST)
-rank_preserving_TEST[max_pts_TEST] <- rank_preserving_TEST[max_pts_TEST]+(increment * max_ranks_TEST)
-
 rank_preserving_EST <- cleaned_EST
 rank_preserving_EST[max_pts_EST] <- rank_preserving_EST[max_pts_EST]+(increment * max_ranks_EST)
-
 # check out what we did
+outliers_DHEA <- c(min_pts_DHEA, max_pts_DHEA)
+comparison_DHEA <- cbind(original_DHEA[outliers_DHEA],
+                         cleaned_DHEA[outliers_DHEA],
+                         rank_preserving_DHEA[outliers_DHEA])
 outliers_TEST <- c(min_pts_TEST, max_pts_TEST)
 comparison_TEST <- cbind(original_TEST[outliers_TEST],
                          cleaned_TEST[outliers_TEST],
                          rank_preserving_TEST[outliers_TEST])
-
 outliers_EST <- c(min_pts_EST, max_pts_EST)
 comparison_EST <- cbind(original_EST[outliers_EST],
                          cleaned_EST[outliers_EST],
                          rank_preserving_EST[outliers_EST])
-
 # reorder by the first column
+comparison_DHEA <- comparison_DHEA[order(comparison_DHEA[,1]),]
+comparison_DHEA <- as.data.frame(comparison_DHEA) %>% rename(sal_DHEA_conc_ln=V1,
+                                                             sal_DHEA_conc_ln_w=V2,
+                                                             sal_DHEA_conc_ln_w_r=V3)
+comparison_DHEA <- comparison_DHEA[!duplicated(comparison_DHEA), ]
 comparison_TEST <- comparison_TEST[order(comparison_TEST[,1]),]
 comparison_TEST <- as.data.frame(comparison_TEST) %>% rename(sal_TEST_conc_ln=V1,
                                                              sal_TEST_conc_ln_w=V2,
                                                              sal_TEST_conc_ln_w_r=V3)
 comparison_TEST <- comparison_TEST[!duplicated(comparison_TEST), ]
-
 comparison_EST <- comparison_EST[order(comparison_EST[,1]),]
 comparison_EST <- as.data.frame(comparison_EST) %>% rename(sal_EST_conc_ln=V1,
                                                            sal_EST_conc_ln_w=V2,
@@ -220,12 +229,14 @@ comparison_EST <- as.data.frame(comparison_EST) %>% rename(sal_EST_conc_ln=V1,
 comparison_EST <- comparison_EST[!duplicated(comparison_EST), ]
 
 Saliva <- Saliva %>% 
+  left_join(.,comparison_DHEA,by=c("sal_DHEA_conc_ln","sal_DHEA_conc_ln_w")) %>%
+  mutate(sal_DHEA_conc_ln_w = ifelse((!is.na(sal_DHEA_conc_ln_w_r)),sal_DHEA_conc_ln_w_r,sal_DHEA_conc_ln_w)) %>%
   left_join(.,comparison_TEST,by=c("sal_TEST_conc_ln","sal_TEST_conc_ln_w")) %>%
   mutate(sal_TEST_conc_ln_w = ifelse((!is.na(sal_TEST_conc_ln_w_r)),sal_TEST_conc_ln_w_r,sal_TEST_conc_ln_w)) %>%
   left_join(.,comparison_EST,by=c("sal_EST_conc_ln","sal_EST_conc_ln_w")) %>%
   mutate(sal_EST_conc_ln_w = ifelse((!is.na(sal_EST_conc_ln_w_r)),sal_EST_conc_ln_w_r,sal_EST_conc_ln_w)) %>%
-  select(-sal_TEST_conc_ln_w_r,-sal_EST_conc_ln_w_r)
-
+  dplyr::select(-sal_DHEA_conc_ln_w_r,-sal_TEST_conc_ln_w_r,-sal_EST_conc_ln_w_r)
+  
 ###CHECK FINAL SKEW AND KURTOSIS AFTER WINSORIZING
 skew(Saliva$sal_DHEA_conc_ln_w)
 skew(Saliva$sal_TEST_conc_ln_w)
@@ -233,14 +244,20 @@ skew(Saliva$sal_EST_conc_ln_w)
 kurtosi(Saliva$sal_DHEA_conc_ln_w)
 kurtosi(Saliva$sal_TEST_conc_ln_w)
 kurtosi(Saliva$sal_EST_conc_ln_w)
-
 #plot winsorized concentrations
-win_plot <- Saliva %>% select(SID, week, contains("conc_ln_w")) %>%
-  gather(., hormone, concentration_ln_w, -SID, -week, factor_key=TRUE) %>% 
+win_plot <- Saliva %>% dplyr::select(SID, Sample, contains("conc_ln_w")) %>%
+  gather(., hormone, concentration_ln_w, -SID, -Sample, factor_key=TRUE) %>% 
   ggplot(aes(x = concentration_ln_w)) +
   geom_histogram(color="black",fill="white") +
   facet_wrap(~ hormone, scales="free")
 win_plot
+```
+
+###SAVE SALIVA CONCENTRATIONS RAW
+```{r}
+
+write.csv(Saliva,paste0(saliva_dir,'/TAG_W2_Saliva_processed.csv'),row.names=F)
+
 ```
 
 ###THE REST OF THE SCRIPT EXAMINES HOW TO BEST CONTROL FOR EXTRANEOUS FACTORS AND CREATE A MEAN (BASAL) SALIVA CONCENTRATION
