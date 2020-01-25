@@ -25,7 +25,7 @@ options(digits=10)
 
 cas_dir <- 'Y:/dsnlab/TAG/'
 saliva_dir <- paste0(cas_dir,'behavior/Puberty/Saliva/Wave2')
-#med_dir <- paste0(cas_dir,'behavior/Medications')
+med_dir <- paste0(cas_dir,'behavior/Medications')
 #age_dir <- paste0(cas_dir,'behavior/Demographics/Age')
 #puberty_dir <- paste0(cas_dir,'behavior/Puberty/Questionnaires/Wave1')
 ```
@@ -59,7 +59,7 @@ master <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_W2_Master_File_clean.xlsx'), 
 
 
 #check entries with '<0.000' (left censored - in W2 there were no right censored values) listed in concentration columns. 
-master_check1 <- filter(master, grepl('<', DHEA) | grepl('<', Estradiol) | grepl('<', Testosterone))) 
+master_check1 <- filter(master, grepl('<', DHEA) | grepl('<', Estradiol) | grepl('<', Testosterone)) 
 
 #import decisions made by MEAB and MLB for undetectables 
 decisions <- read_xlsx(paste0(saliva_dir,'/TAG_W2_Saliva_decisions.xlsx'), sheet=1)
@@ -119,11 +119,11 @@ Saliva <- Saliva %>%
   mutate(conc_ln = log(conc + 4)) %>% 
   gather(., var, value, c(conc,conc_ln)) %>%
   mutate(var = paste0(hormone,'_',var)) %>%
-  select(-hormone) %>%
+  dplyr::select(-hormone) %>%
   spread(var,value) 
 
-log_plot <- Saliva %>% select(SID, week, contains("conc_ln")) %>%
-  gather(., hormone, concentration_ln, -SID, -week, factor_key=TRUE) %>% 
+log_plot <- Saliva %>% dplyr::select(SID, Sample, contains("conc_ln")) %>%
+  gather(., hormone, concentration_ln, -SID, -Sample, factor_key=TRUE) %>% 
   ggplot(aes(x = concentration_ln)) +
   geom_histogram(color="black",fill="white") +
   facet_wrap(~ hormone, scales="free")
