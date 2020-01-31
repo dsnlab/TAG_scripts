@@ -44,18 +44,18 @@ session_dates <- session_df %>%
   filter(SID %in% overview$SID) %>%
   spread(session, date) %>% rename(sa_date='1', sb_date='2')
 #import saliva sample dates
-saliva_df <- read.csv(paste0(saliva_dir,'/TAG_W2_at_home_saliva_overview.csv'))
+saliva_df <- read.csv(paste0(saliva_dir,'/TAG_W2_at_home_saliva_overview_cor.csv'))
 saliva_dates <- saliva_df %>% 
   mutate(SID=gsub("[^0-9\\.]", "", subjectspitid)) %>%
   filter(!SID=="") %>%
   dplyr::select(SID,s1_doc,s2_doc,s3_doc,s4_doc,s5_doc,s6_doc,s7_doc) %>%
-  mutate(s1_sdate = as.Date(s1_doc, "%Y-%m-%d"),
-         s2_sdate = as.Date(s2_doc, "%Y-%m-%d"),
-         s3_sdate = as.Date(s3_doc, "%Y-%m-%d"),
-         s4_sdate = as.Date(s4_doc, "%Y-%m-%d"),
-         s5_sdate = as.Date(s5_doc, "%Y-%m-%d"),
-         s6_sdate = as.Date(s6_doc, "%Y-%m-%d"),
-         s7_sdate = as.Date(s7_doc, "%Y-%m-%d")) %>%
+  mutate(s1_sdate = as.Date(s1_doc, "%d/%m/%Y"),
+         s2_sdate = as.Date(s2_doc, "%d/%m/%Y"),
+         s3_sdate = as.Date(s3_doc, "%d/%m/%Y"),
+         s4_sdate = as.Date(s4_doc, "%d/%m/%Y"),
+         s5_sdate = as.Date(s5_doc, "%d/%m/%Y"),
+         s6_sdate = as.Date(s6_doc, "%d/%m/%Y"),
+         s7_sdate = as.Date(s7_doc, "%d/%m/%Y")) %>%
   dplyr::select(-s1_doc,-s2_doc,-s3_doc,-s4_doc,-s5_doc,-s6_doc,-s7_doc) %>%
   filter(SID %in% overview$SID)
 #combine session and saliva dates
