@@ -254,21 +254,12 @@ win_plot
 ```
 
 
-###SAVE SALIVA CONCENTRATIONS CLEANED
-```{r}
-Saliva <- Saliva %>% 
-  mutate(ID = paste(SID,Sample,sep="_"))
-
-write.csv(Saliva,paste0(saliva_dir,'/TAG_W2_Saliva_processed.csv'),row.names=F)
-```
-
-
-###THE REST OF THE SCRIPT EXAMINES TEH INFLUENCE OF EXTRANEOUS FACTORS 
+###THE REST OF THE SCRIPT EXAMINES THE INFLUENCE OF EXTRANEOUS FACTORS 
 #For various approaches to controlling for confounds and creating basal levels, see the wave 1 cleaning script (cleaningSaliva_concentrations.Rmd). 
 
 ###CREATE DF OF SALIVA CONC AND FORMS
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
-control <- read.csv(paste0(saliva_dir,'/TAG_W2_at_home_saliva_overview.csv'))
+control <- read.csv(paste0(saliva_dir,'/TAG_W2_at_home_saliva_overview_cor.csv'))
 control <- control %>% 
   mutate(SID=gsub("[^0-9\\.]", "", subjectspitid)) %>%
   mutate(SID = as.factor(SID)) %>%
@@ -353,8 +344,8 @@ control_all <- as.data.frame(control_all) %>%
          time_to_collect = as.numeric(time_to_collect)) %>%
   mutate(time_diff = difftime(start_time,wake_up_time)/60) %>%
   mutate(time_diff = as.numeric(time_diff)) %>%
-  mutate(start_time_num = as.numeric(start_time - 1532344100)) %>%
-  mutate(wake_up_time_num = as.numeric(wake_up_time) - 1532343550) %>% 
+  mutate(start_time_num = as.numeric(start_time - 1580371200)) %>%
+  mutate(wake_up_time_num = as.numeric(wake_up_time) - 1580371200) %>% 
   mutate(start_time_num = start_time_num/100,
          wake_up_time_num = wake_up_time_num/100) %>%
   mutate(weekday = ifelse(day %in% c("Saturday","Sunday"),0,
@@ -362,65 +353,96 @@ control_all <- as.data.frame(control_all) %>%
   filter(ID %in% Saliva$ID)
                  
 #combine Saliva and Control variables
-Saliva <- Saliva %>% left_join(., control_all) 
+Saliva <- Saliva %>% 
+  mutate(ID = paste(SID,Sample,sep="_"))
+Saliva_withconfounds <- Saliva %>% left_join(., control_all) 
 ```
 
 ###CHECK EFFECTS OF CONFOUNDS USING LMER (LONG DATASET)
 ```{r}
-Saliva <- Saliva %>% mutate(week=as.numeric(week))
+Saliva_withconfounds <- Saliva_withconfounds %>% mutate(week=as.numeric(week))
 ###DHEA###
-DHEAlmm_time <- Saliva %>% filter(complete.cases(sal_DHEA_conc_ln_w,wake_up_time_num,time_diff,weekday))
-                                                                              
+DHEAlmm_time <- Saliva_withconfounds %>% filter(complete.cases(sal_DHEA_conc_ln_w,wake_up_time_num,time_diff,weekday))
 DHEA_null_time <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=DHEAlmm_time, REML = F)
 DHEA_time <- lmer(sal_DHEA_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=DHEAlmm_time, REML = F)
 DHEA_time2 <- lmer(sal_DHEA_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=DHEAlmm_time, REML = F)
 anova(DHEA_null_time,DHEA_time,DHEA_time2)
-DHEAlmm_med <- Saliva %>% filter(complete.cases(sal_DHEA_conc_ln_w,code_1,code_4,code_5,code_6,
+
+DHEAlmm_med <- Saliva_withconfounds %>% filter(complete.cases(sal_DHEA_conc_ln_w,code_1,code_4,code_5,code_6,
                                            code_7,code_9,code_12,code_13,code_16,code_17,code_18,
                                            code_19,code_20))
 DHEA_null_med <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=DHEAlmm_med, REML = F)
 DHEA_medcode <- lmer(sal_DHEA_conc_ln_w ~ code_1+code_4+code_5+code_6+code_7+code_9+code_12+code_13+code_16+code_17+code_18+code_19+code_20+ (1 | SID), data=DHEAlmm_med, REML = F)
 anova(DHEA_null_med,DHEA_medcode)
-DHEAlmm_sick <- Saliva %>% filter(complete.cases(sal_DHEA_conc_ln_w,sick_y_n))
+
+DHEAlmm_sick <- Saliva_withconfounds %>% filter(complete.cases(sal_DHEA_conc_ln_w,sick_y_n))
 DHEA_null_sick <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=DHEAlmm_sick, REML = F)
 DHEA_sick_y_n <- lmer(sal_DHEA_conc_ln_w ~ sick_y_n + (1 | SID), data=DHEAlmm_sick, REML = F)
 anova(DHEA_null_sick,DHEA_sick_y_n)
 ###TEST###
-TESTlmm_time <- Saliva %>% filter(complete.cases(sal_TEST_conc_ln_w,wake_up_time_num,time_diff,weekday))
-                                                                              
+TESTlmm_time <- Saliva_withconfounds %>% filter(complete.cases(sal_TEST_conc_ln_w,wake_up_time_num,time_diff,weekday))
 TEST_null_time <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=TESTlmm_time, REML = F)
 TEST_time <- lmer(sal_TEST_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=TESTlmm_time, REML = F)
 TEST_time2 <- lmer(sal_TEST_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=TESTlmm_time, REML = F)
 anova(TEST_null_time,TEST_time,TEST_time2)
-TESTlmm_med <- Saliva %>% filter(complete.cases(sal_TEST_conc_ln_w,code_1,code_4,code_5,code_6,
+
+TESTlmm_med <- Saliva_withconfounds %>% filter(complete.cases(sal_TEST_conc_ln_w,code_1,code_4,code_5,code_6,
                                            code_7,code_9,code_12,code_13,code_16,code_17,code_18,
                                            code_19,code_20))
 TEST_null_med <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=TESTlmm_med, REML = F)
 TEST_medcode <- lmer(sal_TEST_conc_ln_w ~ code_1+code_4+code_5+code_6+code_7+code_9+code_12+code_13+code_16+code_17+code_18+code_19+code_20+ (1 | SID), data=TESTlmm_med, REML = F)
 anova(TEST_null_med,TEST_medcode)
-TESTlmm_sick <- Saliva %>% filter(complete.cases(sal_TEST_conc_ln_w,sick_y_n))
+
+TESTlmm_sick <- Saliva_withconfounds %>% filter(complete.cases(sal_TEST_conc_ln_w,sick_y_n))
 TEST_null_sick <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=TESTlmm_sick, REML = F)
 TEST_sick_y_n <- lmer(sal_TEST_conc_ln_w ~ sick_y_n + (1 | SID), data=TESTlmm_sick, REML = F)
 anova(TEST_null_sick,TEST_sick_y_n)
 ###EST###
-ESTlmm_time <- Saliva %>% filter(complete.cases(sal_EST_conc_ln_w,wake_up_time_num,time_diff,weekday))
-                                                                              
+ESTlmm_time <- Saliva_withconfounds %>% filter(complete.cases(sal_EST_conc_ln_w,wake_up_time_num,time_diff,weekday))
 EST_null_time <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=ESTlmm_time, REML = F)
 EST_time <- lmer(sal_EST_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=ESTlmm_time, REML = F)
 EST_time2 <- lmer(sal_EST_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=ESTlmm_time, REML = F)
 anova(EST_null_time,EST_time,EST_time2)
-ESTlmm_med <- Saliva %>% filter(complete.cases(sal_EST_conc_ln_w,code_1,code_4,code_5,code_6,
+
+ESTlmm_med <- Saliva_withconfounds %>% filter(complete.cases(sal_EST_conc_ln_w,code_1,code_4,code_5,code_6,
                                            code_7,code_9,code_12,code_13,code_16,code_17,code_18,
                                            code_19,code_20))
 EST_null_med <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=ESTlmm_med, REML = F)
 EST_medcode <- lmer(sal_EST_conc_ln_w ~ code_1+code_4+code_5+code_6+code_7+code_9+code_12+code_13+code_16+code_17+code_18+code_19+code_20+ (1 | SID), data=ESTlmm_med, REML = F)
 anova(EST_null_med,EST_medcode)
-ESTlmm_sick <- Saliva %>% filter(complete.cases(sal_EST_conc_ln_w,sick_y_n))
+
+ESTlmm_sick <- Saliva_withconfounds %>% filter(complete.cases(sal_EST_conc_ln_w,sick_y_n))
 EST_null_sick <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=ESTlmm_sick, REML = F)
 EST_sick_y_n <- lmer(sal_EST_conc_ln_w ~ sick_y_n + (1 | SID), data=ESTlmm_sick, REML = F)
 anova(EST_null_sick,EST_sick_y_n)
 #plot start_time distribution
-Start_time <- Saliva %>% select(SID,week,start_time) %>% arrange(start_time)
+Start_time <- Saliva_withconfounds %>% dplyr::select(SID,week,start_time) %>% arrange(start_time)
 Start_time <- as.POSIXlt(Start_time$start_time)$hour
 hist(Start_time, breaks=seq(0, 23), main="Start time (hour)")
+```
+
+
+###SAVE SALIVA CONCENTRATIONS
+```{r}
+#save cleaned saliva concentrations (clean up variable names first)
+Saliva_withconfounds <- Saliva_withconfounds %>% rename(doc_form = sample,
+                            medcode_1 = code_1,
+                            medcode_12 = code_12,
+                            medcode_13 = code_13,
+                            medcode_16 = code_16,
+                            medcode_17 = code_17,
+                            medcode_18 = code_18,
+                            medcode_19 = code_19,
+                            medcode_20 = code_20,
+                            medcode_4 = code_4,
+                            medcode_5 = code_5,
+                            medcode_6 = code_6,
+                            medcode_7 = code_7,
+                            medcode_9 = code_9,
+                            medcode_yn = meds,
+                            interval_priorsample = interval) %>%
+  dplyr::select(-Collection_date,-complete,-doc)
+write.csv(Saliva_withconfounds,paste0(saliva_dir,'/TAG_W2_Saliva_processed.csv'),row.names=F)
+#save workspace
+save.image(paste0(saliva_dir,"/TAG_W2_Saliva.RData"))
 ```
