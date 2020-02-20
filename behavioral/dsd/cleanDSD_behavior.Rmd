@@ -13,14 +13,15 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(data.table)
+library(stringr)
 jftheme <- theme_minimal()+
   theme(axis.line=element_line(size=0),
 	      strip.background=element_rect(fill='white'))
 theme_set(jftheme)
 
-inputDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/info/'
+inputDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/' 
 rawDataDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/output/'
-outDataDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/'
+outDataDir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/DSD/'
 ```
 
 #Import and clean data
@@ -95,20 +96,21 @@ write.csv(longDF,paste0(outDataDir,'dsd_trials_long.csv'),row.names=F)
 
 #Save subject-specific files for behavioral analyses (i.e. PSE analyses in Matlab)
 ```{r}
-out_df <- longDF %>% filter(wave==1)
+chosen_wave = 3
+out_df <- longDF %>% filter(wave==chosen_wave)
 ids <- as.vector(unique(out_df$sid))
 
 files <- lapply(X=ids, df=out_df, FUN=function(id, df) {
   
-  df <- df %>% filter(sid==id) %>% select(-statement) %>%
+  df <- df %>% filter(sid == id) %>% select(-statement) %>%
     mutate(affective = ifelse(affective==TRUE,1,
                               ifelse(affective==FALSE,0, NA))) %>%
     mutate(disclosed = ifelse(disclosed==TRUE,1,
                               ifelse(disclosed==FALSE,0, NA)))
   
-    fid = stri_pad_left(id, 3, 0)
+    fid = str_pad(id, 3, 0, side = "left")
     
-  write.table(df,file=paste0(outDataDir,'subjects/tag',fid,'.csv'),sep=",",row.names=F,col.names=F,na = "") 
+  write.table(df, file=paste0(outDataDir,'subjects/tag',fid,'_w',chosen_wave,'.csv'),sep=",",row.names=F,col.names=F,na = "") 
    })
   
 ```
@@ -125,8 +127,8 @@ allSubs <- ggplot(longDF, aes(x=share.value, y=disclosed, group=affective))+
 	theme(strip.background=element_rect(fill='#eeeeee'),
 	      panel.spacing=unit(0, 'pt'),
 	      panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1))
-ggsave(allSubs, file=paste0(outDataDir, 'PSE-all_pid.png'),
-       width=10, height=15, dpi=72)
+#ggsave(allSubs, file=paste0(outDataDir, 'PSE-all_pid.png'),
+#       width=10, height=15, dpi=72)
 
 allSubs2 <- longDF %>% 
   mutate(endorsed=statement.choice==1) %>%
@@ -142,7 +144,7 @@ allSubs2 <- longDF %>%
         panel.spacing=unit(0, 'pt'),
         panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1),
         text=element_text(size=12, face='bold'))
-ggsave(allSubs2, file=paste0(outDataDir, 'PSE-all_pid_endoresed.png'),
+#ggsave(allSubs2, file=paste0(outDataDir, 'PSE-all_pid_endoresed.png'),
        width=10, height=15, dpi=72)
 
 ```
