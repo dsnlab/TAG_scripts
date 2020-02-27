@@ -4,7 +4,7 @@
 # You also need to run the line of text in copy_lcni_dicoms_to_dsnlab.txt that is NOT on git (contains subject IDs + session dates)
 
 # Create log file with today's date:
-log_name=$(date +%Y-%m-%d)_rsync.log
+log_name=$(date +%Y-%m-%d-%H-%M-%S)_rsync.log
 touch $log_name
 
 ## TASK BEH DATA (laptops first)
