@@ -1,0 +1,194 @@
+---
+title: "MSPSS"
+author: "MEAB"
+date: "13/12/2019"
+output: html_document
+---
+
+
+General setup
+```{r set params}
+packages <- c("dplyr", "tidyr","ggplot2")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+# set these parameters for regular script use
+datadir <- 'Y:/dsnlab/TAG/behavior/'
+scriptsdir <- '~/projects/dsnlab/TAG/TAG_scripts/'
+up_to_this_date <- "20190708" # on CAS in behavior/Questionnaires/RDOC/Confidential there are two files from redcap that should be labeled with the same date, e.g., redcap_anthro_20190405.csv and redcap_dates_20190509.csv. the data that you are pulling includes subjects up to this date for anthro and zip code (but for the other data? sam is not sure)
+rereun_data_cleaning <- FALSE # default is TRUE, such that get_cleaned_survey_data and get_redcap_cleaned is re-run each time. if you are confident that you have the most up to date cleaned_survey_data, then set to FALSE
+# set these parameters for submitting nda data
+rerun_rdoc_cleaning <- FALSE # default is FALSE, unless you are submitting NDA/rdoc do not set to TRUE
+up_to_this_month <- "may2019" # Do NOT change unless submitting NDA data. First 3 letters of the month, no space, and then the full year. if you are submitting to nda/rdoc, it should be identical in month to the "up_to_this_date" variable above; otherwise the default is "may2019"
+```
+
+```{r get needed dataframes}
+# get cleaned_survey_data and redcap_cleaned
+if (rereun_data_cleaning == TRUE){
+  source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
+  cleaned_survey_data  <- get_cleaned_survey_data(datadir, scriptsdir)
+  redcap_cleaned <- get_redcap_cleaned(datadir, up_to_this_date)
+  cleaned_replaced_survey_data <- replace_values(datadir, cleaned_survey_data)
+} else if (rereun_data_cleaning == FALSE){
+  cleaned_survey_data <- readRDS(paste0(datadir, "Questionnaires/cleaned_survey_data.rds"))
+  redcap_cleaned <- readRDS(paste0(datadir, "Questionnaires/redcap_cleaned.rds"))
+}
+# write guids and get ndar_key
+if (rerun_rdoc_cleaning == TRUE){
+  source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
+  write_guids_to_csv(datadir, up_to_this_date)
+  ndar_key <- get_ndar_key(datadir, cleaned_survey_data, redcap_cleaned, up_to_this_month)
+} else if (rerun_rdoc_cleaning == FALSE){
+  ndar_key <- read.csv(paste0(datadir,"RDoCdb/output/", up_to_this_month, "/ndar_subject01.csv"))
+}
+```
+
+Prepare MSPSS
+```{r}
+MSPSS<-left_join(filter(cleaned_survey_data, grepl("MSPSS",item)) %>%
+                  mutate(value=as.numeric(value)) %>% 
+                  filter(!is.na(value)) %>%
+                  filter(!value=="") %>%
+                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
+                  spread(item,value),
+                redcap_cleaned %>%
+                  filter(!is.na(dob),!is.na(sa_date)) %>%
+                  select(tagid, sa_date, sb_date, dob),by="tagid")
+if (length(MSPSS$tagid) == length(unique(MSPSS$tagid))){
+  print("No duplicate tagids in data")
+}
+TAG023_special<-left_join(filter(cleaned_survey_data, grepl("MSPSS",item)) %>%
+                            mutate(value=as.numeric(value)) %>% 
+                            filter(!is.na(value)) %>%
+                            filter(!value=="") %>%
+                            filter(tagid=="TAG023") %>%
+                            filter(!grepl("W2|W3", survey_name)) %>% 
+                            distinct(tagid,item,value,.keep_all = FALSE) %>%
+                            spread(item,value),
+                          redcap_cleaned %>%
+                            filter(wave==1,!is.na(dob),!is.na(sa_date),tagid=="TAG023") %>%
+                            select(tagid, sa_date, sb_date, dob),by="tagid") %>%
+  mutate(survey_name="TAG - Sess 1 - V1")
+MSPSS <- bind_rows(MSPSS %>% filter(!tagid=="TAG023"),TAG023_special)
+MSPSS_allwaves<-left_join(MSPSS,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>%
+  select(-value)%>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(MSPSS_fam_total=rowSums(cbind(MSPSS_3,MSPSS_4,MSPSS_8,MSPSS_11), na.rm=F),
+         MSPSS_fri_total=rowSums(cbind(MSPSS_6,MSPSS_7,MSPSS_9,MSPSS_12), na.rm=F),
+         MSPSS_so_total=rowSums(cbind(MSPSS_1,MSPSS_2,MSPSS_5,MSPSS_10), na.rm=F),
+         MSPSS_fam_mean=rowMeans(cbind(MSPSS_3,MSPSS_4,MSPSS_8,MSPSS_11), na.rm=T),
+         MSPSS_fri_mean=rowMeans(cbind(MSPSS_6,MSPSS_7,MSPSS_9,MSPSS_12), na.rm=T),
+         MSPSS_so_mean=rowMeans(cbind(MSPSS_1,MSPSS_2,MSPSS_5,MSPSS_10), na.rm=T),
+         MSPSS_mean=rowMeans(cbind(MSPSS_1,MSPSS_2,MSPSS_3,MSPSS_4,MSPSS_5,MSPSS_6,MSPSS_7,
+                                   MSPSS_8,MSPSS_9,MSPSS_10,MSPSS_11,MSPSS_12), na.rm=T)) %>%
+  mutate(MSPSS_total=rowSums(cbind(MSPSS_fam_total,MSPSS_fri_total,MSPSS_so_total), na.rm=F),
+         MSPSS_fam_N=4,
+         MSPSS_fam_missing=rowSums(is.na(cbind(MSPSS_3,MSPSS_4,MSPSS_8,MSPSS_11))),
+         MSPSS_fam_missing_perc=100*(rowSums(is.na(cbind(MSPSS_3,MSPSS_4,MSPSS_8,MSPSS_11))))/4,
+         MSPSS_fri_N=4,
+         MSPSS_fri_missing=rowSums(is.na(cbind(MSPSS_6,MSPSS_7,MSPSS_9,MSPSS_12))),
+         MSPSS_fri_missing_perc=100*(rowSums(is.na(cbind(MSPSS_6,MSPSS_7,MSPSS_9,MSPSS_12))))/4,
+         MSPSS_so_N=4,
+         MSPSS_so_missing=rowSums(is.na(cbind(MSPSS_1,MSPSS_2,MSPSS_5,MSPSS_10))),
+         MSPSS_so_missing_perc=100*(rowSums(is.na(cbind(MSPSS_1,MSPSS_2,MSPSS_5,MSPSS_10))))/4,
+         MSPSS_N=12,
+         MSPSS_missing=rowSums(is.na(cbind(MSPSS_1,MSPSS_2,MSPSS_3,MSPSS_4,MSPSS_5,MSPSS_6,MSPSS_7,MSPSS_8,MSPSS_9,MSPSS_10,MSPSS_11,MSPSS_12))),
+         MSPSS_missing_perc=100*(rowSums(is.na(cbind(MSPSS_1,MSPSS_2,MSPSS_3,MSPSS_4,MSPSS_5,MSPSS_6,MSPSS_7,MSPSS_8,MSPSS_9,MSPSS_10,MSPSS_11,MSPSS_12))))/12) #NV added info on % missing items
+## Save it
+MSPSS_Wave1_outdf <- MSPSS_allwaves %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(MSPSS_Wave1_outdf, file = paste0(datadir,"Questionnaires/Wave1/MSPSS_Wave1.csv"))
+MSPSS_Wave2_outdf <- MSPSS_allwaves %>% filter(grepl("W2",survey_name)) 
+write.csv(MSPSS_Wave2_outdf, file = paste0(datadir,"Questionnaires/Wave2/MSPSS_Wave2.csv"))
+MSPSS_Wave3_outdf <- MSPSS_allwaves %>% filter(grepl("W3",survey_name)) 
+write.csv(MSPSS_Wave3_outdf, file = paste0(datadir,"Questionnaires/Wave3/MSPSS_Wave3.csv"))
+```
+
+```{r}
+## Graph it
+MSPSS_Wave1_means<-MSPSS_Wave1_outdf %>%
+  select(tagid,MSPSS_fam_mean,MSPSS_fri_mean,MSPSS_so_mean) %>%
+  mutate(Family_Support=MSPSS_fam_mean,
+         Friend_Support=MSPSS_fri_mean,
+         SigOther_Support=MSPSS_so_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("MSPSS_",item))
+MSPSS_Wave1_means_graph<-ggplot(MSPSS_Wave1_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Wave1 MSPSS mean subscores for ",length(unique(MSPSS_Wave1_outdf$tagid[!is.na(MSPSS_Wave1_outdf$tagid)]))," participants"))
+
+MSPSS_Wave2_means<-MSPSS_Wave2_outdf %>%
+  select(tagid,MSPSS_fam_mean,MSPSS_fri_mean,MSPSS_so_mean) %>%
+  mutate(Family_Support=MSPSS_fam_mean,
+         Friend_Support=MSPSS_fri_mean,
+         SigOther_Support=MSPSS_so_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("MSPSS_",item))
+MSPSS_Wave2_means_graph<-ggplot(MSPSS_Wave2_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Wave2 MSPSS mean subscores for ",length(unique(MSPSS_Wave2_outdf$tagid[!is.na(MSPSS_Wave2_outdf$tagid)]))," participants"))
+
+MSPSS_Wave3_means<-MSPSS_Wave3_outdf %>%
+  select(tagid,MSPSS_fam_mean,MSPSS_fri_mean,MSPSS_so_mean) %>%
+  mutate(Family_Support=MSPSS_fam_mean,
+         Friend_Support=MSPSS_fri_mean,
+         SigOther_Support=MSPSS_so_mean) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("MSPSS_",item))
+MSPSS_Wave3_means_graph<-ggplot(MSPSS_Wave3_means, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("Wave3 MSPSS mean subscores for ",length(unique(MSPSS_Wave3_outdf$tagid[!is.na(MSPSS_Wave3_outdf$tagid)]))," participants"))
+```
+
+```{r}
+## Make RDOC ready file
+ndar_mspss_data <- left_join(MSPSS_allwaves,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         gender="F",
+         timept=1,
+         mspss_1=MSPSS_1,
+         mspss_2=MSPSS_2,
+         mspss_3=MSPSS_3,
+         mspss_4=MSPSS_4,
+         mspss_5=MSPSS_5,
+         mspss_6=MSPSS_6,
+         mspss_7=MSPSS_7,
+         mspss_8=MSPSS_8,
+         mspss_9=MSPSS_9,
+         mspss_10=MSPSS_10,
+         mspss_11=MSPSS_11,
+         mspss_12=MSPSS_12,
+         mspss_fam=ifelse(is.na(MSPSS_fam_total),999,MSPSS_fam_total),
+         mspss_fri=ifelse(is.na(MSPSS_fri_total),999,MSPSS_fri_total),
+         mspss_so=ifelse(is.na(MSPSS_so_total),999,MSPSS_so_total),
+         mspss_total=ifelse(is.na(MSPSS_total),999,MSPSS_total))
+ndar_mspss_data <- left_join(ndar_key,ndar_mspss_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("MSPSS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-guid,-survey_type)
+mspss_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+mspss_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+mspss_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+mspss_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/mspss01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+mspss_temp_df<-data.frame(mspss_temp)
+ndar_mspss_data<-bind_rows(mspss_temp_df,ndar_mspss_data)
+part2<-colnames(ndar_mspss_data)
+part3<-as.matrix(ndar_mspss_data)
+colnames(part3)<-NULL
+together<-rbind(mspss_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jul2019/mspss01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,mspss_df_header,mspss_temp,mspss_temp_df,MSPSS,MSPSS_allwaves,MSPSS_Wave1_means,MSPSS_Wave2_means, MSPSS_Wave3_means)
+```

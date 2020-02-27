@@ -1,0 +1,207 @@
+---
+title: "score_xx"
+author: "me"
+date: "12/13/2019"
+output: html_document
+---
+
+General setup
+```{r set params}
+
+# set these parameters for regular script use
+datadir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/'
+scriptsdir <- '~/projects/dsnlab/TAG/TAG_scripts/'
+up_to_this_date <- "20190708" # on CAS in behavior/Questionnaires/RDOC/Confidential there are two files from redcap that should be labeled with the same date, e.g., redcap_anthro_20190405.csv and redcap_dates_20190509.csv. the data that you are pulling includes subjects up to this date for anthro and zip code (but for the other data? sam is not sure)
+rereun_data_cleaning <- FALSE # default is TRUE, such that get_cleaned_survey_data and get_redcap_cleaned is re-run each time. if you are confident that you have the most up to date cleaned_survey_data, then set to FALSE
+
+# set these parameters for submitting nda data
+rerun_rdoc_cleaning <- TRUE # default is FALSE, unless you are submitting NDA/rdoc do not set to TRUE
+up_to_this_month <- "may2019" # Do NOT change unless submitting NDA data. First 3 letters of the month, no space, and then the full year. if you are submitting to nda/rdoc, it should be identical in month to the "up_to_this_date" variable above; otherwise the default is "may2019"
+```
+
+```{r get needed dataframes}
+# get cleaned_survey_data and redcap_cleaned
+if (rereun_data_cleaning == TRUE){
+  source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
+  cleaned_survey_data  <- get_cleaned_survey_data(datadir, scriptsdir)
+  redcap_cleaned <- get_redcap_cleaned(datadir, up_to_this_date)
+  cleaned_replaced_survey_data <- replace_values(datadir, cleaned_survey_data)
+} else if (rereun_data_cleaning == FALSE){
+  cleaned_survey_data <- readRDS(paste0(datadir, "Questionnaires/cleaned_survey_data.rds"))
+  redcap_cleaned <- readRDS(paste0(datadir, "Questionnaires/redcap_cleaned.rds"))
+}
+
+# write guids and get ndar_key
+if (rerun_rdoc_cleaning == TRUE){
+  source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
+  write_guids_to_csv(datadir, up_to_this_date)
+  ndar_key <- get_ndar_key(datadir, cleaned_survey_data, redcap_cleaned, up_to_this_month)
+} else if (rerun_rdoc_cleaning == FALSE){
+  ndar_key <- read.csv(paste0(datadir,"RDoCdb/output/", up_to_this_month, "/ndar_subject01.csv"))
+}
+```
+
+
+Prepare CARE-R Soc
+```{r}
+CARE_R_SOC<-left_join(filter(cleaned_survey_data, grepl("CARE_R",item)) %>% 
+                        mutate(value=as.numeric(value)) %>% 
+                        filter(!is.na(value)) %>% 
+                        distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                        spread(item,value),redcap_cleaned %>%
+                        filter(!is.na(dob),!is.na(sa_date)) %>%
+                        select(tagid, sa_date, sb_date, dob),by="tagid")
+
+CARE_R_SOC_Wave1<-left_join(CARE_R_SOC,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>% 
+  select(-value) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
+                            ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
+                                   ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                          ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                          ))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  mutate(carersoc_gen_N=2,
+         carersoc_gen_missing=rowSums(is.na(cbind(CARE_R_I,CARE_R_II))),
+         carersoc_gen_missing_perc=100*(rowSums(is.na(cbind(CARE_R_I,CARE_R_II)))/2),
+         carersoc_gen=rowMeans(cbind(CARE_R_I,CARE_R_II),na.rm=T),
+         carersoc_dosubstance_N=4,
+         carersoc_dosubstance_missing=rowSums(is.na(cbind(CARE_R_2A,CARE_R_3A,CARE_R_4A,CARE_R_5A))), #NV: should CARE_R_1A be in her e too?
+         carersoc_dosubstance_missing_perc=100*(rowSums(is.na(cbind(CARE_R_2A,CARE_R_3A,CARE_R_4A,CARE_R_5A)))/4),
+         carersoc_dosubstance=round(rowMeans(cbind(CARE_R_2A,CARE_R_3A,CARE_R_4A,CARE_R_5A),na.rm=T),2),
+         carersoc_avoidsubstance_N=4,
+         carersoc_avoidsubstance_missing=rowSums(is.na(cbind(CARE_R_2B,CARE_R_3B,CARE_R_4B,CARE_R_5B))),
+         carersoc_avoidsubstance_missing_perc=100*(rowSums(is.na(cbind(CARE_R_2B,CARE_R_3B,CARE_R_4B,CARE_R_5B)))/4),
+         carersoc_avoidsubstance=round(rowMeans(cbind(CARE_R_2B,CARE_R_3B,CARE_R_4B,CARE_R_5B),na.rm=T),2),
+         carersoc_doviolence_N=4,
+         carersoc_doviolence_missing=rowSums(is.na(cbind(CARE_R_7A,CARE_R_9A,CARE_R_10A,CARE_R_11A))),
+         carersoc_doviolence_missing_perc=100*(rowSums(is.na(cbind(CARE_R_7A,CARE_R_9A,CARE_R_10A,CARE_R_11A)))/4),
+         carersoc_doviolence=round(rowMeans(cbind(CARE_R_7A,CARE_R_9A,CARE_R_10A,CARE_R_11A),na.rm=T),2),
+         carersoc_avoidviolence_N=4,
+         carersoc_avoidviolence_missing=rowSums(is.na(cbind(CARE_R_7B,CARE_R_9B,CARE_R_10B,CARE_R_11B))),
+         carersoc_avoidviolence_missing_perc=100*(rowSums(is.na(cbind(CARE_R_7B,CARE_R_9B,CARE_R_10B,CARE_R_11B)))/4),
+         carersoc_avoidviolence=round(rowMeans(cbind(CARE_R_7B,CARE_R_9B,CARE_R_10B,CARE_R_11B),na.rm=T),2),
+         carersoc_dorecklessdriving_N=4,
+         carersoc_dorecklessdriving_missing=rowSums(is.na(cbind(CARE_R_6A,CARE_R_12A,CARE_R_13A,CARE_R_14A))),
+         carersoc_dorecklessdriving_missing_perc=100*(rowSums(is.na(cbind(CARE_R_6A,CARE_R_12A,CARE_R_13A,CARE_R_14A)))/4),
+         carersoc_dorecklessdriving=round(rowMeans(cbind(CARE_R_6A,CARE_R_12A,CARE_R_13A,CARE_R_14A),na.rm=T),2),
+         carersoc_avoidrecklessdriving_N=4,
+         carersoc_avoidrecklessdriving_missing=rowSums(is.na(cbind(CARE_R_6B,CARE_R_12B,CARE_R_13B,CARE_R_14B))),
+         carersoc_avoidrecklessdriving_missing_perc=100*(rowSums(is.na(cbind(CARE_R_6B,CARE_R_12B,CARE_R_13B,CARE_R_14B)))/4),
+         carersoc_avoidrecklessdriving=round(rowMeans(cbind(CARE_R_6B,CARE_R_12B,CARE_R_13B,CARE_R_14B),na.rm=T),2),
+         carersoc_dograffiti_N=1,
+         carersoc_dograffiti_missing=rowSums(is.na(cbind(CARE_R_8A))),
+         carersoc_dograffiti_missing_perc=100*(rowSums(is.na(cbind(CARE_R_8A)))/1),
+         carersoc_dograffiti=CARE_R_8A,
+         carersoc_avoidgraffiti_N=1,
+         carersoc_avoidgraffiti_missing=rowSums(is.na(cbind(CARE_R_8B))),
+         carersoc_avoidgraffiti_missing_perc=100*(rowSums(is.na(cbind(CARE_R_8B)))/1),
+         carersoc_avoidgraffiti=CARE_R_8B)  
+
+## Save it
+CARE_R_SOC_Wave1_outdf <- CARE_R_SOC_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+write.csv(CARE_R_SOC_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CARE_R_SOC_Wave1.csv"))
+
+CARE_R_SOC_Wave2_outdf <- CARE_R_SOC_Wave1 %>% filter(grepl("W2",survey_name)) 
+write.csv(CARE_R_SOC_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/CARE_R_SOC_Wave2.csv"))
+
+CARE_R_SOC_Wave3_outdf <- CARE_R_SOC_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(CARE_R_SOC_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/CARE_R_SOC_Wave3.csv"))
+
+## Graph it
+CARE_R_SOC_Wave1_DO<-CARE_R_SOC_Wave1 %>%
+  select(tagid,carersoc_gen,carersoc_dograffiti,carersoc_dosubstance,carersoc_doviolence,carersoc_dorecklessdriving) %>%
+  mutate(General_Social_Care=carersoc_gen,
+         Graffiti=carersoc_dograffiti,
+         Substances=carersoc_dosubstance,
+         Violence=carersoc_doviolence,
+         Reckless_Driving=carersoc_dorecklessdriving) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("carersoc_",item))
+CARE_R_SOC_Wave1_DO_graph<-ggplot(CARE_R_SOC_Wave1_DO, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("CARE-R Social Wave1: Doing these things would make people 1: like me a lot less to 5: like me a lot more. N= ",length(CARE_R_SOC_Wave1_DO$tagid[!is.na(CARE_R_SOC_Wave1_DO$tagid)])," participants"))
+
+CARE_R_SOC_Wave1_DONT<-CARE_R_SOC_Wave1 %>%
+  select(tagid,carersoc_gen,carersoc_avoidgraffiti,carersoc_avoidsubstance,carersoc_avoidviolence,carersoc_avoidrecklessdriving) %>%
+  mutate(General_Social_Care=carersoc_gen,
+         Graffiti=carersoc_avoidgraffiti,
+         Substances=carersoc_avoidsubstance,
+         Violence=carersoc_avoidviolence,
+         Reckless_Driving=carersoc_avoidrecklessdriving) %>%
+  gather('item','value',2:length(.)) %>%
+  filter(!grepl("carersoc_",item))
+CARE_R_SOC_Wave1_DONT_graph<-ggplot(CARE_R_SOC_Wave1_DONT, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+
+  ggtitle(paste0("CARE-R Social Wave1: NOT doing these things would make people 1: like me a lot less to 5: like me a lot more. N= ",length(CARE_R_SOC_Wave1_DONT$tagid[!is.na(CARE_R_SOC_Wave1_DONT$tagid)])," participants"))
+
+
+## Make RDOC ready file
+ndar_carersoc_data <- left_join(CARE_R_SOC_Wave1,distinct(redcap_cleaned, tagid, dob),by="tagid") %>%
+  filter(!is.na(survey_date),!survey_date=="") %>%
+  mutate(interview_date=paste0(sprintf("%02d",month(survey_date)),"/",sprintf("%02d",day(survey_date)),"/",year(survey_date)),
+         interview_age=round((interval(start =dob, end = survey_date) / duration(num = 1, units = "months")),0),
+         version_form="CARE-R Social Outcome Appraisal Questions",
+         comments_misc=ifelse(grepl("Sess 1",survey_name),"Session1",
+                              ifelse(grepl("Session 1",survey_name),"Session1",
+                                     ifelse(grepl("Sess 2",survey_name),"Session2",
+                                            ifelse(grepl("Session 2",survey_name),"Session2",
+                                                   ifelse(grepl("Home",survey_name),"Home Questionnaires",NA))))),
+         gender="F",
+         carersoc_1=CARE_R_I,
+         carersoc_2=CARE_R_II,
+         carersoc_3=CARE_R_1A,
+         carersoc_4=CARE_R_1B,
+         carersoc_5=CARE_R_2A,
+         carersoc_6=CARE_R_2B,
+         carersoc_7=CARE_R_3A,
+         carersoc_8=CARE_R_3B,
+         carersoc_9=CARE_R_4A,
+         carersoc_10=CARE_R_4B,
+         carersoc_11=CARE_R_5A,
+         carersoc_12=CARE_R_5B,
+         carersoc_13=CARE_R_6A,
+         carersoc_14=CARE_R_6B,
+         carersoc_15=CARE_R_7A,
+         carersoc_16=CARE_R_7B,
+         carersoc_17=CARE_R_8A,
+         carersoc_18=CARE_R_8B,
+         carersoc_19=CARE_R_9A,
+         carersoc_20=CARE_R_9B,
+         carersoc_21=CARE_R_10A,
+         carersoc_22=CARE_R_10B,
+         carersoc_23=CARE_R_11A,
+         carersoc_24=CARE_R_11B,
+         carersoc_25=CARE_R_12A,
+         carersoc_26=CARE_R_12B,
+         carersoc_27=CARE_R_13A,
+         carersoc_28=CARE_R_13B,
+         carersoc_29=CARE_R_14A,
+         carersoc_30=CARE_R_14B
+  )
+ndar_carersoc_data <- left_join(ndar_key,ndar_carersoc_data, by="tagid") %>%
+  mutate(src_subject_id=anontagid,
+         subjectkey=guid) %>%
+  filter(!is.na(subjectkey),
+         !interview_age=="") %>%
+  select(-contains("CARE_R",ignore.case = FALSE),-dob,-survey_date,-survey_type,-survey_name,-tagid,-anontagid,-ID,-guid,
+         -contains("substance"),-carersoc_gen,-contains("violence"),-contains("graffiti"),-contains("reckless"), 
+         -carersoc_gen_N,-carersoc_gen_missing, -carersoc_gen_missing_perc)
+carersoc_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/caore01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
+carersoc_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/caore01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
+carersoc_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/caore01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
+
+carersoc_temp<-as.list(read.csv(paste0(workdir,"RDoCdb/templates/caore01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
+carersoc_temp_df<-data.frame(carersoc_temp)
+ndar_carersoc_data<-bind_rows(carersoc_temp_df,ndar_carersoc_data)
+
+part2<-colnames(ndar_carersoc_data)
+part3<-as.matrix(ndar_carersoc_data)
+colnames(part3)<-NULL
+together<-rbind(carersoc_df_header,part2,part3)
+write.table(together,file =paste0(workdir,"RDoCdb/output/jul2019/caore01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+rm(together,part2,part3,carersoc_df_header,carersoc_temp,carersoc_temp_df,CARE_R_SOC,CARE_R_SOC_Wave1,CARE_R_SOC_Wave1_DO,
+   CARE_R_SOC_Wave1_DO_graph,CARE_R_SOC_Wave1_DONT_graph,CARE_R_SOC_Wave1_DONT)
+```
+

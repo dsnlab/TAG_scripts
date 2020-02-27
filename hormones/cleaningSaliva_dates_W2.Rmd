@@ -1,0 +1,189 @@
+---
+title: "TAG Cleaning Saliva Dates"
+author: "Marjolein"
+date: "28 Januray 2020"
+output: html_document
+---
+
+```{r, include=FALSE}
+#LOAD PACKAGES AND SET DIRECTORIES
+packages <- c("ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+cas_dir <- 'Y:/dsnlab/TAG/'
+saliva_dir <- paste0(cas_dir,'behavior/Puberty/Saliva/Wave2')
+options(digits=3)
+```
+
+###IMPORT TAG OVERVIEW DOC FROM CAS
+```{r, include = F}
+overview <- read_excel(paste0(cas_dir,'behavior/Overview/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'),1)
+overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
+#removing everyone who withdrew at W1 (exclusionary withdrawals)
+overview <- overview %>% 
+  rename(SID = TAG_ID) %>%
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>% 
+  arrange(Exclusionary_Withdrawl) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
+  filter(Exclusionary_Withdrawl==0)
+```
+
+###IMPORT SESSION DATES AND CALCULATE INTERVALS BETWEEN SALIVA SAMPLES
+```{r, include=FALSE, message=FALSE}
+#import session 1 and 2 dates
+session_df <- read.csv(paste0(cas_dir,'behavior/Demographics/Age/TAG_age.csv'))
+session_dates <- session_df %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", tagid)) %>%
+  filter(wave==2) %>%
+  dplyr::select(SID,date, session) %>%
+  mutate(date=as.Date(date, "%d/%m/%Y")) %>%
+  filter(!is.na(SID)) %>%
+  filter(SID %in% overview$SID) %>%
+  spread(session, date) %>% rename(sa_date='1', sb_date='2')
+#import saliva sample dates
+saliva_df <- read.csv(paste0(saliva_dir,'/TAG_W2_at_home_saliva_overview_cor.csv'))
+saliva_dates <- saliva_df %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", subjectspitid)) %>%
+  filter(!SID=="") %>%
+  dplyr::select(SID,s1_doc,s2_doc,s3_doc,s4_doc,s5_doc,s6_doc,s7_doc) %>%
+  mutate(s1_sdate = as.Date(s1_doc, "%d/%m/%Y"),
+         s2_sdate = as.Date(s2_doc, "%d/%m/%Y"),
+         s3_sdate = as.Date(s3_doc, "%d/%m/%Y"),
+         s4_sdate = as.Date(s4_doc, "%d/%m/%Y"),
+         s5_sdate = as.Date(s5_doc, "%d/%m/%Y"),
+         s6_sdate = as.Date(s6_doc, "%d/%m/%Y"),
+         s7_sdate = as.Date(s7_doc, "%d/%m/%Y")) %>%
+  dplyr::select(-s1_doc,-s2_doc,-s3_doc,-s4_doc,-s5_doc,-s6_doc,-s7_doc) %>%
+  filter(SID %in% overview$SID)
+#combine session and saliva dates
+dates <- session_dates %>% full_join(., saliva_dates) %>%
+  mutate(int1 = as.numeric(difftime(s1_sdate, sa_date, units = "days")),
+         int2 = as.numeric(difftime(s2_sdate, s1_sdate, units = "days")),
+         int3 = as.numeric(difftime(s3_sdate, s2_sdate, units = "days")),
+         int4 = as.numeric(difftime(s4_sdate, s3_sdate, units = "days")),
+         int5 = as.numeric(difftime(s5_sdate, s4_sdate, units = "days")),
+         int6 = as.numeric(difftime(s6_sdate, s5_sdate, units = "days")),
+         int7 = as.numeric(difftime(s7_sdate, s6_sdate, units = "days")),
+         totLength = as.numeric(difftime(sb_date, sa_date, units = "days"))) #totLength = time between session 1 and 2
+dates <- dates %>% 
+  rowwise() %>% 
+  mutate(intSum = sum(int1,int2,int3,int4,int5,int6,int7,na.rm=T), #intSum = time between session 1 and final sample
+         intFinal = totLength - intSum) #intFinal = time between final sample and session 2.
+```
+
+###PLOT SALIVA INTERVALS AND DETERMINE WHICH SAMPLES TO EXCLUDE
+```{r, include=FALSE}
+dates_long <- dates %>% 
+  dplyr::select(SID,s1_sdate:s7_sdate,sb_date) %>% gather(., week, sample, c(s1_sdate,s2_sdate,s3_sdate,s4_sdate,s5_sdate,s6_sdate,s7_sdate,sb_date), factor_key=TRUE) %>%
+  mutate(sample_bin = ifelse(!is.na(sample), 1,0)) %>%
+  arrange(SID) %>%
+  filter(sample_bin == 1) %>%
+  group_by(SID) %>% mutate(sample_num = row_number()) %>%
+  mutate(interval = as.numeric(sample - lag(sample)))
+plot1 <- dates_long[1:200,]
+plot2 <- dates_long[201:400,]
+plot3 <- dates_long[401:600,]
+plot4 <- dates_long[601:844,]
+fills <- c("blue","orange","green","red","grey","yellow","purple","black")
+colors <- c("grey","grey","grey","grey","grey","grey","grey","grey",NA)
+fig1 <- ggplot(plot1, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig1
+fig2 <- ggplot(plot2, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig2
+fig3 <- ggplot(plot3, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig3
+fig4 <- ggplot(plot4, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig4
+#exclusions
+missing_dates = c("009","023","030","058","064","091","143","169","174")
+```
+
+###PLOT SALIVA INTERVALS AFTER EXCLUSIONS
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=10, fig.width=7}
+dates_long <- dates_long %>% arrange(SID) %>% 
+  filter(!SID %in% paste0(missing_dates)) %>% 
+  filter(!is.na(sample)) %>%
+  dplyr::select(-sample_num,-interval) %>%
+  group_by(SID) %>% mutate(sample_num = row_number()) %>%
+  mutate(interval = as.numeric(sample - lag(sample)))
+fills <- c("blue","orange","green","red","grey","yellow","purple","black")
+colors <- c("grey","grey","grey","grey","grey","grey","grey","grey",NA)
+fig <- ggplot(dates_long, aes(SID, interval), group=week) +
+  geom_bar(aes(fill= week), stat="identity", width=0.2) +
+  geom_point(aes(colour = week), position = "stack") +
+  coord_flip() +
+  scale_fill_manual(values = fills) + 
+  scale_colour_manual(values = colors)
+fig
+```
+
+###CALCULATE N SAMPLES
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=7}
+summaryN <- dates_long %>% 
+  filter(!week == "sb_date") %>%
+  dplyr::select(-interval) %>% group_by(SID) %>%
+  summarise(N = n())
+barplot_samples <- ggplot(summaryN, aes(N)) +
+    geom_bar() + 
+    scale_x_continuous(limits = c(0, 8), breaks = seq(0,8,by=1))+
+    xlab("# Samples")+
+    scale_y_continuous(limits = c(0, 120), breaks = seq(0,120,by=20))+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+barplot_samples
+```
+
+###CHECK WEEKDAYS OF SAMPLES
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=7}
+dates_long <- dates_long %>% mutate(day = weekdays(sample))
+week_days <- dates_long %>% 
+  filter(!week == "sb_date") %>%
+  mutate(day = as.factor(day)) %>%
+  group_by(day) %>%
+  summarise(N = n())
+   
+barplot_days <- ggplot(week_days, aes(x=day, y=N)) +
+    geom_bar(stat = "identity") + 
+    #scale_x_continuous(limits = c(0, 8), breaks = seq(0,8,by=1))+
+    scale_y_continuous(limits = c(0, 600), breaks = seq(0,600,by=100))+
+    theme_bw() +
+    theme_minimal(base_size = 12, base_family = "Arial") +
+    theme(axis.line = element_line(colour = "black"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank(),
+          legend.position="none")
+barplot_days
+write_df <- dates_long %>% dplyr::select(-sample_bin,-sample_num)
+write.csv(write_df,paste0(saliva_dir,'/TAG_W2_Saliva_sample_dates.csv'),row.names=F)
+```

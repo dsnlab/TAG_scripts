@@ -5,27 +5,37 @@ date: "5/9/2019"
 output: html_document
 ---
 
-General setup
-```{r set params}
+General setup required for all survey scripts
+```{r setup to acquire data}
+
+## Load required packages ##
+packages <- c("dplyr", "tidyr", "lubridate")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+    install.packages(setdiff(packages, rownames(installed.packages())))  
+  }
+lapply(packages, library, character.only = TRUE)
 
 # set these parameters for regular script use
+questionnaire_name <- 'PSS'
 datadir <- '/Volumes/psych-cog/dsnlab/TAG/behavior/'
 scriptsdir <- '~/projects/dsnlab/TAG/TAG_scripts/'
-up_to_this_date <- "20190708" # on CAS in behavior/Questionnaires/RDOC/Confidential there are two files from redcap that should be labeled with the same date, e.g., redcap_anthro_20190405.csv and redcap_dates_20190509.csv. the data that you are pulling includes subjects up to this date for anthro and zip code (but for the other data? sam is not sure)
-rereun_data_cleaning <- FALSE # default is TRUE, such that get_cleaned_survey_data and get_redcap_cleaned is re-run each time. if you are confident that you have the most up to date cleaned_survey_data, then set to FALSE
+up_to_this_date <- "20191213" # on CAS in behavior/Questionnaires/RDOC/Confidential there are two files from redcap that should be labeled with the same date, e.g., redcap_anthro_20190405.csv and redcap_dates_20190509.csv. the data that you are pulling includes subjects up to this date for anthro and zip code (but for the other data? sam is not sure)
+rereun_data_cleaning <- TRUE # default is TRUE, such that get_cleaned_survey_data and get_redcap_cleaned is re-run each time. if you are confident that you have the most up to date cleaned_survey_data, then set to FALSE
 
 # set these parameters for submitting nda data
-rerun_rdoc_cleaning <- TRUE # default is FALSE, unless you are submitting NDA/rdoc do not set to TRUE
-up_to_this_month <- "may2019" # Do NOT change unless submitting NDA data. First 3 letters of the month, no space, and then the full year. if you are submitting to nda/rdoc, it should be identical in month to the "up_to_this_date" variable above; otherwise the default is "may2019"
-```
+rerun_rdoc_cleaning <- FALSE # default is FALSE, unless you are submitting NDA/rdoc do not set to TRUE
+up_to_this_month <- "may2019" #update to dec2019 when possible. # Do NOT change unless submitting NDA data. First 3 letters of the month, no space, and then the full year. if you are submitting to nda/rdoc, it should be identical in month to the "up_to_this_date" variable above; otherwise the default is "may2019"
 
-```{r get needed dataframes}
-# get cleaned_survey_data and redcap_cleaned
+# get needed dataframes: cleaned_survey_data, redcap_cleaned (next: add manual_replacement and cr_survey_data (cleaned, replaced)
 if (rereun_data_cleaning == TRUE){
   source(paste0(scriptsdir, "behavioral/qualtrics/acquire_clean_data.R"))
   cleaned_survey_data  <- get_cleaned_survey_data(datadir, scriptsdir)
-  redcap_cleaned <- get_redcap_cleaned(datadir, up_to_this_date)
+  redcap_cleaned_and_survey_date <- get_redcap_cleaned(datadir, up_to_this_date)
+    redcap_cleaned = redcap_cleaned_and_survey_date[[1]]
+    survey_date = redcap_cleaned_and_survey_date[[2]]
+    rm(redcap_cleaned_and_survey_date)
   cleaned_replaced_survey_data <- replace_values(datadir, cleaned_survey_data)
+  cleaned_replaced_survey_data
 } else if (rereun_data_cleaning == FALSE){
   cleaned_survey_data <- readRDS(paste0(datadir, "Questionnaires/cleaned_survey_data.rds"))
   redcap_cleaned <- readRDS(paste0(datadir, "Questionnaires/redcap_cleaned.rds"))
@@ -39,29 +49,25 @@ if (rerun_rdoc_cleaning == TRUE){
 } else if (rerun_rdoc_cleaning == FALSE){
   ndar_key <- read.csv(paste0(datadir,"RDoCdb/output/", up_to_this_month, "/ndar_subject01.csv"))
 }
+
+# pick up; clean and merge the two manual replacement functions
+# sanity check: df_needs_replacement <- plyr::match_df(cleaned_survey_data, manual_replacement, on = c("tagid", "survey_name", "item"))
+
+# remove redundant rows
+
+# what's going on with CTQ?
+temp <- filter(cleaned_survey_data, grepl("^CTQ",item)) %>%
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>%
+                   filter(!value=="") %>%
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE)
+
+unique(temp$item)
 ```
 
-PSS
+PSS-specific
 ```{r}
-
-# note: there is manual replacement for subject 152 based on repeating the questionnaire twice and different answers on 5,6,7, and 9 only // 
-
-# subject 200 needs manual replacement to get the script to run. these are the values for the first time they took PSS
-
-replacement <- tibble(tagid = rep("TAG200", 10),
-                      survey_name = rep("W2S1 - V1", 10),
-                      item = c("PSS_1", "PSS_2", "PSS_3", "PSS_4", "PSS_5", "PSS_6", "PSS_7", "PSS_8", "PSS_9", "PSS_10"), 
-                      wave = rep(2, 10),
-                      kept_value = c(1, 3, 3, 3, 3, 2, 2, 2, 4, 4))
-
 survey_name = "PSS"
-
-
-test <- filter(cleaned_survey_data, grepl("^PSS",item)) %>% 
-  filter(tagid =="TAG200")
-
-
-# write a function where for each row of replacement, it goes into the cleaned_survey_data and if there is a matching line, it is replaced. prints total number of successful replacements, writes lines of any unsuccessful replacements
 
 PSS <- filter(cleaned_survey_data, grepl("^PSS",item)) %>%
                    mutate(value=as.numeric(value)) %>% 
@@ -69,24 +75,10 @@ PSS <- filter(cleaned_survey_data, grepl("^PSS",item)) %>%
                    filter(!value=="") %>%
                    distinct(tagid,item,value,survey_name,.keep_all = FALSE)
 
-get(survey_name)$value <- case_when(which(replacement$tagid %in% temp2$tagid) &
-                                    replacement$survey_name == temp2$survey_name &
-                                    replacement$wave == temp2$wave &
-                                    replacement$item == temp2$item ~ replacement$kept_value)
-
-# clean PSS to remove the duplicated values for TAG200
-
                    #spread(item, value), 
                  redcap_cleaned %>% 
                     filter(!is.na(dob), !is.na(sa_date)) %>%
                     select(tagid, sa_date, sb_date, dob), by = "tagid")
-
-temp <- filter(PSS, tagid == "TAG200")
-
-temp2 <- filter(cleaned_survey_data, grepl("^PSS",item)) %>% 
-  filter(., tagid == "TAG200")
-
-subset(!tagid=="TAG200" | !survey_name == "W2S1 - Current V1")
 
 PSS <- left_join(filter(cleaned_survey_data, grepl("^PSS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 

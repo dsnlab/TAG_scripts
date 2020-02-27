@@ -1,0 +1,448 @@
+---
+title: "cleaning Saliva hormones W2"
+author: "Nandi & Michelle & Marjolein"
+date: "26 Nov 2019"
+output: html_document
+---
+
+#!!!!!!!!!!
+#NOTE: before you begin - please do not re-run the imputation models. As this will obviously change the final hormone values ever-so-slightly, which we want to keep consistent across papers!! Instead, please load in the workspace from '/Volumes/psych-cog/dsnlab/TAG/behavior/Puberty/Saliva/Wave1/TAG_W1_Saliva.RData'
+
+#step1: import "final" mean concentrations, edit undetectables based on raw concentrations (i.e. too low or too high for assay). and also based on other samples provided by the participant.
+
+#step2: examine all repeats (re-runs) and make decision on whether to use original mean or repeat mean. edit "final" mean concentrations accordingly.
+
+```{r, include=FALSE}
+#LOAD PACKAGES AND SET DIRECTORIES
+
+packages <- c("Amelia", "lme4" , "merTools", "ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","xlsx","jomo","mice","Hmisc","DescTools")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+options(digits=10)
+
+cas_dir <- 'Y:/dsnlab/TAG/'
+saliva_dir <- paste0(cas_dir,'behavior/Puberty/Saliva/Wave2')
+med_dir <- paste0(cas_dir,'behavior/Medications')
+#age_dir <- paste0(cas_dir,'behavior/Demographics/Age')
+#puberty_dir <- paste0(cas_dir,'behavior/Puberty/Questionnaires/Wave1')
+```
+
+###IMPORT TAG OVERVIEW DOC FROM CAS
+```{r, include = F}
+#import "overview" document so that we can filter analyses to subjects that were not excluded
+
+overview <- read_excel(paste0(cas_dir,'behavior/Overview/Overview_Withdrawn_Completed/TAG_Overview_Doc.xlsx'), 
+    sheet = "Overview")
+
+overview <- overview[,c("TAG_ID","W1S2_Completed","Withdrawn_W1","Exclusionary_Withdrawl")]
+
+#removing everyone who withdrew at W1 (exclusionary withdrawals & Withdrawn_W1)
+overview <- overview %>% 
+  rename(SID = TAG_ID) %>%
+  replace_na(list(Withdrawn_W1 = 0)) %>%
+  replace_na(list(Exclusionary_Withdrawl = 0)) %>% 
+  arrange(Exclusionary_Withdrawl) %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", SID)) %>%
+  filter(Exclusionary_Withdrawl==0) %>%
+  filter(Withdrawn_W1==0)
+```
+
+###IMPORT "FINAL" SALIVA CONCENTRATIONS & IDENTIFY UNDETECTABLES
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=4, fig.width=4}
+#this section 1) imports 2 rounds of hormone concentrations assayed by Birdies lab, 2) updates non-identifiable hormone concentrations based on MLB and MEAB's decisions (see google doc "TAG_salivary_hormones_methods_draft" or TAG protocol paper for more info), and 3) formats and joins different hormones into one master file called "Saliva"
+
+#import W2 master file
+master <- read_xlsx(paste0(saliva_dir,'/TAG_SALIVA_W2_Master_File_clean.xlsx'), sheet=1)
+
+
+#check entries with '<0.000' (left censored - in W2 there were no right censored values) listed in concentration columns. 
+master_check1 <- filter(master, grepl('<', DHEA) | grepl('<', Estradiol) | grepl('<', Testosterone)) 
+
+#import decisions made by MEAB and MLB for undetectables 
+decisions <- read_xlsx(paste0(saliva_dir,'/TAG_W2_Saliva_decisions.xlsx'), sheet=1)
+decisions <- decisions %>% mutate(SID = as.factor(round(as.numeric(ID),2)))
+
+#format imported DFs, update with decisions, create SID as 3 digit numeric factor (i.e. "001"). 
+#Hormones separated here to deal with samples with undetectables in multiple hormones
+master_DHEA <- master %>% dplyr::select(ID,Sample,Collection_date,DHEA)
+master_EST <- master %>% dplyr::select(ID,Sample,Collection_date,Estradiol)
+master_TEST <- master %>% dplyr::select(ID,Sample,Collection_date,Testosterone)
+Saliva_DHEA <- master_DHEA %>% 
+  left_join(.,decisions[decisions$Hormone=="DHEA",],by=c("ID","Sample")) %>%
+  mutate(sal_DHEA = ifelse(grepl('<',DHEA), Decision,DHEA)) %>%
+  mutate(sal_DHEA = round(as.numeric(sal_DHEA),3)) %>%
+  dplyr::select(ID,Sample,Collection_date,sal_DHEA) %>%
+  filter(!is.na(ID))
+Saliva_EST <- master_EST %>% 
+  left_join(.,decisions[decisions$Hormone=="Estradiol",],by=c("ID","Sample")) %>%
+  mutate(sal_EST = ifelse(grepl('<',Estradiol), Decision,Estradiol)) %>%
+  mutate(sal_EST = round(as.numeric(sal_EST),3)) %>%
+  dplyr::select(ID,Sample,Collection_date,sal_EST) %>%
+  filter(!is.na(ID))
+Saliva_TEST <- master_TEST %>% 
+  mutate(SID = as.factor(sprintf("%03d", ID))) %>%
+  left_join(.,decisions[decisions$Hormone=="Tesosterone",],by=c("ID","Sample")) %>%
+  mutate(sal_TEST = ifelse(grepl('<',Testosterone), Decision,Testosterone)) %>%
+  mutate(sal_TEST = round(as.numeric(sal_TEST),3)) %>%
+  dplyr::select(ID,Sample,Collection_date,sal_TEST) %>%
+  filter(!is.na(ID))
+
+Saliva <- Saliva_DHEA %>% full_join(.,Saliva_TEST) %>% full_join(.,Saliva_EST) %>% 
+  mutate(SID = as.factor(sprintf("%03d", ID))) %>%
+  filter(SID %in% overview$SID)
+```
+
+###FINAL MEAN CONCENTRATIONS & DISTRIBUTIONS
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
+
+#plot raw concentrations
+raw_plot <- Saliva %>% gather(., hormone, concentration, c(sal_DHEA,sal_TEST,sal_EST), factor_key=TRUE) %>% 
+  ggplot(aes(x = concentration)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ hormone, scales="free")
+raw_plot
+
+#skew and kurtosis of raw concentrations
+skew(Saliva$sal_DHEA)
+skew(Saliva$sal_TEST)
+skew(Saliva$sal_EST)
+kurtosi(Saliva$sal_DHEA)
+kurtosi(Saliva$sal_TEST)
+kurtosi(Saliva$sal_EST)
+
+#log transform concentrations
+Saliva <- Saliva %>% 
+  gather(., hormone, conc, c(sal_DHEA,sal_TEST,sal_EST), factor_key=TRUE) %>% 
+  mutate(conc_ln = log(conc + 4)) %>% 
+  gather(., var, value, c(conc,conc_ln)) %>%
+  mutate(var = paste0(hormone,'_',var)) %>%
+  dplyr::select(-hormone) %>%
+  spread(var,value) 
+
+log_plot <- Saliva %>% dplyr::select(SID, Sample, contains("conc_ln")) %>%
+  gather(., hormone, concentration_ln, -SID, -Sample, factor_key=TRUE) %>% 
+  ggplot(aes(x = concentration_ln)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ hormone, scales="free")
+log_plot
+```
+
+###WINSORIZE OUTLIERS
+```{r}
+#this section provided by MB and Johnny
+#set outlier limits for winsoring
+DHEA_up_limit <- (mean(Saliva$sal_DHEA_conc_ln,na.rm=T) + 3*(sd(Saliva$sal_DHEA_conc_ln,na.rm=T)))
+DHEA_lo_limit <- (mean(Saliva$sal_DHEA_conc_ln,na.rm=T) - 3*(sd(Saliva$sal_DHEA_conc_ln,na.rm=T)))
+DHEA_lo_limit <- ifelse(DHEA_lo_limit<0, 0, DHEA_lo_limit)
+TEST_up_limit <- (mean(Saliva$sal_TEST_conc_ln,na.rm=T) + 3*(sd(Saliva$sal_TEST_conc_ln,na.rm=T)))
+TEST_lo_limit <- (mean(Saliva$sal_TEST_conc_ln,na.rm=T) - 3*(sd(Saliva$sal_TEST_conc_ln,na.rm=T)))
+TEST_lo_limit <- ifelse(TEST_lo_limit<0, 0, TEST_lo_limit)
+EST_up_limit <- (mean(Saliva$sal_EST_conc_ln,na.rm=T) + 3*(sd(Saliva$sal_EST_conc_ln,na.rm=T)))
+EST_lo_limit <- (mean(Saliva$sal_EST_conc_ln,na.rm=T) - 3*(sd(Saliva$sal_EST_conc_ln,na.rm=T)))
+EST_lo_limit <- ifelse(EST_lo_limit<0, 0, EST_lo_limit)
+
+#Prep data & plot outliers
+hist(Saliva$sal_DHEA_conc_ln, main="", xlab="DHEA")
+abline(v=DHEA_up_limit,col="red")
+abline(v=DHEA_lo_limit,col="red")
+hist(Saliva$sal_TEST_conc_ln, main="", xlab="TEST")
+abline(v=TEST_up_limit,col="red")
+abline(v=TEST_lo_limit,col="red")
+hist(Saliva$sal_EST_conc_ln, main="", xlab="EST")
+abline(v=EST_up_limit,col="red")
+abline(v=EST_lo_limit,col="red")
+
+#yes DHEA lo outliers
+summary(Saliva$sal_DHEA_conc_ln)
+#yes TEST lo outliers
+summary(Saliva$sal_TEST_conc_ln)
+#yes EST hi outliers
+summary(Saliva$sal_EST_conc_ln)
+#Winsorize data with min and max values
+Saliva$sal_DHEA_conc_ln_w <- Winsorize(Saliva$sal_DHEA_conc_ln, minval = DHEA_lo_limit, maxval = DHEA_up_limit, na.rm = TRUE)
+Saliva$sal_TEST_conc_ln_w <- Winsorize(Saliva$sal_TEST_conc_ln, minval = TEST_lo_limit, maxval = TEST_up_limit, na.rm = TRUE)
+Saliva$sal_EST_conc_ln_w <- Winsorize(Saliva$sal_EST_conc_ln, minval = EST_lo_limit, maxval = EST_up_limit, na.rm = TRUE)
+
+#Code from here to end of chunk thank you to Johnny
+#identify the points that were changed to the min and max
+#(aka those points that are equal to the min and max but weren't before)
+cleaned_DHEA <- na.omit(Saliva$sal_DHEA_conc_ln_w)
+original_DHEA <- na.omit(Saliva$sal_DHEA_conc_ln)
+min_pts_DHEA <- which(cleaned_DHEA == min(cleaned_DHEA) & original_DHEA != min(cleaned_DHEA))
+max_pts_DHEA <- which(cleaned_DHEA == max(cleaned_DHEA) & original_DHEA != max(cleaned_DHEA))
+cleaned_TEST <- na.omit(Saliva$sal_TEST_conc_ln_w)
+original_TEST <- na.omit(Saliva$sal_TEST_conc_ln)
+min_pts_TEST <- which(cleaned_TEST == min(cleaned_TEST) & original_TEST != min(cleaned_TEST))
+max_pts_TEST <- which(cleaned_TEST == max(cleaned_TEST) & original_TEST != max(cleaned_TEST))
+cleaned_EST <- na.omit(Saliva$sal_EST_conc_ln_w)
+original_EST <- na.omit(Saliva$sal_EST_conc_ln)
+min_pts_EST <- which(cleaned_EST == min(cleaned_EST) & original_EST != min(cleaned_EST))
+max_pts_EST <- which(cleaned_EST == max(cleaned_EST) & original_EST != max(cleaned_EST))
+# NOTE: Rank-preserving changes below are only done for lo TEST, lo DHEA and hi EST, values. The rest didn't have any outliers.
+# then rank them
+# rank will give you smallest -> largest ranks, 
+# so to get least-> most outlierish we just reverse min_ranks
+min_ranks_TEST <- rank(original_TEST[min_pts_TEST])
+min_ranks_TEST <- max(min_ranks_TEST) - min_ranks_TEST + 1
+min_ranks_DHEA <- rank(original_DHEA[min_pts_DHEA])
+min_ranks_DHEA <- max(min_ranks_DHEA) - min_ranks_DHEA + 1
+max_ranks_EST <- rank(original_EST[max_pts_EST])
+# now you can replace them with whatever you want
+increment=0.01
+rank_preserving_DHEA <- cleaned_DHEA
+rank_preserving_DHEA[min_pts_DHEA] <- rank_preserving_DHEA[min_pts_DHEA]-(increment * min_ranks_DHEA)
+rank_preserving_TEST <- cleaned_TEST
+rank_preserving_TEST[min_pts_TEST] <- rank_preserving_TEST[min_pts_TEST]-(increment * min_ranks_TEST)
+rank_preserving_EST <- cleaned_EST
+rank_preserving_EST[max_pts_EST] <- rank_preserving_EST[max_pts_EST]+(increment * max_ranks_EST)
+# check out what we did
+outliers_DHEA <- c(min_pts_DHEA, max_pts_DHEA)
+comparison_DHEA <- cbind(original_DHEA[outliers_DHEA],
+                         cleaned_DHEA[outliers_DHEA],
+                         rank_preserving_DHEA[outliers_DHEA])
+outliers_TEST <- c(min_pts_TEST, max_pts_TEST)
+comparison_TEST <- cbind(original_TEST[outliers_TEST],
+                         cleaned_TEST[outliers_TEST],
+                         rank_preserving_TEST[outliers_TEST])
+outliers_EST <- c(min_pts_EST, max_pts_EST)
+comparison_EST <- cbind(original_EST[outliers_EST],
+                         cleaned_EST[outliers_EST],
+                         rank_preserving_EST[outliers_EST])
+# reorder by the first column
+comparison_DHEA <- comparison_DHEA[order(comparison_DHEA[,1]),]
+comparison_DHEA <- as.data.frame(comparison_DHEA) %>% rename(sal_DHEA_conc_ln=V1,
+                                                             sal_DHEA_conc_ln_w=V2,
+                                                             sal_DHEA_conc_ln_w_r=V3)
+comparison_DHEA <- comparison_DHEA[!duplicated(comparison_DHEA), ]
+comparison_TEST <- comparison_TEST[order(comparison_TEST[,1]),]
+comparison_TEST <- as.data.frame(comparison_TEST) %>% rename(sal_TEST_conc_ln=V1,
+                                                             sal_TEST_conc_ln_w=V2,
+                                                             sal_TEST_conc_ln_w_r=V3)
+comparison_TEST <- comparison_TEST[!duplicated(comparison_TEST), ]
+comparison_EST <- comparison_EST[order(comparison_EST[,1]),]
+comparison_EST <- as.data.frame(comparison_EST) %>% rename(sal_EST_conc_ln=V1,
+                                                           sal_EST_conc_ln_w=V2,
+                                                           sal_EST_conc_ln_w_r=V3)
+comparison_EST <- comparison_EST[!duplicated(comparison_EST), ]
+
+Saliva <- Saliva %>% 
+  left_join(.,comparison_DHEA,by=c("sal_DHEA_conc_ln","sal_DHEA_conc_ln_w")) %>%
+  mutate(sal_DHEA_conc_ln_w = ifelse((!is.na(sal_DHEA_conc_ln_w_r)),sal_DHEA_conc_ln_w_r,sal_DHEA_conc_ln_w)) %>%
+  left_join(.,comparison_TEST,by=c("sal_TEST_conc_ln","sal_TEST_conc_ln_w")) %>%
+  mutate(sal_TEST_conc_ln_w = ifelse((!is.na(sal_TEST_conc_ln_w_r)),sal_TEST_conc_ln_w_r,sal_TEST_conc_ln_w)) %>%
+  left_join(.,comparison_EST,by=c("sal_EST_conc_ln","sal_EST_conc_ln_w")) %>%
+  mutate(sal_EST_conc_ln_w = ifelse((!is.na(sal_EST_conc_ln_w_r)),sal_EST_conc_ln_w_r,sal_EST_conc_ln_w)) %>%
+  dplyr::select(-sal_DHEA_conc_ln_w_r,-sal_TEST_conc_ln_w_r,-sal_EST_conc_ln_w_r)
+  
+###CHECK FINAL SKEW AND KURTOSIS AFTER WINSORIZING
+skew(Saliva$sal_DHEA_conc_ln_w)
+skew(Saliva$sal_TEST_conc_ln_w)
+skew(Saliva$sal_EST_conc_ln_w)
+kurtosi(Saliva$sal_DHEA_conc_ln_w)
+kurtosi(Saliva$sal_TEST_conc_ln_w)
+kurtosi(Saliva$sal_EST_conc_ln_w)
+#plot winsorized concentrations
+win_plot <- Saliva %>% dplyr::select(SID, Sample, contains("conc_ln_w")) %>%
+  gather(., hormone, concentration_ln_w, -SID, -Sample, factor_key=TRUE) %>% 
+  ggplot(aes(x = concentration_ln_w)) +
+  geom_histogram(color="black",fill="white") +
+  facet_wrap(~ hormone, scales="free")
+win_plot
+```
+
+
+###THE REST OF THE SCRIPT EXAMINES THE INFLUENCE OF EXTRANEOUS FACTORS 
+#For various approaches to controlling for confounds and creating basal levels, see the wave 1 cleaning script (cleaningSaliva_concentrations.Rmd). 
+
+###CREATE DF OF SALIVA CONC AND FORMS
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.height=7, fig.width=15}
+control <- read.csv(paste0(saliva_dir,'/TAG_W2_at_home_saliva_overview_cor.csv'))
+control <- control %>% 
+  mutate(SID=gsub("[^0-9\\.]", "", subjectspitid)) %>%
+  mutate(SID = as.factor(SID)) %>%
+  dplyr::select(SID, s1_complete, s1_doc, s1_wake_up_time, s1_start_time, s1_time_to_collect, s1_medicines_y_n, s1_sick_y_n, s2_complete, s2_doc, s2_wake_up_time, s2_start_time, s2_time_to_collect, s2_medicines_y_n, s2_sick_y_n, s3_complete, s3_doc, s3_wake_up_time, s3_start_time, s3_time_to_collect, s3_medicines_y_n, s3_sick_y_n, s4_complete, s4_doc, s4_wake_up_time, s4_start_time, s4_time_to_collect, s4_medicines_y_n, s4_sick_y_n, s5_complete, s5_doc, s5_wake_up_time, s5_start_time, s5_time_to_collect, s5_medicines_y_n, s5_sick_y_n, s6_complete, s6_doc, s6_wake_up_time, s6_start_time, s6_time_to_collect, s6_medicines_y_n, s6_sick_y_n, s7_complete, s7_doc, s7_wake_up_time, s7_wake_up_time, s7_start_time, s7_time_to_collect, s7_medicines_y_n, s7_sick_y_n) %>% 
+  filter(!SID=="") 
+control <- gather(control, weeks, measurement, -SID) %>%
+  separate(weeks, c("week", "variable"), extra = "merge") %>%
+  spread(variable,measurement) %>%
+  mutate(week=gsub("[^0-9\\.]", "", week)) %>%
+  mutate(ID = paste0(SID,'_',week))
+#import and format med "full" dataset ##NEED TO CHECK THIS FILE!
+control_meds <- read.csv(paste0(med_dir, '/TAG_W2_Saliva_Medications_processed.csv'))
+control_meds <- control_meds %>% mutate(SID=gsub("[^0-9\\.]", "", subjectspitid)) %>% 
+  dplyr::select(-contains("taken")) %>% 
+  replace_na(list(s1_medcode1 = 0,s1_medcode2 = 0,s1_medcode3 = 0,s2_medcode1 = 0,s2_medcode2 = 0,s2_medcode3 = 0,
+                  s3_medcode1 = 0,s3_medcode2 = 0,s3_medcode3 = 0,s4_medcode1 = 0,s4_medcode2 = 0,s4_medcode3 = 0,
+                  s5_medcode1 = 0,s5_medcode2 = 0,s5_medcode3 = 0,s6_medcode1 = 0,s6_medcode2 = 0,
+                  s7_medcode1 = 0,s7_medcode2 = 0)) %>%
+  mutate(s1_medcode1 = ifelse(is.na(s1_medicines_y_n),NA,s1_medcode1),
+         s1_medcode2 = ifelse(is.na(s1_medicines_y_n),NA,s1_medcode2),
+         s1_medcode3 = ifelse(is.na(s1_medicines_y_n),NA,s1_medcode3),
+         s2_medcode1 = ifelse(is.na(s2_medicines_y_n),NA,s2_medcode1),
+         s2_medcode2 = ifelse(is.na(s2_medicines_y_n),NA,s2_medcode2),
+         s2_medcode3 = ifelse(is.na(s1_medicines_y_n),NA,s2_medcode3),
+         s3_medcode1 = ifelse(is.na(s3_medicines_y_n),NA,s3_medcode1),
+         s3_medcode2 = ifelse(is.na(s3_medicines_y_n),NA,s3_medcode2),
+         s3_medcode3 = ifelse(is.na(s1_medicines_y_n),NA,s3_medcode3),
+         s4_medcode1 = ifelse(is.na(s4_medicines_y_n),NA,s4_medcode1),
+         s4_medcode2 = ifelse(is.na(s4_medicines_y_n),NA,s4_medcode2),
+         s4_medcode3 = ifelse(is.na(s1_medicines_y_n),NA,s4_medcode3),
+         s5_medcode1 = ifelse(is.na(s5_medicines_y_n),NA,s5_medcode1),
+         s5_medcode2 = ifelse(is.na(s5_medicines_y_n),NA,s5_medcode2),
+         s5_medcode3 = ifelse(is.na(s1_medicines_y_n),NA,s5_medcode3),
+         s6_medcode1 = ifelse(is.na(s6_medicines_y_n),NA,s6_medcode1),
+         s6_medcode2 = ifelse(is.na(s6_medicines_y_n),NA,s6_medcode2),  
+         s7_medcode1 = ifelse(is.na(s7_medicines_y_n),NA,s7_medcode1),
+         s7_medcode2 = ifelse(is.na(s7_medicines_y_n),NA,s7_medcode2)) %>% 
+  right_join(.,overview) %>% 
+  dplyr::select(-subjectspitid,-W1S2_Completed,-Withdrawn_W1,-Exclusionary_Withdrawl) %>%
+  gather(code,use,-SID) %>%
+  separate(code,c('week','code')) %>%  
+  mutate(code = ifelse(code=="medicines","meds",paste0('code_',use))) %>%
+  mutate(use = ifelse(code=="code_NA", use,
+                      ifelse(code=="meds",use,
+                             ifelse(is.na(use),0,1)))) 
+control_meds <- control_meds[!duplicated(control_meds),] 
+control_meds <- control_meds %>% spread(code,use) %>% 
+  mutate(SID = as.factor(as.character(SID)),
+         week = gsub("[^0-9\\.]","",week)) %>%
+  mutate(week = as.factor(week))
+control_meds <- control_meds %>% dplyr::select(-`code_-9`,-code_NA,-code_0) %>% 
+  mutate(code_1 = ifelse(is.na(code_1) & meds==0,0, ifelse(is.na(code_1) & meds==1,0,code_1)),
+         code_4 = ifelse(is.na(code_4) & meds==0,0, ifelse(is.na(code_4) & meds==1,0,code_4)),
+         code_5 = ifelse(is.na(code_5) & meds==0,0, ifelse(is.na(code_5) & meds==1,0,code_5)),
+         code_6 = ifelse(is.na(code_6) & meds==0,0, ifelse(is.na(code_6) & meds==1,0,code_6)),
+         code_7 = ifelse(is.na(code_7) & meds==0,0, ifelse(is.na(code_7) & meds==1,0,code_7)),
+         code_9 = ifelse(is.na(code_9) & meds==0,0, ifelse(is.na(code_9) & meds==1,0,code_9)),
+         code_12 = ifelse(is.na(code_12) & meds==0,0, ifelse(is.na(code_12) & meds==1,0,code_12)),
+         code_13 = ifelse(is.na(code_13) & meds==0,0, ifelse(is.na(code_13) & meds==1,0,code_13)),
+         code_16 = ifelse(is.na(code_16) & meds==0,0, ifelse(is.na(code_16) & meds==1,0,code_16)),
+         code_17 = ifelse(is.na(code_17) & meds==0,0, ifelse(is.na(code_17) & meds==1,0,code_17)),
+         code_18 = ifelse(is.na(code_18) & meds==0,0, ifelse(is.na(code_18) & meds==1,0,code_18)),
+         code_19 = ifelse(is.na(code_19) & meds==0,0, ifelse(is.na(code_19) & meds==1,0,code_19)),
+         code_20 = ifelse(is.na(code_20) & meds==0,0, ifelse(is.na(code_20) & meds==1,0,code_20))) %>%
+  mutate(SID = as.factor(SID), week = as.factor(week))
+#import and format days that saliva samples were provided
+control_days <- read.csv(paste0(saliva_dir,'/TAG_W2_Saliva_sample_dates.csv'))
+control_days <- control_days %>% mutate(week = gsub("[^0-9\\.]","",week)) %>% 
+  filter(!week=="") %>% 
+  mutate(SID = str_pad(SID, 3, pad="0"), 
+         week = as.factor(week),
+         day = as.factor(day))
+#join control variables and make them into appropriate factors - R seems to import time variables (i.e. waking time and colleciton[aka start] time) with today's date. But this is fine, because all data has the same "date", which is removed when centering. In order to use time variables in imputation, I converted them to numeric. This still maintains variability between participants, but is in a more usable format.
+control_all <- control %>% left_join(.,control_meds) %>% left_join(.,control_days) 
+#replace blanks with NA
+control_all <- apply(control_all, 2, function(x) gsub("^$|^ $", NA, x))
+control_all <- as.data.frame(control_all) %>%
+  mutate(sick_y_n = as.factor(sick_y_n),
+         medicines_y_n = as.factor(medicines_y_n),
+         start_time=as.POSIXct(start_time,format="%H:%M"),
+         wake_up_time=as.POSIXct(wake_up_time,format="%H:%M"),
+         time_to_collect = as.numeric(time_to_collect)) %>%
+  mutate(time_diff = difftime(start_time,wake_up_time)/60) %>%
+  mutate(time_diff = as.numeric(time_diff)) %>%
+  mutate(start_time_num = as.numeric(start_time - 1580371200)) %>%
+  mutate(wake_up_time_num = as.numeric(wake_up_time) - 1580371200) %>% 
+  mutate(start_time_num = start_time_num/100,
+         wake_up_time_num = wake_up_time_num/100) %>%
+  mutate(weekday = ifelse(day %in% c("Saturday","Sunday"),0,
+                   ifelse(day %in% c("Monday","Tuesday","Wednesday","Thursday","Friday"),1,NA))) %>% 
+  filter(ID %in% Saliva$ID)
+                 
+#combine Saliva and Control variables
+Saliva <- Saliva %>% 
+  mutate(ID = paste(SID,Sample,sep="_"))
+Saliva_withconfounds <- Saliva %>% left_join(., control_all) 
+```
+
+###CHECK EFFECTS OF CONFOUNDS USING LMER (LONG DATASET)
+```{r}
+Saliva_withconfounds <- Saliva_withconfounds %>% mutate(week=as.numeric(week))
+###DHEA###
+DHEAlmm_time <- Saliva_withconfounds %>% filter(complete.cases(sal_DHEA_conc_ln_w,wake_up_time_num,time_diff,weekday))
+DHEA_null_time <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=DHEAlmm_time, REML = F)
+DHEA_time <- lmer(sal_DHEA_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=DHEAlmm_time, REML = F)
+DHEA_time2 <- lmer(sal_DHEA_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=DHEAlmm_time, REML = F)
+anova(DHEA_null_time,DHEA_time,DHEA_time2)
+
+DHEAlmm_med <- Saliva_withconfounds %>% filter(complete.cases(sal_DHEA_conc_ln_w,code_1,code_4,code_5,code_6,
+                                           code_7,code_9,code_12,code_13,code_16,code_17,code_18,
+                                           code_19,code_20))
+DHEA_null_med <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=DHEAlmm_med, REML = F)
+DHEA_medcode <- lmer(sal_DHEA_conc_ln_w ~ code_1+code_4+code_5+code_6+code_7+code_9+code_12+code_13+code_16+code_17+code_18+code_19+code_20+ (1 | SID), data=DHEAlmm_med, REML = F)
+anova(DHEA_null_med,DHEA_medcode)
+
+DHEAlmm_sick <- Saliva_withconfounds %>% filter(complete.cases(sal_DHEA_conc_ln_w,sick_y_n))
+DHEA_null_sick <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=DHEAlmm_sick, REML = F)
+DHEA_sick_y_n <- lmer(sal_DHEA_conc_ln_w ~ sick_y_n + (1 | SID), data=DHEAlmm_sick, REML = F)
+anova(DHEA_null_sick,DHEA_sick_y_n)
+###TEST###
+TESTlmm_time <- Saliva_withconfounds %>% filter(complete.cases(sal_TEST_conc_ln_w,wake_up_time_num,time_diff,weekday))
+TEST_null_time <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=TESTlmm_time, REML = F)
+TEST_time <- lmer(sal_TEST_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=TESTlmm_time, REML = F)
+TEST_time2 <- lmer(sal_TEST_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=TESTlmm_time, REML = F)
+anova(TEST_null_time,TEST_time,TEST_time2)
+
+TESTlmm_med <- Saliva_withconfounds %>% filter(complete.cases(sal_TEST_conc_ln_w,code_1,code_4,code_5,code_6,
+                                           code_7,code_9,code_12,code_13,code_16,code_17,code_18,
+                                           code_19,code_20))
+TEST_null_med <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=TESTlmm_med, REML = F)
+TEST_medcode <- lmer(sal_TEST_conc_ln_w ~ code_1+code_4+code_5+code_6+code_7+code_9+code_12+code_13+code_16+code_17+code_18+code_19+code_20+ (1 | SID), data=TESTlmm_med, REML = F)
+anova(TEST_null_med,TEST_medcode)
+
+TESTlmm_sick <- Saliva_withconfounds %>% filter(complete.cases(sal_TEST_conc_ln_w,sick_y_n))
+TEST_null_sick <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=TESTlmm_sick, REML = F)
+TEST_sick_y_n <- lmer(sal_TEST_conc_ln_w ~ sick_y_n + (1 | SID), data=TESTlmm_sick, REML = F)
+anova(TEST_null_sick,TEST_sick_y_n)
+###EST###
+ESTlmm_time <- Saliva_withconfounds %>% filter(complete.cases(sal_EST_conc_ln_w,wake_up_time_num,time_diff,weekday))
+EST_null_time <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=ESTlmm_time, REML = F)
+EST_time <- lmer(sal_EST_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=ESTlmm_time, REML = F)
+EST_time2 <- lmer(sal_EST_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=ESTlmm_time, REML = F)
+anova(EST_null_time,EST_time,EST_time2)
+
+ESTlmm_med <- Saliva_withconfounds %>% filter(complete.cases(sal_EST_conc_ln_w,code_1,code_4,code_5,code_6,
+                                           code_7,code_9,code_12,code_13,code_16,code_17,code_18,
+                                           code_19,code_20))
+EST_null_med <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=ESTlmm_med, REML = F)
+EST_medcode <- lmer(sal_EST_conc_ln_w ~ code_1+code_4+code_5+code_6+code_7+code_9+code_12+code_13+code_16+code_17+code_18+code_19+code_20+ (1 | SID), data=ESTlmm_med, REML = F)
+anova(EST_null_med,EST_medcode)
+
+ESTlmm_sick <- Saliva_withconfounds %>% filter(complete.cases(sal_EST_conc_ln_w,sick_y_n))
+EST_null_sick <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=ESTlmm_sick, REML = F)
+EST_sick_y_n <- lmer(sal_EST_conc_ln_w ~ sick_y_n + (1 | SID), data=ESTlmm_sick, REML = F)
+anova(EST_null_sick,EST_sick_y_n)
+#plot start_time distribution
+Start_time <- Saliva_withconfounds %>% dplyr::select(SID,week,start_time) %>% arrange(start_time)
+Start_time <- as.POSIXlt(Start_time$start_time)$hour
+hist(Start_time, breaks=seq(0, 23), main="Start time (hour)")
+```
+
+
+###SAVE SALIVA CONCENTRATIONS
+```{r}
+#save cleaned saliva concentrations (clean up variable names first)
+Saliva_withconfounds <- Saliva_withconfounds %>% rename(doc_form = sample,
+                            medcode_1 = code_1,
+                            medcode_12 = code_12,
+                            medcode_13 = code_13,
+                            medcode_16 = code_16,
+                            medcode_17 = code_17,
+                            medcode_18 = code_18,
+                            medcode_19 = code_19,
+                            medcode_20 = code_20,
+                            medcode_4 = code_4,
+                            medcode_5 = code_5,
+                            medcode_6 = code_6,
+                            medcode_7 = code_7,
+                            medcode_9 = code_9,
+                            medcode_yn = meds,
+                            interval_priorsample = interval) %>%
+  dplyr::select(-Collection_date,-complete,-doc)
+write.csv(Saliva_withconfounds,paste0(saliva_dir,'/TAG_W2_Saliva_processed.csv'),row.names=F)
+#save workspace
+save.image(paste0(saliva_dir,"/TAG_W2_Saliva.RData"))
+```
