@@ -30,15 +30,9 @@ rsync -aiv --log-file=$log_name -e ssh dsnlab@simulatormac:/Users/dsnlab/Studies
 
 ## NEURO + PHYSIO DATA
 ## COPY TALAPAS LCNI DICOMS TO TALAPAS DSNLAB ARCHIVE
-<<<<<<< HEAD
-ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/TAG/TAG???_20* /projects/dsnlab/shared/tag/archive/DICOMS/ --exclude $EXCLUDED_SESS_1 --exclude $EXCLUDED_SESS_2 --exclude $EXCLUDED_SESS_3  # for tag
-ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/SOS/TAG???_20* /projects/dsnlab/shared/sos/archive/DICOMS/ # for SOS (named correctly)
-ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/SOS/SOS???_20* /projects/dsnlab/shared/sos/archive/DICOMS/ # for SOS (named incorrectly)
-=======
-# RUN THIS LINE USING THE VERSION IN THE TEXT FILE copy_lcni_dicoms_to_dsnlab.txt TO AVOID BACKING UP SOS FILES - it has extra options that are omitted for privacy reasons (ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv -P /projects/lcni/dcm/dsnlab/Pfeifer/TAG/TAG???_20* /projects/dsnlab/shared/tag/archive/DICOMS/) # for tag
+ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv --log-file=$log_name -P /projects/lcni/dcm/dsnlab/Pfeifer/TAG/TAG???_20* /projects/dsnlab/shared/tag/archive/DICOMS/ --exclude $EXCLUDED_SESS_1 --exclude $EXCLUDED_SESS_2 --exclude $EXCLUDED_SESS_3 # for tag
 ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv --log-file=$log_name -P /projects/lcni/dcm/dsnlab/Pfeifer/SOS/TAG???_20* /projects/dsnlab/shared/sos/archive/DICOMS/ # for SOS (named correctly)
 ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv --log-file=$log_name -P /projects/lcni/dcm/dsnlab/Pfeifer/SOS/SOS???_20* /projects/dsnlab/shared/sos/archive/DICOMS/ # for SOS (named incorrectly)
->>>>>>> 023a6f5de34aed223370b7d60d2f6bf7127e4a7b
 
 ## COPY TALAPAS LCNI PHYSIO TO TALAPAS DSNLAB ARCHIVE
 ssh jpfeifer@talapas-ln1.uoregon.edu rsync -aiv --log-file=$log_name -P /projects/lcni/dcm/dsnlab/Pfeifer/TAG/*physio* /projects/dsnlab/shared/tag/archive/physio/
