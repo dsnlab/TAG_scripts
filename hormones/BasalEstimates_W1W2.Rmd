@@ -1,0 +1,510 @@
+---
+title: "Saliva_basalestimates_W1W2"
+author: "MEAB"
+date: "16/03/2020"
+output: html_document
+---
+
+```{r, include=FALSE}
+packages <- c("Amelia", "lme4" , "merTools", "ggplot2","tidyr","stringr","knitr","corrplot","data.table","readxl","gridExtra","dplyr", "psych","kableExtra","lavaan","jomo","Hmisc","DescTools")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+options(digits=10)
+
+cas_dir <- 'Y:/dsnlab/TAG/'
+saliva_dir <- paste0(cas_dir,'behavior/Puberty/Saliva/')
+puberty_dir <- paste0(cas_dir,'behavior/Questionnaires/Puberty/')
+```
+
+###CHECK EFFECTS OF CONFOUNDS USING LMER (LONG DATASET WAVE 1)
+```{r , include=FALSE}
+
+
+Saliva <- read.csv(paste0(saliva_dir,'Wave1/TAG_W1_Saliva_processed.csv'),header=T,sep=",")
+Saliva <- Saliva %>% mutate(week=as.numeric(week), SID=as.factor(SID))
+
+#plot start_time distribution
+Start_time <- Saliva %>% select(SID,week,start_time) %>% arrange(start_time)
+Start_time <- as.POSIXlt(Start_time$start_time)$hour
+hist(Start_time, breaks=seq(0, 23), main="Start time (hour)")
+#plot time_diff distribution
+time_diff <- Saliva %>% select(SID,week,time_diff) %>% arrange(time_diff)
+hist(time_diff$time_diff,breaks=50, main="time between waking and starting (minutes)")
+
+#Remove one negative time difference
+Saliva$time_diff <- ifelse(Saliva$SID==042 & Saliva$week==1, NA, Saliva$time_diff)
+
+
+###DHEA###
+DHEAlmm_time <- Saliva %>% filter(complete.cases(sal_DHEA_conc_ln_w,wake_up_time_num,time_diff,weekday))
+                                                                              
+DHEA_null_time <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=DHEAlmm_time, REML = F)
+DHEA_time <- lmer(sal_DHEA_conc_ln_w ~ time_diff + (1 | SID), data=DHEAlmm_time, REML = F)
+DHEA_time1 <- lmer(sal_DHEA_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=DHEAlmm_time, REML = F)
+DHEA_time2 <- lmer(sal_DHEA_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=DHEAlmm_time, REML = F)
+anova(DHEA_null_time,DHEA_time,DHEA_time1,DHEA_time2)
+
+DHEAlmm_med <- Saliva %>% filter(complete.cases(sal_DHEA_conc_ln_w,medcode_1,medcode_2,medcode_3,medcode_5,
+                                           medcode_6,medcode_7,medcode_13,medcode_16,medcode_17,medcode_18,
+                                           medcode_19,medcode_20))
+
+DHEA_null_med <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=DHEAlmm_med, REML = F)
+DHEA_medcode <- lmer(sal_DHEA_conc_ln_w ~ medcode_1+medcode_2+medcode_3+medcode_5+medcode_6+medcode_7+medcode_13+medcode_16+medcode_17+medcode_18+medcode_19+medcode_20+ (1 | SID), data=DHEAlmm_med, REML = F)
+anova(DHEA_null_med,DHEA_medcode)
+
+DHEAlmm_sick <- Saliva %>% filter(complete.cases(sal_DHEA_conc_ln_w,sick_y_n))
+
+DHEA_null_sick <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=DHEAlmm_sick, REML = F)
+DHEA_sick_y_n <- lmer(sal_DHEA_conc_ln_w ~ sick_y_n + (1 | SID), data=DHEAlmm_sick, REML = F)
+anova(DHEA_null_sick,DHEA_sick_y_n)
+
+
+###TEST###
+TESTlmm_time <- Saliva %>% filter(complete.cases(sal_TEST_conc_ln_w,wake_up_time_num,time_diff,weekday))
+TEST_null_time <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=TESTlmm_time, REML = F)
+TEST_time <- lmer(sal_TEST_conc_ln_w ~ time_diff + (1 | SID), data=TESTlmm_time, REML = F)
+TEST_time1 <- lmer(sal_TEST_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=TESTlmm_time, REML = F)
+TEST_time2 <- lmer(sal_TEST_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=TESTlmm_time, REML = F)
+anova(TEST_null_time,TEST_time,TEST_time1,TEST_time2)
+
+TESTlmm_med <- Saliva %>% filter(complete.cases(sal_TEST_conc_ln_w,medcode_1,medcode_2,medcode_3,medcode_5,
+                                           medcode_6,medcode_7,medcode_13,medcode_16,medcode_17,medcode_18,
+                                           medcode_19,medcode_20))
+TEST_null_med <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=TESTlmm_med, REML = F)
+TEST_medcode <- lmer(sal_TEST_conc_ln_w ~ medcode_1+medcode_2+medcode_3+medcode_5+medcode_6+medcode_7+medcode_13+medcode_16+medcode_17+medcode_18+medcode_19+medcode_20+ (1 | SID), data=TESTlmm_med, REML = F)
+anova(TEST_null_med,TEST_medcode)
+
+TESTlmm_sick <- Saliva %>% filter(complete.cases(sal_TEST_conc_ln_w,sick_y_n))
+TEST_null_sick <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=TESTlmm_sick, REML = F)
+TEST_sick_y_n <- lmer(sal_TEST_conc_ln_w ~ sick_y_n + (1 | SID), data=TESTlmm_sick, REML = F)
+anova(TEST_null_sick,TEST_sick_y_n)
+
+###EST###
+ESTlmm_time <- Saliva %>% filter(complete.cases(sal_EST_conc_ln_w,wake_up_time_num,time_diff,weekday))
+EST_null_time <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=ESTlmm_time, REML = F)
+EST_time <- lmer(sal_EST_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=ESTlmm_time, REML = F)
+EST_time2 <- lmer(sal_EST_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=ESTlmm_time, REML = F)
+anova(EST_null_time,EST_time,EST_time2)
+
+ESTlmm_med <- Saliva %>% filter(complete.cases(sal_EST_conc_ln_w,medcode_1,medcode_2,medcode_3,medcode_5,
+                                           medcode_6,medcode_7,medcode_13,medcode_16,medcode_17,medcode_18,
+                                           medcode_19,medcode_20))
+EST_null_med <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=ESTlmm_med, REML = F)
+EST_medcode <- lmer(sal_EST_conc_ln_w ~ medcode_1+medcode_2+medcode_3+medcode_5+medcode_6+medcode_7+medcode_13+medcode_16+medcode_17+medcode_18+medcode_19+medcode_20+ (1 | SID), data=ESTlmm_med, REML = F)
+anova(EST_null_med,EST_medcode)
+
+ESTlmm_sick <- Saliva %>% filter(complete.cases(sal_EST_conc_ln_w,sick_y_n))
+EST_null_sick <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=ESTlmm_sick, REML = F)
+EST_sick_y_n <- lmer(sal_EST_conc_ln_w ~ sick_y_n + (1 | SID), data=ESTlmm_sick, REML = F)
+anova(EST_null_sick,EST_sick_y_n)
+
+```
+
+##Wave 1 conclusions: time_diff (=time between waking and starting collection) matters for DHEA and TEST, no other confounds matter
+
+###CHECK EFFECTS OF CONFOUNDS USING LMER (LONG DATASET WAVE 2)
+```{r}
+
+Saliva_withconfounds <- read.csv(paste0(saliva_dir,'Wave2/TAG_W2_Saliva_processed.csv'),header=T,sep=",")
+Saliva_withconfounds <- Saliva_withconfounds %>% mutate(week=as.numeric(week), SID=as.factor(SID))
+
+#plot start_time distribution
+W2Start_time <- Saliva_withconfounds %>% select(SID,week,start_time) %>% arrange(start_time)
+W2Start_time <- as.POSIXlt(W2Start_time$start_time)$hour
+hist(W2Start_time, breaks=seq(0, 23), main="Start time (hour)")
+#plot time_diff distribution
+W2time_diff <- Saliva %>% select(SID,week,time_diff) %>% arrange(time_diff)
+hist(W2time_diff$time_diff,breaks=50, main="time between waking and starting (minutes)")
+
+
+###DHEA###
+W2DHEAlmm_time <- Saliva_withconfounds %>% filter(complete.cases(sal_DHEA_conc_ln_w,wake_up_time_num,time_diff,weekday))
+W2DHEA_null_time <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=W2DHEAlmm_time, REML = F)
+W2DHEA_time <- lmer(sal_DHEA_conc_ln_w ~ time_diff + (1 | SID), data=W2DHEAlmm_time, REML = F)
+W2DHEA_time1 <- lmer(sal_DHEA_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=W2DHEAlmm_time, REML = F)
+W2DHEA_time2 <- lmer(sal_DHEA_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=W2DHEAlmm_time, REML = F)
+anova(W2DHEA_null_time,W2DHEA_time,W2DHEA_time1,W2DHEA_time2)
+
+W2DHEAlmm_med <- Saliva_withconfounds %>% filter(complete.cases(sal_DHEA_conc_ln_w,medcode_1,medcode_4,medcode_5,medcode_6,                                          medcode_7,medcode_9,medcode_12,medcode_13,medcode_16,medcode_17,medcode_18,
+                                           medcode_19,medcode_20))
+W2DHEA_null_med <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=W2DHEAlmm_med, REML = F)
+W2DHEA_medcode <- lmer(sal_DHEA_conc_ln_w ~ medcode_1+medcode_4+medcode_5+medcode_6+medcode_7+medcode_9+medcode_12+medcode_13+medcode_16+medcode_17+medcode_18+medcode_19+medcode_20+ (1 | SID), data=W2DHEAlmm_med, REML = F)
+anova(W2DHEA_null_med,W2DHEA_medcode)
+
+W2DHEAlmm_sick <- Saliva_withconfounds %>% filter(complete.cases(sal_DHEA_conc_ln_w,sick_y_n))
+W2DHEA_null_sick <- lmer(sal_DHEA_conc_ln_w ~ 1 + (1 | SID), data=W2DHEAlmm_sick, REML = F)
+W2DHEA_sick_y_n <- lmer(sal_DHEA_conc_ln_w ~ sick_y_n + (1 | SID), data=W2DHEAlmm_sick, REML = F)
+anova(W2DHEA_null_sick,W2DHEA_sick_y_n)
+
+###TEST###
+W2TESTlmm_time <- Saliva_withconfounds %>% filter(complete.cases(sal_TEST_conc_ln_w,wake_up_time_num,time_diff,weekday))
+W2TEST_null_time <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=W2TESTlmm_time, REML = F)
+W2TEST_time <- lmer(sal_TEST_conc_ln_w ~ time_diff + (1 | SID), data=W2TESTlmm_time, REML = F)
+W2TEST_time1 <- lmer(sal_TEST_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=W2TESTlmm_time, REML = F)
+W2TEST_time2 <- lmer(sal_TEST_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=W2TESTlmm_time, REML = F)
+anova(W2TEST_null_time,W2TEST_time,W2TEST_time1,W2TEST_time2)
+
+W2TESTlmm_med <- Saliva_withconfounds %>% filter(complete.cases(sal_TEST_conc_ln_w,medcode_1,medcode_4,medcode_5,medcode_6,                                           medcode_7,medcode_9,medcode_12,medcode_13,medcode_16,medcode_17,medcode_18,
+                                           medcode_19,medcode_20))
+W2TEST_null_med <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=W2TESTlmm_med, REML = F)
+W2TEST_medcode <- lmer(sal_TEST_conc_ln_w ~ medcode_1+medcode_4+medcode_5+medcode_6+medcode_7+medcode_9+medcode_12+medcode_13+medcode_16+medcode_17+medcode_18+medcode_19+medcode_20+ (1 | SID), data=W2TESTlmm_med, REML = F)
+anova(W2TEST_null_med,W2TEST_medcode)
+
+W2TESTlmm_sick <- Saliva_withconfounds %>% filter(complete.cases(sal_TEST_conc_ln_w,sick_y_n))
+W2TEST_null_sick <- lmer(sal_TEST_conc_ln_w ~ 1 + (1 | SID), data=W2TESTlmm_sick, REML = F)
+W2TEST_sick_y_n <- lmer(sal_TEST_conc_ln_w ~ sick_y_n + (1 | SID), data=W2TESTlmm_sick, REML = F)
+anova(W2TEST_null_sick,W2TEST_sick_y_n)
+
+###EST###
+W2ESTlmm_time <- Saliva_withconfounds %>% filter(complete.cases(sal_EST_conc_ln_w,wake_up_time_num,time_diff,weekday))
+W2EST_null_time <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=W2ESTlmm_time, REML = F)
+W2EST_time <- lmer(sal_EST_conc_ln_w ~ time_diff + (1 | SID), data=W2ESTlmm_time, REML = F)
+W2EST_time1 <- lmer(sal_EST_conc_ln_w ~ wake_up_time_num + time_diff + (1 | SID), data=W2ESTlmm_time, REML = F)
+W2EST_time2 <- lmer(sal_EST_conc_ln_w ~ wake_up_time_num + time_diff + weekday + (1 | SID), data=W2ESTlmm_time, REML = F)
+anova(W2EST_null_time,W2EST_time,W2EST_time1,W2EST_time2)
+
+W2ESTlmm_med <- Saliva_withconfounds %>% filter(complete.cases(sal_EST_conc_ln_w,medcode_1,medcode_4,medcode_5,medcode_6,                                          medcode_7,medcode_9,medcode_12,medcode_13,medcode_16,medcode_17,medcode_18,
+                                           medcode_19,medcode_20))
+W2EST_null_med <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=W2ESTlmm_med, REML = F)
+W2EST_medcode <- lmer(sal_EST_conc_ln_w ~ medcode_1+medcode_4+medcode_5+medcode_6+medcode_7+medcode_9+medcode_12+medcode_13+medcode_16+medcode_17+medcode_18+medcode_19+medcode_20+ (1 | SID), data=W2ESTlmm_med, REML = F)
+anova(W2EST_null_med,W2EST_medcode)
+
+W2ESTlmm_sick <- Saliva_withconfounds %>% filter(complete.cases(sal_EST_conc_ln_w,sick_y_n))
+W2EST_null_sick <- lmer(sal_EST_conc_ln_w ~ 1 + (1 | SID), data=W2ESTlmm_sick, REML = F)
+W2EST_sick_y_n <- lmer(sal_EST_conc_ln_w ~ sick_y_n + (1 | SID), data=W2ESTlmm_sick, REML = F)
+anova(W2EST_null_sick,W2EST_sick_y_n)
+
+```
+
+## Wave 2 conclusions:
+#time diff matters for DHEA and EST
+#weekday matters for TST
+#sick y/n matters for DHEA and EST
+#Medication matters for TEST and EST (and borderline for DHEA: p=.07)
+#Med categories that matter: medcode_1 (glucocoticoid sprays/inhalers), medcode_4 (contraceptives), medcode_17 (antibiotics/antifungals)
+
+##Decision: use all confounds that have a sign influence on at least one hormone at at least one wave. This includes time_diff, weekday, sick_y_n, medcode_1, medcode_4, medcode_17. Medcode_4 is not included in the imputation and basal estimate calculation for wave 1 below because it was 0 for every pp&sample.
+
+###CONTROL FOR CONFOUNDS - WAVE 1
+```{r}
+#imputing using age, pds and confounds
+
+
+#run imputation with Amelia
+W1impDF <- Saliva %>% 
+  select(SID,week,weekday,wake_up_time_num,start_time_num,sick_y_n,medcode_1,medcode_17,ageS2,PUBcomp,sal_DHEA_conc_ln_w,sal_TEST_conc_ln_w,sal_EST_conc_ln_w)
+
+aout_W1impDF <- amelia(W1impDF, idvars = c("SID","sal_DHEA_conc_ln_w","sal_TEST_conc_ln_w","sal_EST_conc_ln_w"),  noms=c("weekday","sick_y_n","medcode_1","medcode_17"), ts="week", m = 50)
+
+#create time diff after imputing wake_up_time and start_time
+aout_W1impDF <- transform(aout_W1impDF, time_diff=start_time_num - wake_up_time_num)
+#create list of imputed datasets - to be used for analyses
+W1aout_list <- as.list(aout_W1impDF$imputations) 
+#just to visually check the imputed dataset
+W1aout <- as.data.frame(W1aout_list)
+
+#now we run LMM with imputed datasets to extract random effects
+
+#DHEA#
+#lmm of mulitply imputed datasets with merTools
+W1DHEA_lmm_imp <- lmerModList(sal_DHEA_conc_ln_w ~ time_diff + weekday + sick_y_n + medcode_1 + medcode_17  + (1 | SID), data = W1aout_list, control=lmerControl(optimizer="bobyqa"))
+modelFixedEff(W1DHEA_lmm_imp)
+#convergence check
+relgrad <- with(W1DHEA_lmm_imp[[1]]@optinfo$derivs,solve(Hessian,gradient))
+max(abs(relgrad))
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W1DHEAranef_imp <- lapply(X=W1DHEA_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W1DHEAranef_imp <- rbindlist(DHEAranef_imp) 
+W1DHEAranef_imp <- DHEAranef_imp %>% group_by(grp) %>% 
+  summarise(DHEAcoef_imp = mean(`(Intercept)`),
+            DHEAranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#TEST#
+#lmm of mulitply imputed datasets with merTools
+W1TEST_lmm_imp <- lmerModList(sal_TEST_conc_ln_w ~ time_diff + weekday + sick_y_n + medcode_1 + medcode_17  + (1 | SID), data = W1aout_list)
+modelFixedEff(W1TEST_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W1TESTranef_imp <- lapply(W1TEST_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W1TESTranef_imp <- rbindlist(W1TESTranef_imp) 
+W1TESTranef_imp <- W1TESTranef_imp %>% group_by(grp) %>% 
+  summarise(TESTcoef_imp = mean(`(Intercept)`),
+            TESTranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#EST#
+#lmm of mulitply imputed datasets with merTools
+W1EST_lmm_imp <- lmerModList(sal_EST_conc_ln_w ~ time_diff + weekday + sick_y_n + medcode_1 + medcode_17  + (1 | SID), data = W1aout_list)
+modelFixedEff(W1EST_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W1ESTranef_imp <- lapply(W1EST_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W1ESTranef_imp <- rbindlist(W1ESTranef_imp) 
+W1ESTranef_imp <- W1ESTranef_imp %>% group_by(grp) %>% 
+  summarise(ESTcoef_imp = mean(`(Intercept)`),
+            ESTranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#calculate mean hormone levels before correction for confounds and combine with the basal estimates
+Saliva_basal <- Saliva %>% select(SID, week, contains("conc_ln_w")) %>%
+  group_by(SID) %>% summarise(DHEAmean = mean(sal_DHEA_conc_ln_w,na.rm=T),
+                              ESTmean = mean(sal_EST_conc_ln_w,na.rm=T),
+                              TESTmean = mean(sal_TEST_conc_ln_w,na.rm=T)) %>%
+ left_join(.,W1DHEAranef_imp) %>% left_join(., W1TESTranef_imp) %>% left_join(., W1ESTranef_imp)
+```
+
+###CONTROL FOR CONFOUNDS - WAVE 2
+```{r}
+#imputing using age, pds and confounds
+
+#add age and PUBcomp to the dataframe
+pubcomp <- read.csv(paste0(puberty_dir,'Allwaves_PubertyComposite.csv'))
+pubcomp <- pubcomp  %>% filter(wave==2) %>% select(SID,age,PUBcomp) %>% mutate(SID=as.factor(SID))
+Saliva_W2 <- Saliva_withconfounds %>% left_join(., pubcomp)
+
+#run imputation with Amelia
+W2impDF <- Saliva_W2 %>% 
+  select(SID,week,weekday,wake_up_time_num,start_time_num,sick_y_n,medcode_1,medcode_4,medcode_17,age,PUBcomp,sal_DHEA_conc_ln_w,sal_TEST_conc_ln_w,sal_EST_conc_ln_w)
+
+aout_W2impDF <- amelia(W2impDF, idvars = c("SID","sal_DHEA_conc_ln_w","sal_TEST_conc_ln_w","sal_EST_conc_ln_w"),  noms=c("weekday","sick_y_n","medcode_1","medcode_4","medcode_17"), ts="week", m = 50)
+
+#create time diff after imputing wake_up_time and start_time
+aout_W2impDF <- transform(aout_W2impDF, time_diff=start_time_num - wake_up_time_num)
+#create list of imputed datasets - to be used for analyses
+W2aout_list <- as.list(aout_W2impDF$imputations) 
+#just to visually check the imputed dataset
+W2aout <- as.data.frame(W2aout_list)
+
+#now we run LMM with imputed datasets to extract random effects
+
+#DHEA#
+#lmm of mulitply imputed datasets with merTools
+W2DHEA_lmm_imp <- lmerModList(sal_DHEA_conc_ln_w ~ time_diff + weekday + sick_y_n + medcode_1 + medcode_4 + medcode_17  + (1 | SID), data = W2aout_list)
+modelFixedEff(W2DHEA_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W2DHEAranef_imp <- lapply(X=W2DHEA_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W2DHEAranef_imp <- rbindlist(W2DHEAranef_imp) 
+W2DHEAranef_imp <- W2DHEAranef_imp %>% group_by(grp) %>% 
+  summarise(DHEAcoef_imp = mean(`(Intercept)`),
+            DHEAranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#TEST#
+#lmm of mulitply imputed datasets with merTools
+W2TEST_lmm_imp <- lmerModList(sal_TEST_conc_ln_w ~ time_diff + weekday + sick_y_n + medcode_1 + medcode_4 + medcode_17  + (1 | SID), data = W2aout_list)
+modelFixedEff(W2TEST_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W2TESTranef_imp <- lapply(W2TEST_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W2TESTranef_imp <- rbindlist(W2TESTranef_imp) 
+W2TESTranef_imp <- W2TESTranef_imp %>% group_by(grp) %>% 
+  summarise(TESTcoef_imp = mean(`(Intercept)`),
+            TESTranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#EST#
+#lmm of mulitply imputed datasets with merTools
+W2EST_lmm_imp <- lmerModList(sal_EST_conc_ln_w ~ time_diff + weekday + sick_y_n + medcode_1 + medcode_4 + medcode_17  + (1 | SID), data = W2aout_list)
+modelFixedEff(W2EST_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W2ESTranef_imp <- lapply(W2EST_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W2ESTranef_imp <- rbindlist(W2ESTranef_imp) 
+W2ESTranef_imp <- W2ESTranef_imp %>% group_by(grp) %>% 
+  summarise(ESTcoef_imp = mean(`(Intercept)`),
+            ESTranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#calculate mean hormone levels before correction for confounds and combine with the basal estimates
+Saliva_basal_W2 <- Saliva_W2 %>% select(SID, week, contains("conc_ln_w")) %>%
+  group_by(SID) %>% summarise(DHEAmean = mean(sal_DHEA_conc_ln_w,na.rm=T),
+                              ESTmean = mean(sal_EST_conc_ln_w,na.rm=T),
+                              TESTmean = mean(sal_TEST_conc_ln_w,na.rm=T)) %>%
+ left_join(.,W2DHEAranef_imp) %>% left_join(., W2TESTranef_imp) %>% left_join(., W2ESTranef_imp)
+```
+
+###CORRELATE RAW MEANS AND BASAL ESTIMATES
+```{r}
+#correlate imputed random effects, residuals and raw means
+
+#DHEA
+pairs(~DHEAmean+DHEAcoef_imp,data=Saliva_basal, 
+   main="Simple Scatterplot Matrix")
+pairs(~DHEAmean+DHEAcoef_imp,data=Saliva_basal_W2, 
+   main="Simple Scatterplot Matrix")
+
+#TEST
+pairs(~TESTmean+TESTcoef_imp,data=Saliva_basal, 
+   main="Simple Scatterplot Matrix")
+pairs(~TESTmean+TESTcoef_imp,data=Saliva_basal_W2, 
+   main="Simple Scatterplot Matrix")
+
+#EST
+pairs(~ESTmean+ESTcoef_imp,data=Saliva_basal, 
+   main="Simple Scatterplot Matrix")
+pairs(~ESTmean+ESTcoef_imp,data=Saliva_basal_W2, 
+   main="Simple Scatterplot Matrix")
+
+```
+
+###CALCULATE PUBERTAL TIMING VARIABLES BY REGRESSING OUT AGE ALONG WITH THE CONFOUNDS
+```{r}
+
+#### WAVE 1
+#run LMM with imputed datasets from above
+
+#DHEA#
+#lmm of mulitply imputed datasets with merTools
+W1DHEAtim_lmm_imp <- lmerModList(sal_DHEA_conc_ln_w ~ ageS2 + time_diff + weekday + sick_y_n + medcode_1 + medcode_17  + (1 | SID), data = W1aout_list)
+modelFixedEff(W1DHEAtim_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W1DHEArantim_imp <- lapply(X=W1DHEAtim_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W1DHEArantim_imp <- rbindlist(W1DHEArantim_imp) 
+W1DHEArantim_imp <- W1DHEArantim_imp %>% group_by(grp) %>% 
+  summarise(DHEAcoef_imp = mean(`(Intercept)`),
+            DHEAranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#TEST#
+#lmm of mulitply imputed datasets with merTools
+W1TESTtim_lmm_imp <- lmerModList(sal_TEST_conc_ln_w ~ ageS2 + time_diff + weekday + sick_y_n + medcode_1 + medcode_17  + (1 | SID), data = W1aout_list)
+modelFixedEff(W1TESTtim_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W1TESTrantim_imp <- lapply(W1TESTtim_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W1TESTrantim_imp <- rbindlist(W1TESTrantim_imp) 
+W1TESTrantim_imp <- W1TESTrantim_imp %>% group_by(grp) %>% 
+  summarise(TESTcoef_imp = mean(`(Intercept)`),
+            TESTranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#EST#
+#lmm of mulitply imputed datasets with merTools
+W1ESTtim_lmm_imp <- lmerModList(sal_EST_conc_ln_w ~ ageS2 + time_diff + weekday + sick_y_n + medcode_1 + medcode_17  + (1 | SID), data = W1aout_list)
+modelFixedEff(W1ESTtim_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W1ESTrantim_imp <- lapply(W1ESTtim_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W1ESTrantim_imp <- rbindlist(W1ESTrantim_imp) 
+W1ESTrantim_imp <- W1ESTrantim_imp %>% group_by(grp) %>% 
+  summarise(ESTcoef_imp = mean(`(Intercept)`),
+            ESTranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+
+
+#### WAVE 2
+#run LMM with imputed datasets from above
+
+#DHEA#
+#lmm of mulitply imputed datasets with merTools
+W2DHEAtim_lmm_imp <- lmerModList(sal_DHEA_conc_ln_w ~ age + time_diff + weekday + sick_y_n + medcode_1 + medcode_17  + (1 | SID), data = W2aout_list)
+modelFixedEff(W2DHEAtim_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W2DHEArantim_imp <- lapply(X=W2DHEAtim_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W2DHEArantim_imp <- rbindlist(W2DHEArantim_imp) 
+W2DHEArantim_imp <- W2DHEArantim_imp %>% group_by(grp) %>% 
+  summarise(DHEAcoef_imp = mean(`(Intercept)`),
+            DHEAranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#TEST#
+#lmm of mulitply imputed datasets with merTools
+W2TESTtim_lmm_imp <- lmerModList(sal_TEST_conc_ln_w ~ age + time_diff + weekday + sick_y_n + medcode_1 + medcode_17  + (1 | SID), data = W2aout_list)
+modelFixedEff(W2TESTtim_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W2TESTrantim_imp <- lapply(W2TESTtim_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W2TESTrantim_imp <- rbindlist(W2TESTrantim_imp) 
+W2TESTrantim_imp <- W2TESTrantim_imp %>% group_by(grp) %>% 
+  summarise(TESTcoef_imp = mean(`(Intercept)`),
+            TESTranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+#EST#
+#lmm of mulitply imputed datasets with merTools
+W2ESTtim_lmm_imp <- lmerModList(sal_EST_conc_ln_w ~ age + time_diff + weekday + sick_y_n + medcode_1 + medcode_17  + (1 | SID), data = W2aout_list)
+modelFixedEff(W2ESTtim_lmm_imp)
+
+#extract random effect and coefficients (which add fixed effect to the random effect) - this is calculated as a mean across the imputed datasets
+W2ESTrantim_imp <- lapply(W2ESTtim_lmm_imp, function(X) {
+    ranef <- as.data.frame(ranef(X)) %>% select(grp,condval)
+    coef <- as.data.frame(coef(X)$SID) %>% bind_cols(ranef)    
+  })
+W2ESTrantim_imp <- rbindlist(W2ESTrantim_imp) 
+W2ESTrantim_imp <- W2ESTrantim_imp %>% group_by(grp) %>% 
+  summarise(ESTcoef_imp = mean(`(Intercept)`),
+            ESTranef_imp = mean(condval)) %>%
+  rename(SID=grp) %>%
+  arrange(SID)
+
+
+#combine the hormone based timing estimates
+Saliva_hormone_timing_W1 <- W1DHEArantim_imp %>% left_join(., W1TESTrantim_imp) %>% left_join(., W1ESTrantim_imp)
+Saliva_hormone_timing_W2 <- W2DHEArantim_imp %>% left_join(., W2TESTrantim_imp) %>% left_join(., W2ESTrantim_imp)
+
+```
+
+```{r}
+#combine wave 1 and 2 in wide format
+Saliva_basal_W1W2 <- Saliva_basal %>% merge(., Saliva_basal_W2, by="SID", suffixes=c("_wave1","_wave2"),all=T)
+
+Saliva_hormone_timing_W1W2 <- Saliva_hormone_timing_W1 %>% merge(., Saliva_hormone_timing_W2, by="SID", suffixes=c("_wave1","_wave2"),all=T)
+
+#save 
+write.csv(Saliva_basal_W1W2, paste0(saliva_dir,"TAG_W1W2_Saliva_basalestimates.csv"),row.names = F)
+write.csv(Saliva_hormone_timing_W1W2, paste0(cas_dir,"projects/W1_W2_pubertal_timing/TAG_W1W2_hormonebasedtiming.csv"),row.names = F)
+
+```
