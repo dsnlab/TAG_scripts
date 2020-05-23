@@ -1,0 +1,16 @@
+#!/bin/bash
+#SBATCH --job-name=reconall_w2
+#SBATCH --account=dsnlab
+#SBATCH --mem-per-cpu=8G
+#SBATCH --output /projects/dsnlab/shared/tag/TAG_scripts/sMRI/output/%x-%A_%a.out
+#SBATCH --array=0-20
+
+SUBJLIST=`cat subject_list_n21_52220.txt`
+
+SUBID=${SUBJLIST[$SLURM_ARRAY_TASK_ID]}
+echo -e "\nSetting Up Freesurfer6.0"
+source /projects/dsnlab/shared/tag/TAG_scripts/sMRI/SetUpFreeSurfer.sh
+echo -e "\nFreesurfer Home is $FREESURFER_HOME"
+echo -e "\nThe Subject Directory is $SUBJECTS_DIR"
+echo -e "\Running recon-all on ${SUBID}"
+recon-all -i /projects/dsnlab/shared/tag/bids_data/"${SUBID}"/ses-wave2/anat/"${SUBID}"_ses-wave2_run-01_T1w.nii.gz -subjid "${SUBID}" -all
