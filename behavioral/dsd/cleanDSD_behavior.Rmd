@@ -57,7 +57,7 @@ dsdFiles <- as.data.frame(dsdFiles) %>%
   mutate(sid = as.numeric(substring(file,1,3))) %>%
   filter(sid < 350) %>%
   filter(!grepl('/Volumes/psych-cog/dsnlab/TAG/behavior/task/output//tag045_wave_1_dsd',dsdFiles)) #remove one subject that was manually edited.
-  
+
 longDF <- lapply(X=dsdFiles$dsdFiles, FUN=function(file) {
   SID <- sub(".*tag","",file) %>% substring(.,1,3) %>% as.numeric(.)
   wave <- sub(".*wave_","",file) %>% substring(.,1,1) %>% as.numeric(.)
@@ -91,6 +91,11 @@ longDF <- lapply(X=dsdFiles$dsdFiles, FUN=function(file) {
 
 longDF <- rbindlist(longDF)
 
+# filter dsd files to be in 
+extras <- c(10, 18, 32, 42, 88, 160, 164, 177, 210)
+test <- longDF %>% 
+  filter((sid %in% extras) & wave == 3)
+
 write.csv(longDF,paste0(outDataDir,'dsd_trials_long.csv'),row.names=F)
 ```
 
@@ -98,7 +103,8 @@ write.csv(longDF,paste0(outDataDir,'dsd_trials_long.csv'),row.names=F)
 ```{r}
 chosen_wave = 3
 out_df <- longDF %>% filter(wave==chosen_wave)
-ids <- as.vector(unique(out_df$sid))
+#ids <- as.vector(unique(out_df$sid))
+ids <- extras
 
 files <- lapply(X=ids, df=out_df, FUN=function(id, df) {
   
@@ -110,7 +116,7 @@ files <- lapply(X=ids, df=out_df, FUN=function(id, df) {
   
     fid = str_pad(id, 3, 0, side = "left")
     
-  write.table(df, file=paste0(outDataDir,'subjects/tag',fid,'_w',chosen_wave,'.csv'),sep=",",row.names=F,col.names=F,na = "") 
+  write.table(df, file=paste0(outDataDir,'subjects/Wave3_extra/tag',fid,'_w',chosen_wave,'.csv'),sep=",",row.names=F,col.names=F,na = "")
    })
   
 ```
@@ -127,8 +133,8 @@ allSubs <- ggplot(longDF, aes(x=share.value, y=disclosed, group=affective))+
 	theme(strip.background=element_rect(fill='#eeeeee'),
 	      panel.spacing=unit(0, 'pt'),
 	      panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1))
-#ggsave(allSubs, file=paste0(outDataDir, 'PSE-all_pid.png'),
-#       width=10, height=15, dpi=72)
+ggsave(allSubs, file=paste0(outDataDir, 'PSE-all_pid.png'),
+       width=10, height=15, dpi=72)
 
 allSubs2 <- longDF %>% 
   mutate(endorsed=statement.choice==1) %>%
@@ -144,7 +150,72 @@ allSubs2 <- longDF %>%
         panel.spacing=unit(0, 'pt'),
         panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1),
         text=element_text(size=12, face='bold'))
-#ggsave(allSubs2, file=paste0(outDataDir, 'PSE-all_pid_endoresed.png'),
+ggsave(allSubs2, file=paste0(outDataDir, 'PSE-all_pid_endorsed.png'),
+       width=10, height=15, dpi=72)
+
+# Wave 2 Plots
+allSubs_W2 <- ggplot(filter(longDF, wave == 2), aes(x=share.value, y=disclosed, group=affective))+
+	geom_point(aes(color=affective),position=position_jitter(h=.1, w=.2))+
+	geom_line(aes(color=affective), stat='smooth', method='glm', 
+		  method.args=list(family='binomial'))+
+	geom_hline(yintercept=.5, color='gray')+
+	facet_wrap(~sid)+
+	scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
+	theme(strip.background=element_rect(fill='#eeeeee'),
+	      panel.spacing=unit(0, 'pt'),
+	      panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1))
+ggsave(allSubs_W2, file=paste0(outDataDir, 'PSE-all_pid_W2.png'),
+       width=10, height=15, dpi=72)
+
+allSubs2_W2 <- filter(longDF, wave == 2) %>% 
+  mutate(endorsed=statement.choice==1) %>%
+  unite(affect_endorsed, affective, endorsed) %>%
+  ggplot(aes(x=share.value, y=disclosed, group=affect_endorsed))+
+  geom_point(aes(color=affect_endorsed),position=position_jitter(h=.1, w=.2))+
+  geom_line(aes(color=affect_endorsed), stat='smooth', method='glm', 
+            method.args=list(family='binomial'))+
+  geom_hline(yintercept=.5, color='gray')+
+  facet_wrap(~sid)+
+  scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
+  theme(strip.background=element_rect(fill='#eeeeee'),
+        panel.spacing=unit(0, 'pt'),
+        panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1),
+        text=element_text(size=12, face='bold'))
+ggsave(allSubs2_W2, file=paste0(outDataDir, 'PSE-all_pid_endorsed_W2.png'),
+       width=10, height=15, dpi=72)
+
+# Wave 3 Plots
+allSubs_W3 <- ggplot(filter(longDF, wave == 3), aes(x=share.value, y=disclosed, group=affective))+
+	geom_point(aes(color=affective),position=position_jitter(h=.1, w=.2))+
+	geom_line(aes(color=affective), stat='smooth', method='glm', 
+		  method.args=list(family='binomial'))+
+	geom_hline(yintercept=.5, color='gray')+
+	facet_wrap(~sid)+
+	scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
+	theme(strip.background=element_rect(fill='#eeeeee'),
+	      panel.spacing=unit(0, 'pt'),
+	      panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1))
+ggsave(allSubs_W3, file=paste0(outDataDir, 'PSE-all_pid_W3.png'),
+       width=10, height=15, dpi=72)
+
+allSubs2_W3 <- filter(longDF, wave == 3) %>% 
+  mutate(endorsed=statement.choice==1) %>%
+  unite(affect_endorsed, affective, endorsed) %>%
+  ggplot(aes(x=share.value, y=disclosed, group=affect_endorsed))+
+  geom_point(aes(color=affect_endorsed),position=position_jitter(h=.1, w=.2))+
+  geom_line(aes(color=affect_endorsed), stat='smooth', method='glm', 
+            method.args=list(family='binomial'))+
+  geom_hline(yintercept=.5, color='gray')+
+  facet_wrap(~sid)+
+  scale_y_continuous(breaks = c(0,.5, 1), labels = c('0', 'eq.', '1'))+
+  theme(strip.background=element_rect(fill='#eeeeee'),
+        panel.spacing=unit(0, 'pt'),
+        panel.border=element_rect(fill=NA, color='#eeeeee', size=1, linetype=1),
+        text=element_text(size=12, face='bold'))
+ggsave(allSubs2_W3, file=paste0(outDataDir, 'PSE-all_pid_endorsed_W3.png'),
        width=10, height=15, dpi=72)
 
 ```
+
+
+
