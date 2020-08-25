@@ -18,4 +18,4 @@ echo -e "\nThe Subject Directory is $SUBJECTS_DIR"
 
 echo -e "\Running recon-all on ${SUBID}"
 
-recon-all -i /projects/dsnlab/shared/tag/bids_data/"${SUBID}"/ses-wave1/anat/"${SUBID}"_ses-wave1_T1w.nii.gz -subjid "${SUBID}" -all
+recon-all -i /projects/dsnlab/shared/tag/bids_data/"${SUBID}"/ses-wave2/anat/"${SUBID}"_ses-wave2_run-01_T1w.nii.gz -subjid "${SUBID}" -all

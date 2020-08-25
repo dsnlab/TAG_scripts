@@ -12,7 +12,8 @@
 export FREESURFER_HOME=/packages/freesurfer/6.0.0/freesurfer
 
 # Set this to your subjects/ dir, usually freesurfer/subjects/
-export SUBJECTS_DIR=/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer
+#export SUBJECTS_DIR=/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer_w1
+export SUBJECTS_DIR=/projects/dsnlab/shared/tag/bids_data/derivatives/freesurfer_w2
 
 # Set this to your functional sessions dir, usually freesurfer/sessions/
 if [ -z $FUNCTIONALS_DIR ]; then

@@ -30,8 +30,8 @@ rhannots=`cat rhannots.txt`
 lhlabels=`cat lhlabels.txt`
 rhlabels=`cat rhlabels.txt`
 
-pushd $SUBJECTS_DIR/$SUBID/label/ && mkdir fromannots && popd
-pushd $SUBJECTS_DIR/$SUBID/mri/ && mkdir fromannots && popd
+#pushd $SUBJECTS_DIR/$SUBID/label/ && mkdir fromannots && popd
+#pushd $SUBJECTS_DIR/$SUBID/mri/ && mkdir fromannots && popd
 
 for annot in $lhannots; do
 	mri_surf2surf --srcsubject fsaverage --trgsubject $SUBID --hemi lh --sval-annot $templatedir/"${annot}".annot --tval $SUBJECTS_DIR/$SUBID/label/"${annot}".annot
