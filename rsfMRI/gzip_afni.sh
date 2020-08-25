@@ -3,7 +3,16 @@
 # This script will convert afni files
 # to gzipped nifti files
 #
+#SBATCH --job-name=gzip
+#SBATCH --account=dsnlab
+#SBATCH --mem-per-cpu=8G
+#SBATCH --output /projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/proc2_output/%x-%A_%a.out
+#SBATCH --array=0-2
 
+#SUBJLIST=(sub-TAG074 sub-TAG087 sub-TAG124 sub-TAG125 sub-TAG155 sub-TAG175 sub-TAG203 sub-TAG211 sub-TAG215 sub-TAG218 sub-TAG225 sub-TAG232 sub-TAG238 sub-TAG243 sub-TAG244 sub-TAG247 sub-TAG250 sub-TAG252 sub-TAG253 sub-TAG261 sub-TAG266)
+SUBJLIST=(sub-TAG200 sub-TAG099 sub-TAG205)
+
+SUBID=${SUBJLIST[$SLURM_ARRAY_TASK_ID]}
 echo -e "\nSetting up AFNI"
 
 module load afni
@@ -19,7 +28,7 @@ subj="${SUBID}"
 echo $subj
 group_id=tag
 echo $group_id
-pipeline=rsfMRI_preproc_wave1
+pipeline=rsfMRI_preproc_wave2
 
 # set data directories
 top_dir=/projects/dsnlab/shared/"${group_id}"

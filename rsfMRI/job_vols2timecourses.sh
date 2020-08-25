@@ -16,7 +16,7 @@ echo -e "\nSetting up AFNI"
 
 module load afni
 
-rsfMRIdir="/projects/dsnlab/shared/tag/bids_data/derivatives/rsfMRI_preproc_wave1"
+rsfMRIdir="/projects/dsnlab/shared/tag/bids_data/derivatives/rsfMRI_preproc_wave2"
 templatedir="/projects/dsnlab/shared/tag/TAG_scripts/sMRI/templates/"
 
 echo -e "\nFreesurfer Home is $FREESURFER_HOME"
