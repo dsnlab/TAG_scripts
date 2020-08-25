@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# This batch file calls on your subject
+# list (named subject_list.txt). And 
+# runs the job_SUMA.sh file for 
+# each subject. It saves the ouput
+# and error files in their specified
+# directories.
+#
+#SBATCH --job-name=suma_w2
+#SBATCH --account=dsnlab
+#SBATCH --mem-per-cpu=8G
+#SBATCH --output /projects/dsnlab/shared/tag/TAG_scripts/sMRI/output_suma/%x-%A_%a.out
+#SBATCH --array=0-3
+
+SUBJLIST=(sub-TAG200 sub-TAG099 sub-TAG205 sub-TAG208)
+
+SUBID=${SUBJLIST[$SLURM_ARRAY_TASK_ID]}
+
+echo -e "\nSetting Up Freesurfer6.0"
+
+source /projects/dsnlab/shared/tag/TAG_scripts/sMRI/SetUpFreeSurfer.sh 
+
+echo -e "\nSetting up AFNI"
+
+module use /projects/tau/packages/
+module load afni
+
+echo -e "\nFreesurfer Home is $FREESURFER_HOME"
+
+echo -e "\nThe Subject Directory is $SUBJECTS_DIR"
+
+cd $SUBJECTS_DIR/$SUBID
+
+echo -e "\nRunning SUMA Make Spec on ${SUBID}"
+
+@SUMA_Make_Spec_FS -sid "${SUBID}" -NIFTI
+
+cd SUMA
+
+echo -e "\nCreating ventricle and white matter masks"
+
+3dcalc -a aparc+aseg.nii -datum byte -prefix "${SUBID}"_vent.nii -expr 'amongst(a,4,43)'
+3dcalc -a aparc+aseg.nii -datum byte -prefix "${SUBID}"_WM.nii -expr 'amongst(a,2,7,16,41,46,251,252,253,254,255)'
