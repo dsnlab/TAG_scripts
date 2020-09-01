@@ -4,6 +4,7 @@
 
 # Load FSL
 module load fsl/5.0.10
+module load cuda/8.0
 
 # Set directory names
 datadir="/projects/dsnlab/shared/tag/bids_data"
@@ -15,7 +16,7 @@ data=""$outputdir"/"${subid}"/ses-wave1/dwi/data.nii.gz"
 b0mask=""$outputdir"/"${subid}"/ses-wave1/dwi/nodif_brain_mask.nii.gz"
 
 # Set error log file
-errorlog=""$scriptsdir"/errorlog_bedpostx.txt"
+errorlog=""$scriptsdir"/errorlog_bedpostx_gpu.txt"
 
 # Create error log file
 touch "${errorlog}"
@@ -23,16 +24,16 @@ touch "${errorlog}"
 if [[ -f "$data" && -f "$b0mask" ]]; then
 
 # Make directory for bedpostx to use
-mkdir "$outputdir"/"${subid}"/ses-wave1/dwi.fit
-cp "$outputdir"/"${subid}"/ses-wave1/dwi/data.nii.gz "$outputdir"/"${subid}"/ses-wave1/dwi.fit/
-cp "$outputdir"/"${subid}"/ses-wave1/dwi/nodif_brain_mask.nii.gz "$outputdir"/"${subid}"/ses-wave1/dwi.fit/
-cp "$scriptsdir"/params/bvecs "$outputdir"/"${subid}"/ses-wave1/dwi.fit/
-cp "$scriptsdir"/params/bvals "$outputdir"/"${subid}"/ses-wave1/dwi.fit/
+mkdir "$outputdir"/"${subid}"/ses-wave1/dwi.test
+cp "$outputdir"/"${subid}"/ses-wave1/dwi/data.nii.gz "$outputdir"/"${subid}"/ses-wave1/dwi.test/
+cp "$outputdir"/"${subid}"/ses-wave1/dwi/nodif_brain_mask.nii.gz "$outputdir"/"${subid}"/ses-wave1/dwi.test/
+cp "$scriptsdir"/bvecs "$outputdir"/"${subid}"/ses-wave1/dwi.test/
+cp "$scriptsdir"/bvals "$outputdir"/"${subid}"/ses-wave1/dwi.test/
 
 # Fitting a probabilistic diffusion model
 # Note: This last command takes a couple days to run
 echo running "${subid}" bedpostx
-fsl_sub.orig bedpostx "$outputdir"/"${subid}"/ses-wave1/dwi.fit
+bedpostx "$outputdir"/"${subid}"/ses-wave1/dwi.test
 
 echo "${subid}" preprocessing completed.
 # Congratulations!  You are now ready to perform tractography.
@@ -40,7 +41,7 @@ echo "${subid}" preprocessing completed.
 else
 # Making a note of missing files in error log
 echo "ERROR: missing at least one file necessary for fitting diffusion model"
-echo "$outputdir"/"${subid}"/ses-wave1/dwi: MISSING BEDPOSTX INPUT FILES >> $errorlog
+echo "$outputdir"/"${subid}"/ses-wave1/dwi.fit: MISSING BEDPOSTX INPUT FILES >> $errorlog
 fi
 
 

@@ -1,10 +1,9 @@
 #!/bin/bash
 
-#Usage: call this script when you use sbatch batch_preproc_diff.sh
+#Usage: srun preproc_diff.sh subject_list_sam.txt
 
-# Load FSL & Cuda
-module load fsl/5.0.10
-module load cuda/8.0
+# Load FSL
+module load fsl/5.0.9
 
 # This script will preprocess two diffusion imaging series with left-right & right-left phase encoding directions.
 
@@ -18,7 +17,6 @@ module load cuda/8.0
 datadir="/projects/dsnlab/shared/tag/bids_data"
 scriptsdir="/projects/dsnlab/shared/tag/TAG_scripts/dMRI"
 outputdir="/projects/dsnlab/shared/tag/bids_data/derivatives/dMRI_preproc"
-#think about changing output directory to nonbids folder...
 
 # Select options
 masks="TRUE"
@@ -50,29 +48,27 @@ topup --imain=b0_rl_lr.nii.gz --datain="$scriptsdir"/acqparams.txt --config=b02b
 echo creating "${subid}" nodif brain mask
 fslmaths b0_unwarped.nii.gz -Tmean b0_unwarped_mean
 bet b0_unwarped_mean.nii.gz b0_unwarped_brain -m
-#fslreorient2std b0_unwarped_brain_mask.nii.gz b0_unwarped_reoriented_brain_mask.nii.gz
+fslreorient2std b0_unwarped_brain_mask.nii.gz b0_unwarped_reoriented_brain_mask.nii.gz
 
 # Combining both diffusion sequences
 echo merging "${subid}" diffusion sequences
 fslmerge -a diffusion_data sub-"${subid}"_ses-wave1_acq-rl_dwi.nii.gz sub-"${subid}"_ses-wave1_acq-lr_dwi.nii.gz
 
-# Combining bvecs, bvals, and slice aquisition orders from both diffusion sequences
+# Combining bvecs & bvals from both diffusion sequences
 echo merging "${subid}" bvecs
 paste -d"\0" sub-"${subid}"_ses-wave1_acq-rl_dwi_bvecs sub-"${subid}"_ses-wave1_acq-lr_dwi_bvecs >> bvecs
 
 echo merging "${subid}" bvals
 paste -d"\0" sub-"${subid}"_ses-wave1_acq-rl_dwi_bvals sub-"${subid}"_ses-wave1_acq-lr_dwi_bvals >> bvals
 
-# Running eddy with outlier replacement & slice-to-volume motion correction
+# Running eddy with outlier replacement
 # Note: This step identifies slices with excessive motion and replaces them with Gaussian process predictions.  For motion correction without outlier replacement, simply remove --repol option.
 echo running "${subid}" eddy
-#eddy_cuda8.0-5.0.11 --imain=diffusion_data.nii.gz --mask=b0_unwarped_reoriented_brain_mask.nii.gz --acqp="$scriptsdir"/acqparams.txt --index="$scriptsdir"/index.txt --bvecs=bvecs --bvals=bvals --topup=topup_results --repol --ol_type=both --mporder=9 --s2v_niter=10 --slspec="$scriptsdir"/slspec.txt --resamp=lsr --fep=false --cnr_maps --out=eddy_corrected_data_repol
-
-eddy_cuda8.0-5.0.11 --imain=diffusion_data.nii.gz --mask=b0_unwarped_brain_mask.nii.gz --acqp=/projects/dsnlab/shared/tag/TAG_scripts/dMRI/acqparams.txt --index=/projects/dsnlab/shared/tag/TAG_scripts/dMRI/index.txt --bvecs=bvecs --bvals=bvals --topup=topup_results --repol --ol_type=both --mporder=9 --s2v_niter=10 --slspec=/projects/dsnlab/shared/tag/TAG_scripts/dMRI/tag_slspec.txt --resamp=lsr --fep=false --cnr_maps --residuals -v --out=eddy_corrected_data_repol
+eddy_openmp-5.0.11 --imain=diffusion_data.nii.gz --mask=b0_unwarped_reoriented_brain_mask.nii.gz --acqp="$scriptsdir"/acqparams.txt --index="$scriptsdir"/index.txt --bvecs=bvecs --bvals=bvals --topup=topup_results --repol --out=eddy_corrected_data_repol
 
 # Reorienting & renaming files
 fslreorient2std eddy_corrected_data_repol.nii.gz data.nii.gz
-fslreorient2std b0_unwarped_brain_mask.nii.gz nodif_brain_mask.nii.gz
+cp b0_unwarped_reoriented_brain_mask.nii.gz nodif_brain_mask.nii.gz
 
 # Prepping for registration
 cd "$outputdir"/"${subid}"/ses-wave1/
@@ -102,8 +98,7 @@ invwarp --ref=../mprage_brain.nii.gz --warp=struct2mni_warp.nii.gz --out=mni2str
 # Fitting diffusion tensors at each voxel.  This step outputs eigenvectors, mean diffusivity, & fractional anisotropy
 echo fitting "${subid}" tensors at each voxel
 cd "$outputdir"/"${subid}"/ses-wave1/dwi
-
-dtifit -k data.nii.gz -o dti -m nodif_brain_mask.nii.gz -r "$scriptsdir"/params/bvecs -b "$scriptsdir"/params/bvals
+dtifit -k data.nii.gz -o dti -m nodif_brain_mask.nii.gz -r bvecs -b bvals
 
 # Linear registration of FA map to mprage
 cd "$outputdir"/"${subid}"/ses-wave1/anat/reg
