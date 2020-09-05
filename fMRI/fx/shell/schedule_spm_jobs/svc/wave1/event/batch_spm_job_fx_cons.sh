@@ -12,7 +12,7 @@
 STUDY=/projects/dsnlab/shared/tag/TAG_scripts
 
 # Set subject list
-SUBJLIST=`cat subject_list_test.txt`
+SUBJLIST=`cat subject_list.txt`
 
 # Which SID should be replaced?
 REPLACESID='001'
@@ -41,7 +41,7 @@ RUNS=(1 2)
 
 # Make text file with residual files for each run
 echo $(printf "Res_%04d.nii\n" {1..180}) > residuals_run1.txt
-echo $(printf "Res_%04d.nii\n" {181..357}) > residuals_run2.txt
+echo $(printf "Res_%04d.nii\n" {181..360}) > residuals_run2.txt
 
 # Set job parameters
 cpuspertask=1

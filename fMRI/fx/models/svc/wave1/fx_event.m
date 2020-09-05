@@ -3,9 +3,9 @@
 % spm SPM - SPM12 (7219)
 % cfg_basicio BasicIO - Unknown
 %-----------------------------------------------------------------------
-matlabbatch{1}.spm.util.exp_frames.files = {'/gpfs/projects/dsnlab/shared/tag/bids_data/derivatives/fmriprep/sub-TAG001/ses-wave1/func/s6_sub-TAG001_ses-wave1_task-SVC_run-01_bold_space-MNI152NLin2009cAsym_preproc.nii,1'};
+matlabbatch{1}.spm.util.exp_frames.files = {'/gpfs/projects/dsnlab/shared/tag/bids_data/derivatives/fmriprep_wave1/sub-TAG001/ses-wave1/func/s6_sub-TAG001_ses-wave1_task-SVC_run-01_bold_space-MNI152NLin2009cAsym_preproc.nii,1'};
 matlabbatch{1}.spm.util.exp_frames.frames = Inf;
-matlabbatch{2}.spm.util.exp_frames.files = {'/gpfs/projects/dsnlab/shared/tag/bids_data/derivatives/fmriprep/sub-TAG001/ses-wave1/func/s6_sub-TAG001_ses-wave1_task-SVC_run-02_bold_space-MNI152NLin2009cAsym_preproc.nii,1'};
+matlabbatch{2}.spm.util.exp_frames.files = {'/gpfs/projects/dsnlab/shared/tag/bids_data/derivatives/fmriprep_wave1/sub-TAG001/ses-wave1/func/s6_sub-TAG001_ses-wave1_task-SVC_run-02_bold_space-MNI152NLin2009cAsym_preproc.nii,1'};
 matlabbatch{2}.spm.util.exp_frames.frames = Inf;
 matlabbatch{3}.spm.stats.fmri_spec.dir = {'/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/svc/wave1/event/sub-TAG001'};
 matlabbatch{3}.spm.stats.fmri_spec.timing.units = 'secs';

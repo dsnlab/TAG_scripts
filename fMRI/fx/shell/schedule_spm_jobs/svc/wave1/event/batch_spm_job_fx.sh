@@ -9,7 +9,7 @@
 STUDY=/projects/dsnlab/shared/tag/TAG_scripts
 
 # Set subject list
-SUBJLIST=`cat subject_list_test.txt`
+SUBJLIST=`cat subject_list.txt`
 
 # Which SID should be replaced?
 REPLACESID=001
