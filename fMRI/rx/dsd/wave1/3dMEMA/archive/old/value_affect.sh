@@ -2,8 +2,8 @@
 #--------------------------------------------------------------
 #
 #SBATCH --job-name=DSD_3dMEMA
-#SBATCH --output=output/DSD_3dMEMA_decisions_aff_neut.log
-#SBATCH --error=output/DSD_3dMEMA_decisions_aff_neut_err.log
+#SBATCH --output=output/DSD_3dMEMA_valueAff_MLmotion_AR_RT_out.log
+#SBATCH --error=output/DSD_3dMEMA_valueAff_MLmotion_AR_RT_err.log
 #SBATCH --cpus-per-task=25
 #SBATCH --ntasks=1
 #SBATCH --mem-per-cpu=4000
@@ -12,21 +12,20 @@
 module load prl
 module load afni
 
-fxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST_RT
-rxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_FAST_RT
-mask=/projects/dsnlab/shared/tag/nonbids_data/fMRI/templates/masks/groupStruct_15perc_filled.nii.gz 
+fxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_AR_RT
+rxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_AR_RT
 
 echo $fxdir
 
-cd $rxdir/decisions_aff_neut
+cd $rxdir/value_affect
 
-3dMEMA -prefix decisions_aff_neut -jobs 2       		 		 \
--mask $mask 										 \
--max_zeros 0.25 						 			 \
--HKtest 											 \
--model_outliers 									 \
--residual_Z                 		 				 \
--set decisions_aff_neut								 		 \
+3dMEMA -prefix value_affect	 -jobs 2       		 \
+-max_zeros 0.25 						 \
+-missing_data 0                        				 \
+-HKtest 							 \
+-model_outliers 						 \
+-residual_Z            		 				 \
+-set value_affect									 \
 sub-TAG001 $fxdir/sub-TAG001/con_0008.nii    $fxdir/sub-TAG001/spmT_0008.nii \
 sub-TAG005 $fxdir/sub-TAG005/con_0008.nii    $fxdir/sub-TAG005/spmT_0008.nii \
 sub-TAG010 $fxdir/sub-TAG010/con_0008.nii    $fxdir/sub-TAG010/spmT_0008.nii \

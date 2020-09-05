@@ -14,13 +14,13 @@ module load afni
 
 fxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/wave1/pmod/MLmotion_FAST_RT
 rxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/dsd/wave1/pmod/MLmotion_FAST_RT
-mask=/projects/dsnlab/shared/tag/nonbids_data/fMRI/templates/masks/groupStruct_25perc_filled.nii.gz 
+mask=/projects/dsnlab/shared/tag/nonbids_data/fMRI/templates/masks/groupStruct_15perc_filled.nii.gz 
 
 echo $fxdir
 
-cd $rxdir/valueP_neutral
+cd $rxdir/valueP_neut
 
-3dMEMA -prefix valueP_neutral -jobs 2       		 		 \
+3dMEMA -prefix valueP_neut -jobs 2       		 		 \
 -mask $mask 										 \
 -max_zeros 0.25 						 			 \
 -HKtest 											 \
