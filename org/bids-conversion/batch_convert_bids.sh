@@ -11,10 +11,10 @@
 STUDY=/projects/dsnlab/shared/tag
 
 # Set subject list
-SUBJLIST=`cat subject_list5.txt`
+SUBJLIST=`cat subject_list_single.txt`
 
 # Set output directory
-OUTPUTDIR=TAG_scripts/org/bids-conversion/output
+OUTPUTDIR=TAG_scripts/org/bids-conversion/output/convert_w2
 
 # Set job script
 JOB=TAG_scripts/org/bids-conversion/convert_bids.sh
@@ -24,8 +24,8 @@ for SUBJ in ${SUBJLIST[@]}
 do
 
 SUBID=`echo $SUBJ|awk '{print $1}' FS=","`
-SESSID=`echo $SUBJ|awk '{print $2}' FS=","`
+SESSID=`echo $SUBJ|awk '{print $2}' FS=","` 
 
-sbatch --export subid=${SUBID},sessid=${SESSID} --job-name convertBIDS_"${SUBJ}" --partition=short --time 00:60:00 --mem-per-cpu=2G --cpus-per-task=1 -o "${STUDY}"/"${OUTPUTDIR}"/"${SUBID}"_"${SESSID}"_convertBIDS_output.txt -e "${STUDY}"/"${OUTPUTDIR}"/"${SUBID}"_"${SESSID}"_convertBIDS_error.txt "${STUDY}"/"${JOB}"
+sbatch --export subid=${SUBID},sessid=${SESSID} --job-name convertBIDS_"${SUBJ}" --account=dsnlab --partition=ctn --time 00:60:00 --mem-per-cpu=2G --cpus-per-task=1 -o "${STUDY}"/"${OUTPUTDIR}"/"${SUBID}"_"${SESSID}"_convertBIDS_output.txt -e "${STUDY}"/"${OUTPUTDIR}"/"${SUBID}"_"${SESSID}"_convertBIDS_error.txt "${STUDY}"/"${JOB}"
 
 done

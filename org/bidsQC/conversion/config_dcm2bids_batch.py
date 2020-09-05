@@ -45,8 +45,8 @@ errorlog = os.path.join(logdir, "errorlog_dcm2bids" + datetime.now().strftime("%
 
 
 # Source the subject list (needs to be in your current working directory)
-subjectlist = "subjectlist_wave2_n87.txt"
-
+#subjectlist = "subject_list.txt"
+subjectlist = "add_subs.txt"
 
 # Run on local machine (run_local = True) or high performance cluster with slurm (run_local = False)
 run_local = False

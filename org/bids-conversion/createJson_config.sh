@@ -7,7 +7,7 @@
 
 # Set directory names
 niidir="/projects/dsnlab/shared/tag/archive/clean_nii"
-bidsdir="/projects/dsnlab/shared/tag/bids_data"
+bidsdir="/projects/dsnlab/shared/tag/bids_data2"
 
 # Set study info
 declare -a anat="mprage_p2"

@@ -10,7 +10,7 @@
 #
 echo -e "\nSetting up AFNI"
 
-module load prl
+#module load prl
 module load afni
 
 date
@@ -24,7 +24,7 @@ set subj="${SUBID}"
 echo $subj
 set group_id=tag
 echo $group_id
-set wave=2
+set wave=1
 echo $wave
 set pipeline=rsfMRI_preproc_wave"$wave"
 

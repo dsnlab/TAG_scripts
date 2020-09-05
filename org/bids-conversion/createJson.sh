@@ -89,7 +89,7 @@ if [ "${convertanat}" == "TRUE" ]; then
 	    		cd $bidsdir/sub-$subid/ses-$sessid/anat/
 	    		filename="sub-"$subid"_ses-"$sessid"_T1w.json"
 	    		rm "$filename"
-			echo -e "{\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"InversionTime\": $InversionTime_x,\n}" >> "$filename" 
+			echo -e "{\n\t\"RepetitionTime\": $RepetitionTime_x,\n\t\"EchoTime\": $EchoTime_x,\n\t\"FlipAngle\": $FlipAngle_x,\n\t\"InversionTime\": $InversionTime_x\n}" >> "$filename" 
 	    		echo "not OK"
 			ls "$filename" >> $newlog
 		fi
