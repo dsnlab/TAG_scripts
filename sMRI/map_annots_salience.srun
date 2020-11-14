@@ -1,0 +1,56 @@
+#!/bin/bash
+#
+# This scripts maps the annotation files to the subs
+# then makes them into labels and finally creates
+# volume files for each of the labels.
+#
+#SBATCH --job-name=mapannots_w2_gordon
+#SBATCH --account=dsnlab
+#SBATCH --mem-per-cpu=1G 
+#SBATCH --cpus-per-task=1
+#SBATCH --output /projects/dsnlab/shared/tag/TAG_scripts/sMRI/output_gordon_mapannot/%x-%A_%a.out
+#SBATCH --array=0-2
+
+#SUBJLIST=(sub-TAG004 sub-TAG005 sub-TAG007 sub-TAG008 sub-TAG009 sub-TAG010 sub-TAG014 sub-TAG015 sub-TAG016 sub-TAG017 sub-TAG018 sub-TAG019 sub-TAG020 sub-TAG022 sub-TAG024 sub-TAG026 sub-TAG027 sub-TAG028 sub-TAG030 sub-TAG033 sub-TAG034 sub-TAG035 sub-TAG036 sub-TAG037 sub-TAG038 sub-TAG040 sub-TAG041 sub-TAG042 sub-TAG045 sub-TAG046 sub-TAG047 sub-TAG048 sub-TAG049 sub-TAG050 sub-TAG051 sub-TAG052 sub-TAG053 sub-TAG056 sub-TAG057 sub-TAG058 sub-TAG059 sub-TAG062 sub-TAG064 sub-TAG065 sub-TAG066 sub-TAG067 sub-TAG068 sub-TAG069 sub-TAG070 sub-TAG071 sub-TAG072 sub-TAG073 sub-TAG074 sub-TAG075 sub-TAG076 sub-TAG077 sub-TAG078 sub-TAG080 sub-TAG081 sub-TAG084 sub-TAG085 sub-TAG086 sub-TAG087 sub-TAG088 sub-TAG089 sub-TAG090 sub-TAG091 sub-TAG093 sub-TAG094 sub-TAG095 sub-TAG099 sub-TAG101 sub-TAG103 sub-TAG104 sub-TAG105 sub-TAG106 sub-TAG107 sub-TAG110 sub-TAG111 sub-TAG112 sub-TAG113 sub-TAG114 sub-TAG117 sub-TAG119 sub-TAG120 sub-TAG122 sub-TAG124 sub-TAG125 sub-TAG130 sub-TAG131 sub-TAG132 sub-TAG138 sub-TAG140 sub-TAG141 sub-TAG143 sub-TAG144 sub-TAG149 sub-TAG155 sub-TAG159 sub-TAG160 sub-TAG164 sub-TAG166 sub-TAG167 sub-TAG169 sub-TAG173 sub-TAG175 sub-TAG176 sub-TAG177 sub-TAG179 sub-TAG180 sub-TAG181 sub-TAG186 sub-TAG188 sub-TAG190 sub-TAG194 sub-TAG200 sub-TAG202 sub-TAG203 sub-TAG205 sub-TAG206 sub-TAG207 sub-TAG208 sub-TAG209 sub-TAG211 sub-TAG215 sub-TAG218 sub-TAG220 sub-TAG221 sub-TAG223 sub-TAG224 sub-TAG225 sub-TAG232 sub-TAG238 sub-TAG243 sub-TAG244 sub-TAG247 sub-TAG250 sub-TAG252 sub-TAG253 sub-TAG261 sub-TAG266)
+#SUBJLIST=(sub-TAG001 sub-TAG002)
+SUBJLIST=(sub-TAG253 sub-TAG261 sub-TAG266)
+
+SUBID=${SUBJLIST[$SLURM_ARRAY_TASK_ID]}
+echo ${SUBID}
+
+# Set your study
+STUDY=/projects/dsnlab/shared/tag
+
+
+
+echo -e "\nSetting Up Freesurfer6.0"
+source /projects/dsnlab/shared/tag/TAG_scripts/sMRI/SetUpFreeSurfer.sh
+
+echo -e "\nSetting up AFNI"
+module use /projects/tau/packages/Modules/modulefiles/
+module load afni
+
+templatedir="/projects/dsnlab/shared/tag/TAG_scripts/sMRI/templates/label"
+
+echo -e "\nFreesurfer Home is $FREESURFER_HOME"
+echo -e "\nThe Subject Directory is $SUBJECTS_DIR"
+echo -e "\nThe Template Directory is $templatedir"
+echo -e "\nThe Freesurfer output Directory is $freesurferdir"
+echo -e "\nThe Resting state output Directory is $rsfMRIdir"
+
+mri_surf2surf --srcsubject fsaverage --trgsubject $SUBID --hemi lh --sval-annot $templatedir/lh.salience.annot --tval $SUBJECTS_DIR/$SUBID/label/lh.salience.annot
+mri_annotation2label --subject ${SUBID} --hemi lh --annotation $SUBJECTS_DIR/$SUBID/label/lh.salience.annot --outdir $SUBJECTS_DIR/$SUBID/label/fromannots
+
+mri_surf2surf --srcsubject fsaverage --trgsubject $SUBID --hemi rh --sval-annot $templatedir/rh.salience.annot --tval $SUBJECTS_DIR/$SUBID/label/rh.salience.annot
+mri_annotation2label --subject ${SUBID} --hemi rh --annotation $SUBJECTS_DIR/$SUBID/label/rh.salience.annot --outdir $SUBJECTS_DIR/$SUBID/label/fromannots
+
+
+mri_label2vol --label $SUBJECTS_DIR/$SUBID/label/fromannots/lh.Left-salience.label --subject $SUBID --hemi lh --identity --temp $SUBJECTS_DIR/$SUBID/mri/orig --o $SUBJECTS_DIR/$SUBID/mri/fromannots/lh.salience.nii.gz --proj frac 0 1 0.01
+mri_binarize --dilate 1 --erode 1 --i $SUBJECTS_DIR/$SUBID/mri/fromannots/lh.salience.nii.gz --o $SUBJECTS_DIR/$SUBID/mri/fromannots/lh.salience_bi.nii.gz --min 1
+mris_calc -o $SUBJECTS_DIR/$SUBID/mri/fromannots/lh.salience_final.nii.gz $SUBJECTS_DIR/$SUBID/mri/fromannots/lh.salience_bi.nii.gz mul $SUBJECTS_DIR/$SUBID/mri/lh.ribbon.mgz
+mv $SUBJECTS_DIR/$SUBID/mri/fromannots/lh.salience_final.nii.gz $SUBJECTS_DIR/$SUBID/mri/fromannots/lh.salience.nii.gz
+
+mri_label2vol --label $SUBJECTS_DIR/$SUBID/label/fromannots/rh.Right-salience.label --subject $SUBID --hemi rh --identity --temp $SUBJECTS_DIR/$SUBID/mri/orig --o $SUBJECTS_DIR/$SUBID/mri/fromannots/rh.salience.nii.gz --proj frac 0 1 0.01
+mri_binarize --dilate 1 --erode 1 --i $SUBJECTS_DIR/$SUBID/mri/fromannots/rh.salience.nii.gz --o $SUBJECTS_DIR/$SUBID/mri/fromannots/rh.salience_bi.nii.gz --min 1
+mris_calc -o $SUBJECTS_DIR/$SUBID/mri/fromannots/rh.salience_final.nii.gz $SUBJECTS_DIR/$SUBID/mri/fromannots/rh.salience_bi.nii.gz mul $SUBJECTS_DIR/$SUBID/mri/rh.ribbon.mgz
+mv $SUBJECTS_DIR/$SUBID/mri/fromannots/rh.salience_final.nii.gz $SUBJECTS_DIR/$SUBID/mri/fromannots/rh.salience.nii.gz
