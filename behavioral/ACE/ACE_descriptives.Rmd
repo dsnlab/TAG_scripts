@@ -1,0 +1,636 @@
+---
+title: "ACE_descriptives"
+author: "MEAB"
+date: "14/04/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+packages <- c( "ggplot2","tidyr","dplyr", "psych","ggcorrplot","readxl","knitr",
+              "parallel", "data.table", "lubridate","xml2","devtools","stringr","lme4")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+devtools::install_github('jflournoy/scorequaltrics', ref = 'api-update')
+library(scorequaltrics)
+rm(packages)
+
+cas_dir="Y:/dsnlab/TAG/"
+```
+
+
+```{r pull data from qualtrics}
+
+credsFile<-file.path(cas_dir,"behavior/Questionnaires/RDOC/Confidential/credentials.yaml", fsep="")
+creds<-scorequaltrics::creds_from_file(credsFile)
+
+if(creds){
+ survey_info <- scorequaltrics::get_surveys() %>% 
+ filter(grepl("ACE",SurveyName)) 
+  survey_data <- scorequaltrics::get_survey_data(survey_info, 
+                                                pid_col = 'Name')
+}
+
+
+long_survey_data<- survey_data %>% mutate(value = ifelse(value == -99, NA, value)) %>% 
+mutate(RecipientLastName=ifelse(RecipientLastName=="046" & RecipientFirstName=="Parent","047",RecipientLastName)) %>% # TAG046 and TAG047 filled out the survey using the same link, separate them
+ mutate(SID=as.numeric(ifelse(RecipientFirstName=="Parent" | RecipientFirstName=="Participant",RecipientLastName,RecipientFirstName)),
+         tagid=sprintf("TAG%03d", SID))
+   
+rm(creds,credsFile)
+
+#Month 1 only
+all_M1 <- long_survey_data %>% filter(grepl("Month 1", survey_name)) %>%
+  filter(!tagid=="TAG257") #TAG257 gave nonsense answers, so excluding
+all_M1 <- all_M1 %>% mutate(item = str_replace_all(item, "-", "_"))
+  
+#check if they answered attention questions correctly (AT_1 and AT_2)
+AT_M1 <-filter(all_M1, grepl("AT",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+#IDs of people not paying attention - do with it whatever you want!
+notpayingattention <- AT_M1[!AT_M1$AT_1==4 | !AT_M1$AT_2==5, c("tagid")]
+notpayingattention
+
+#Remove identifiers and save
+all_M1 <- all_M1 %>% filter(!item=="IPAddress"&!item=="RecipientEmail")
+saveRDS(all_M1, file=paste0(cas_dir,"behavior/ACE/Month_1_data/all_M1.RDS" ))
+```
+
+```{r CESDC}
+
+#CES_DC
+CESDC_M1 <-filter(all_M1, grepl("CES_DC",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+
+CESDC_M1 <-CESDC_M1 %>%
+  mutate(CES_DC_4=ifelse(CES_DC_4==0,3,
+                         ifelse(CES_DC_4==1,2,
+                                ifelse(CES_DC_4==2,1,
+                                       ifelse(CES_DC_4==3,0,
+                                              NA)))),
+         CES_DC_8=ifelse(CES_DC_8==0,3,
+                         ifelse(CES_DC_8==1,2,
+                                ifelse(CES_DC_8==2,1,
+                                       ifelse(CES_DC_8==3,0,
+                                              NA)))),
+         CES_DC_12=ifelse(CES_DC_12==0,3,
+                          ifelse(CES_DC_12==1,2,
+                                 ifelse(CES_DC_12==2,1,
+                                        ifelse(CES_DC_12==3,0,
+                                               NA)))),
+         CES_DC_16=ifelse(CES_DC_16==0,3,
+                          ifelse(CES_DC_16==1,2,
+                                 ifelse(CES_DC_16==2,1,
+                                        ifelse(CES_DC_16==3,0,
+                                               NA))))) %>%
+  mutate(
+    CES_DC_missing_perc=100*(rowSums(is.na(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20)))/20),
+    CES_DC_mean=rowMeans(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20), na.rm=T),
+    CES_DC_total=rowSums(cbind(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20), na.rm=F)) %>%
+  mutate(CES_DC_total_75perc=ifelse(CES_DC_missing_perc <= 25,CES_DC_mean*20,NA))
+
+#save
+write.csv(CESDC_M1,file=paste0(cas_dir, "behavior/ACE/Month_1_data/CESDC_M1.csv"),row.names = F)
+
+#plot
+ggplot(CESDC_M1,aes(CES_DC_total_75perc)) + geom_histogram() + theme_minimal()
+summary(CESDC_M1$CES_DC_total_75perc)
+
+
+
+# compare levels to last wave
+CESDC_wave2 <- read.table(paste0(cas_dir,'behavior/Questionnaires/Wave2/CESDC_Wave2.csv'),header=T,sep=",") %>%
+  mutate(wave="2",survey_date=as.Date(survey_date)) %>% filter(!X==66 & !X==102) %>% select(-X)
+  #select(tagid,CES_DC_total_75perc) %>%
+  #dplyr::rename(CESDC_total_w2=CES_DC_total_75perc) 
+CESDC_wave3 <- read.table(paste0(cas_dir,'behavior/Questionnaires/Wave3/CESDC_Wave3.csv'),header=T,sep=",") %>%
+  mutate(wave="3",survey_date=as.Date(survey_date)) %>% select(-X)
+  #select(tagid,CES_DC_total_75perc) %>%
+  #dplyr::rename(CESDC_total_w3=CES_DC_total_75perc) 
+CESDC_W2W3 <- rbind(CESDC_wave2,CESDC_wave3) %>%
+  pivot_wider(id_cols= tagid, names_from = wave, names_prefix = "w", values_from = c(CES_DC_1,CES_DC_2,CES_DC_3,CES_DC_4,CES_DC_5,CES_DC_6,CES_DC_7,CES_DC_8,CES_DC_9,CES_DC_10,CES_DC_11,CES_DC_12,CES_DC_13,CES_DC_14,CES_DC_15,CES_DC_16,CES_DC_17,CES_DC_18,CES_DC_19,CES_DC_20,CES_DC_total_75perc)) 
+CESDC_W2W3 <- CESDC_W2W3 %>%
+  mutate(CESDC_latestwave=ifelse(!is.na(CES_DC_total_75perc_w3),CES_DC_total_75perc_w3,CES_DC_total_75perc_w2)) %>%
+   mutate(CES_DC_1_latest=ifelse(!is.na(CES_DC_1_w3),CES_DC_1_w3,CES_DC_1_w2)) %>%
+   mutate(CES_DC_2_latest=ifelse(!is.na(CES_DC_2_w3),CES_DC_2_w3,CES_DC_2_w2)) %>%
+   mutate(CES_DC_3_latest=ifelse(!is.na(CES_DC_3_w3),CES_DC_3_w3,CES_DC_3_w2)) %>%
+   mutate(CES_DC_4_latest=ifelse(!is.na(CES_DC_4_w3),CES_DC_4_w3,CES_DC_4_w2)) %>%
+   mutate(CES_DC_5_latest=ifelse(!is.na(CES_DC_5_w3),CES_DC_5_w3,CES_DC_5_w2)) %>%
+   mutate(CES_DC_6_latest=ifelse(!is.na(CES_DC_6_w3),CES_DC_6_w3,CES_DC_6_w2)) %>%
+   mutate(CES_DC_7_latest=ifelse(!is.na(CES_DC_7_w3),CES_DC_7_w3,CES_DC_7_w2)) %>%
+   mutate(CES_DC_8_latest=ifelse(!is.na(CES_DC_8_w3),CES_DC_8_w3,CES_DC_8_w2)) %>%
+   mutate(CES_DC_9_latest=ifelse(!is.na(CES_DC_9_w3),CES_DC_9_w3,CES_DC_9_w2)) %>%
+   mutate(CES_DC_10_latest=ifelse(!is.na(CES_DC_10_w3),CES_DC_10_w3,CES_DC_10_w2)) %>%
+   mutate(CES_DC_11_latest=ifelse(!is.na(CES_DC_11_w3),CES_DC_11_w3,CES_DC_11_w2)) %>%
+   mutate(CES_DC_12_latest=ifelse(!is.na(CES_DC_12_w3),CES_DC_12_w3,CES_DC_12_w2)) %>%
+   mutate(CES_DC_13_latest=ifelse(!is.na(CES_DC_13_w3),CES_DC_13_w3,CES_DC_13_w2)) %>%
+   mutate(CES_DC_14_latest=ifelse(!is.na(CES_DC_14_w3),CES_DC_14_w3,CES_DC_14_w2)) %>%
+   mutate(CES_DC_15_latest=ifelse(!is.na(CES_DC_15_w3),CES_DC_15_w3,CES_DC_15_w2)) %>%
+   mutate(CES_DC_16_latest=ifelse(!is.na(CES_DC_16_w3),CES_DC_16_w3,CES_DC_16_w2)) %>%
+   mutate(CES_DC_17_latest=ifelse(!is.na(CES_DC_17_w3),CES_DC_17_w3,CES_DC_17_w2)) %>%
+   mutate(CES_DC_18_latest=ifelse(!is.na(CES_DC_18_w3),CES_DC_18_w3,CES_DC_18_w2)) %>%
+   mutate(CES_DC_19_latest=ifelse(!is.na(CES_DC_19_w3),CES_DC_19_w3,CES_DC_19_w2)) %>%
+   mutate(CES_DC_20_latest=ifelse(!is.na(CES_DC_20_w3),CES_DC_20_w3,CES_DC_20_w2)) 
+  
+CESDC_comp <- merge(CESDC_M1,CESDC_W2W3,by="tagid",all.x=T)
+
+t.test(CESDC_comp$CES_DC_total_75perc, CESDC_comp$CESDC_latestwave, paired = TRUE, alternative = "two.sided")
+wilcox.test(CESDC_comp$CES_DC_total_75perc, CESDC_comp$CESDC_latestwave, paired = TRUE, alternative = "two.sided")
+ggplot(stack(CESDC_comp[,c("CESDC_latestwave","CES_DC_total_75perc")]),aes(x = ind, y = values))+ geom_boxplot(fill="#56B4E9") + theme_minimal() + labs(title="Depressive symptoms at latest wave and during pandemic",x="Timepoint",y="CESDC total score")
+
+CESDC_changes <- data.frame(item=paste0("CES_DC_",1:20),estimate=1,stderr=1)
+items_covid <- list("CES_DC_1","CES_DC_2","CES_DC_3","CES_DC_4","CES_DC_5","CES_DC_6","CES_DC_7","CES_DC_8","CES_DC_9","CES_DC_10","CES_DC_11","CES_DC_12","CES_DC_13","CES_DC_14","CES_DC_15","CES_DC_16","CES_DC_17","CES_DC_18","CES_DC_19","CES_DC_20")
+CESDC_changes$estimate <- sapply(items_covid, function(x){
+         fit <-  t.test(CESDC_comp[, x], 
+                    CESDC_comp[, paste0(x,"_latest")], paired = TRUE, alternative = "two.sided")$estimate 
+  })
+CESDC_changes$stderr <- sapply(items_covid, function(x){
+         fit <-  t.test(CESDC_comp[, x], 
+                    CESDC_comp[, paste0(x,"_latest")], paired = TRUE, alternative = "two.sided")$stderr 
+  }) 
+ggplot(CESDC_changes,aes(item,estimate,ymin=estimate-(2*stderr),ymax=estimate+(2*stderr))) +geom_pointrange() +labs(title="Changes in CESDC by item",x="Item",y="mean change") + theme_minimal()
+
+
+#Plot over time
+#Pull age at session 2 for each wave
+Age_TAG <- read.table(paste0(cas_dir,'behavior/Demographics/Age/TAG_age.csv'),header=T,sep=",") %>%
+  filter(session==2) %>% select(tagid,dob,wave,age_excel) %>% rename(age=age_excel) %>% mutate(dob=as.Date(dob, "%d/%m/%Y"))
+#Pull EndDate from all_M1 and calculate age
+Date_M1 <-filter(all_M1, grepl("EndDate",item)) %>% 
+                   mutate(value=as.Date((as.numeric(value)/86400),origin = "1970-01-01")) %>% 
+                   filter(!is.na(value),!RecipientLastName=="143") %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+#combine all waves+ace1 ages and cesdc scores
+Age_M1 <- left_join(Date_M1, Age_TAG[,c("tagid","dob")], by=c("tagid")) %>% distinct(.) %>%
+    mutate(age=difftime(EndDate,dob)/365.25,wave="A1")  %>% select(-EndDate,-survey_name)
+Age_all <- rbind(Age_TAG,Age_M1)
+CESDC_wave1 <- read.table(paste0(cas_dir,'behavior/Questionnaires/Wave1/CESDC_Wave1.csv'),header=T,sep=",") %>%
+  mutate(wave="1",survey_date=as.Date(survey_date)) %>% select(-X)
+CESDC_M1 <- CESDC_M1 %>% mutate(wave="A1") %>% merge(.,Date_M1[,c("tagid","EndDate")],by="tagid") %>% rename(survey_date=EndDate)
+CESDC_all <- bind_rows(CESDC_wave1,CESDC_wave2,CESDC_wave3,CESDC_M1)
+mutate(CESDC_latestwave=ifelse(!is.na(CES_DC_total_75perc_w3),CES_DC_total_75perc_w3,CES_DC_total_75perc_w2))  <- merge(Age_all,CESDC_all,by=c("tagid","wave"))
+#plot
+ggplot(CESDC_all,aes(x=age,y=CES_DC_total_75perc)) + geom_point() + geom_line(aes(color=tagid)) + geom_smooth(method="loess") + theme(legend.position = "none") + labs(y="Depressive symptoms")
+ggplot(CESDC_all,aes(x=survey_date,y=CES_DC_total_75perc)) + geom_point() + geom_line(aes(color=tagid)) + geom_smooth(method="loess") + theme(legend.position = "none") + labs(x="Date of assessment", y="Depressive symptoms") 
+
+#ACE and latest TAG wave with age and time difference 
+CESDC_all_wide <- CESDC_all %>% pivot_wider(id_cols= tagid, names_from = wave, names_prefix = "w",values_from = c(dob,survey_date,age,CES_DC_total_75perc)) %>%  
+  mutate(CES_DC_total_75perc_wlatest=ifelse(!is.na(CES_DC_total_75perc_w3),CES_DC_total_75perc_w3,CES_DC_total_75perc_w2),
+        age_wlatest=ifelse(!is.na(age_w3),age_w3,age_w2),
+        time_diff=age_wA1-age_wlatest)
+CESDC_comp_long <- CESDC_all_wide %>% pivot_longer(cols=contains("CES_DC_total_75perc"),names_to="wave", names_pattern= "CES_DC_total_75perc_w(.*)",values_to = "CES_DC_total_75perc")  %>%
+  filter(wave=="A1"|wave=="latest")
+#paired t-test controlled for age and time diff
+depr_ch <- lmerTest::lmer(CES_DC_total_75perc ~ wave + age_wlatest + time_diff + (1|tagid),data=CESDC_comp_long)
+summary(depr_ch)
+
+```
+
+```{r GAD7}
+#GAD7
+GAD7_M1 <-filter(all_M1, grepl("GAD7",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+GAD7_M1 <- GAD7_M1 %>%
+  mutate(GAD7_missing_perc=100*(rowSums(is.na(cbind(GAD7_1,GAD7_2,GAD7_3,GAD7_4,GAD7_5,GAD7_6,GAD7_7)))/7),             GAD7_mean=rowMeans(cbind(GAD7_1,GAD7_2,GAD7_3,GAD7_4,GAD7_5,GAD7_6,GAD7_7),na.rm=T),
+         GAD7_total=rowSums(cbind(GAD7_1,GAD7_2,GAD7_3,GAD7_4,GAD7_5,GAD7_6,GAD7_7),na.rm=T)) %>%
+  mutate(GAD7_total_75perc=ifelse(GAD7_missing_perc <= 25,GAD7_mean*7,NA))
+
+#plot
+ggplot(GAD7_M1,aes(GAD7_total_75perc)) + geom_histogram() + theme_minimal()
+summary(GAD7_M1$GAD7_total_75perc)
+
+#save
+write.csv(GAD7_M1,file=paste0(cas_dir, "behavior/ACE/Month_1_data/GAD7_M1.csv"),row.names = F)
+
+```
+
+```{r ISAS}
+#ISAS
+#18% self-harmed ever
+#Out of those who self-harmed, 15 say it has decreased in the past two weeks, 4 say it stayed the same, and 4 had no answer
+ISAS_M1 <-filter(all_M1, grepl("ISAS",item)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value) %>%
+          mutate(ISAS_1=as.factor(ISAS_1),ISAS_8=as.factor(ISAS_8))
+
+summary(ISAS_M1$ISAS_1)
+table(ISAS_M1$ISAS_1,ISAS_M1$ISAS_8)
+
+
+```
+
+```{r RULS}
+#RULS (loneliness)
+RULS_M1 <-filter(all_M1, grepl("RULS",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+RULS_M1 <- RULS_M1 %>%
+  mutate(RULS_8_1=ifelse(RULS_8_1==1,3,
+                         ifelse(RULS_8_1==2,2,
+                                ifelse(RULS_8_1==3,1,
+                                       ifelse(RULS_8_1==4,0,
+                                              NA)))),
+         RULS_8_3=ifelse(RULS_8_3==1,3,
+                         ifelse(RULS_8_3==2,2,
+                                ifelse(RULS_8_3==3,1,
+                                       ifelse(RULS_8_3==4,0,
+                                              NA)))),
+         RULS_8_4=ifelse(RULS_8_4==1,3,
+                         ifelse(RULS_8_4==2,2,
+                                ifelse(RULS_8_4==3,1,
+                                       ifelse(RULS_8_4==4,0,
+                                              NA)))),
+         RULS_8_8=ifelse(RULS_8_8==1,3,
+                         ifelse(RULS_8_8==2,2,
+                                ifelse(RULS_8_8==3,1,
+                                       ifelse(RULS_8_8==4,0,
+                                              NA)))),
+         RULS_8_2=ifelse(!is.na(RULS_8_2),RULS_8_2-1,NA),
+         RULS_8_5=ifelse(!is.na(RULS_8_5),RULS_8_5-1,NA),
+         RULS_8_6=ifelse(!is.na(RULS_8_6),RULS_8_6-1,NA),
+         RULS_8_7=ifelse(!is.na(RULS_8_7),RULS_8_7-1,NA)) %>%
+  mutate(RULS_missing_perc=100*(rowSums(is.na(cbind(RULS_8_1,RULS_8_2,RULS_8_3,RULS_8_4,RULS_8_5,RULS_8_6,RULS_8_7,RULS_8_8)))/8),             
+         RULS_mean=rowMeans(cbind(RULS_8_1,RULS_8_2,RULS_8_3,RULS_8_4,RULS_8_5,RULS_8_6,RULS_8_7,RULS_8_8),na.rm=T),
+         RULS_total=rowSums(cbind(RULS_8_1,RULS_8_2,RULS_8_3,RULS_8_4,RULS_8_5,RULS_8_6,RULS_8_7,RULS_8_8),na.rm=T)) %>%
+  mutate(RULS_total_75perc=ifelse(RULS_missing_perc <= 25,RULS_mean*8,NA))
+
+#plot
+ggplot(RULS_M1,aes(RULS_total_75perc)) + geom_histogram() + theme_minimal()
+summary(RULS_M1$RULS_total_75perc)
+
+#save
+write.csv(RULS_M1,file=paste0(cas_dir, "behavior/ACE/Month_1_data/RULS_M1.csv"),row.names = F)
+
+#Compare to Wave 3 scores (RULS has not been scored yet for wave 3, to be completed)
+
+
+```
+
+```{r Perceived stress}
+PSS_M1 <- filter(all_M1, grepl("^PSS",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+PSS_M1 <- PSS_M1 %>% 
+  mutate(PSS_4=ifelse(PSS_4==0,4,
+                      ifelse(PSS_4==1,3,
+                             ifelse(PSS_4==2,2,
+                                    ifelse(PSS_4==3,1,
+                                           ifelse(PSS_4==4,0,
+                                                  NA))))),
+         PSS_5=ifelse(PSS_5==0,4,
+                      ifelse(PSS_5==1,3,
+                             ifelse(PSS_5==2,2,
+                                    ifelse(PSS_5==3,1,
+                                           ifelse(PSS_5==4,0,
+                                                  NA))))),
+         PSS_7=ifelse(PSS_7==0,4,
+                      ifelse(PSS_7==1,3,
+                             ifelse(PSS_7==2,2,
+                                    ifelse(PSS_7==3,1,
+                                           ifelse(PSS_7==4,0,
+                                                  NA))))),
+         PSS_8=ifelse(PSS_8==0,4,
+                      ifelse(PSS_8==1,3,
+                             ifelse(PSS_8==2,2,
+                                    ifelse(PSS_8==3,1,
+                                           ifelse(PSS_8==4,0,
+                                                  NA)))))) %>%
+  mutate(PSS_missing_perc=100*(rowSums(is.na(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10)))/10),
+         PSS_total=rowSums(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=F),
+         PSS_mean=rowMeans(cbind(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10), na.rm=T)) %>%
+  mutate(PSS_total_75perc=ifelse(PSS_missing_perc <= 25,PSS_mean*10,NA))
+
+#plot
+ggplot(PSS_M1, aes(PSS_total_75perc)) + geom_histogram() + theme_minimal()
+
+#save
+write.csv(PSS_M1,file=paste0(cas_dir, "behavior/ACE/Month_1_data/PSS_M1.csv"),row.names = F)
+
+
+#Comparison to latest TAG wave
+PSS_wave2 <- read.table(paste0(cas_dir,'behavior/Questionnaires/Wave2/PSS_Wave2.csv'),header=T,sep=",") %>%
+  mutate(wave=2) %>% filter(!X==66 & !X==102)
+PSS_wave3 <- read.table(paste0(cas_dir,'behavior/Questionnaires/Wave3/PSS_Wave3_Session1.csv'),header=T,sep=",") %>%
+  mutate(wave=3)
+PSS_W2W3 <- rbind(PSS_wave2,PSS_wave3) %>%
+  pivot_wider(id_cols= tagid, names_from = wave, names_prefix = "w", values_from = c(PSS_1,PSS_2,PSS_3,PSS_4,PSS_5,PSS_6,PSS_7,PSS_8,PSS_9,PSS_10,PSS_total)) 
+PSS_W2W3 <- PSS_W2W3 %>%
+  mutate(PSS_latestwave=ifelse(!is.na(PSS_total_w3),PSS_total_w3,PSS_total_w2))
+PSS_M1 <- merge(PSS_M1,PSS_W2W3,by="tagid",all.x=T)
+
+t.test(PSS_M1$PSS_total, PSS_M1$PSS_latestwave, paired = TRUE, alternative = "two.sided")
+ggplot(stack(PSS_M1[,c("PSS_latestwave","PSS_total")]),aes(x = ind, y = values))+ geom_boxplot(fill="#56B4E9") + theme_minimal() + labs(title="Perceived stress at latest wave and during pandemic",x="Timepoint",y="PSS total score")
+
+```
+
+```{r CD-RISC-10}
+#CD-RISC-10 (resilience)
+Resilience_M1 <-filter(all_M1, grepl("RISC",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+Resilience_M1 <- Resilience_M1 %>%
+  mutate(CD_RISC_10_missing_perc=100*(rowSums(is.na(cbind(CD_RISC_10_1,CD_RISC_10_2,CD_RISC_10_3,CD_RISC_10_4,CD_RISC_10_5,CD_RISC_10_6,CD_RISC_10_7,CD_RISC_10_8,CD_RISC_10_9,CD_RISC_10_10)))/10),             CD_RISC_10_mean=rowMeans(cbind(CD_RISC_10_1,CD_RISC_10_2,CD_RISC_10_3,CD_RISC_10_4,CD_RISC_10_5,CD_RISC_10_6,CD_RISC_10_7,CD_RISC_10_8,CD_RISC_10_9,CD_RISC_10_10),na.rm=T),
+         CD_RISC_10_total=rowSums(cbind(CD_RISC_10_1,CD_RISC_10_2,CD_RISC_10_3,CD_RISC_10_4,CD_RISC_10_5,CD_RISC_10_6,CD_RISC_10_7,CD_RISC_10_8,CD_RISC_10_9,CD_RISC_10_10),na.rm=T)) %>%
+  mutate(CD_RISC_10_total_75perc=ifelse(CD_RISC_10_missing_perc <= 25,CD_RISC_10_mean*10,NA))
+
+#plot
+ggplot(Resilience_M1,aes(CD_RISC_10_total_75perc)) + geom_histogram() + theme_minimal()
+summary(Resilience_M1$CD_RISC_10_total_75perc)
+
+#save
+write.csv(Resilience_M1,file=paste0(cas_dir, "behavior/ACE/Month_1_data/CD_RISC_10_M1.csv"),row.names = F)
+
+```
+
+```{r KCOPE}
+#KCOPE
+KCOPE_M1 <-filter(all_M1, grepl("KCOPE",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+#put KCOPE_2 onto intended scale (is 1,4,5,6,7,8 going to 1-6)
+KCOPE_M1 <-KCOPE_M1 %>% 
+  mutate(KCOPE_2_1=ifelse(KCOPE_2_1==1,1,ifelse(KCOPE_2_1>3,KCOPE_2_1-2,NA)),
+         KCOPE_2_2=ifelse(KCOPE_2_2==1,1,ifelse(KCOPE_2_2>3,KCOPE_2_2-2,NA)),
+        KCOPE_2_3=ifelse(KCOPE_2_3==1,1,ifelse(KCOPE_2_3>3,KCOPE_2_3-2,NA)),
+         KCOPE_2_4=ifelse(KCOPE_2_4==1,1,ifelse(KCOPE_2_4>3,KCOPE_2_4-2,NA)),
+        KCOPE_2_5=ifelse(KCOPE_2_5==1,1,ifelse(KCOPE_2_5>3,KCOPE_2_5-2,NA)),
+         KCOPE_2_6=ifelse(KCOPE_2_6==1,1,ifelse(KCOPE_2_6>3,KCOPE_2_6-2,NA)),
+        KCOPE_2_7=ifelse(KCOPE_2_7==1,1,ifelse(KCOPE_2_7>3,KCOPE_2_7-2,NA)),
+         KCOPE_2_8=ifelse(KCOPE_2_8==1,1,ifelse(KCOPE_2_8>3,KCOPE_2_8-2,NA)),
+        KCOPE_2_9=ifelse(KCOPE_2_9==1,1,ifelse(KCOPE_2_9>3,KCOPE_2_9-2,NA)),
+         KCOPE_2_10=ifelse(KCOPE_2_10==1,1,ifelse(KCOPE_2_10>3,KCOPE_2_10-2,NA)),
+        KCOPE_2_11=ifelse(KCOPE_2_11==1,1,ifelse(KCOPE_2_11>3,KCOPE_2_11-2,NA)),
+         KCOPE_2_12=ifelse(KCOPE_2_12==1,1,ifelse(KCOPE_2_12>3,KCOPE_2_12-2,NA)),
+        KCOPE_2_13=ifelse(KCOPE_2_13==1,1,ifelse(KCOPE_2_13>3,KCOPE_2_13-2,NA)),
+         KCOPE_2_14=ifelse(KCOPE_2_14==1,1,ifelse(KCOPE_2_14>3,KCOPE_2_14-2,NA)),
+        KCOPE_2_15=ifelse(KCOPE_2_15==1,1,ifelse(KCOPE_2_15>3,KCOPE_2_15-2,NA)),
+         KCOPE_2_16=ifelse(KCOPE_2_16==1,1,ifelse(KCOPE_2_16>3,KCOPE_2_16-2,NA)),
+        KCOPE_2_17=ifelse(KCOPE_2_17==1,1,ifelse(KCOPE_2_17>3,KCOPE_2_17-2,NA)),
+         KCOPE_2_18=ifelse(KCOPE_2_18==1,1,ifelse(KCOPE_2_18>3,KCOPE_2_18-2,NA)),
+        KCOPE_2_19=ifelse(KCOPE_2_19==1,1,ifelse(KCOPE_2_19>3,KCOPE_2_19-2,NA)),
+         KCOPE_2_20=ifelse(KCOPE_2_20==1,1,ifelse(KCOPE_2_20>3,KCOPE_2_20-2,NA)))
+
+KCOPE_M1 <-KCOPE_M1 %>% 
+  mutate(freq_adaptive_mean=rowMeans(cbind(KCOPE_1_5,KCOPE_1_8,KCOPE_1_9,KCOPE_1_11,KCOPE_1_14,
+                                     KCOPE_1_15,KCOPE_1_16,KCOPE_1_19),na.rm=T),
+         freq_maladaptive_mean=rowMeans(cbind(KCOPE_1_1,KCOPE_1_2,KCOPE_1_3,KCOPE_1_4,KCOPE_1_6,KCOPE_1_7,
+                                        KCOPE_1_10,KCOPE_1_12,KCOPE_1_13,KCOPE_1_17,KCOPE_1_18,KCOPE_1_20),na.rm=T),
+         effic_adaptive_mean=rowMeans(cbind(KCOPE_2_5,KCOPE_2_8,KCOPE_2_9,KCOPE_2_11,KCOPE_2_14,
+                                      KCOPE_2_15,KCOPE_2_16,KCOPE_2_19),na.rm=T),
+         effic_maladaptive_mean=rowMeans(cbind(KCOPE_2_1,KCOPE_2_2,KCOPE_2_3,KCOPE_2_4,KCOPE_2_6,KCOPE_2_7,
+                                         KCOPE_2_10,KCOPE_2_12,KCOPE_2_13,KCOPE_2_17,KCOPE_2_18,KCOPE_2_20),na.rm=T),
+         no_of_strategies_used=rowSums(KCOPE_M1[,grepl("KCOPE_1", colnames(KCOPE_M1))]>1))
+
+#save
+write.csv(KCOPE_M1,file=paste0(cas_dir, "behavior/ACE/Month_1_data/KCOPE_M1.csv"),row.names = F)
+
+#most commonly used coping mechanism = I did an activity or hobby to take my mind off it
+KCOPE_means <- as.data.frame(sapply(KCOPE_M1[, grepl("KCOPE_1", names(KCOPE_M1))], mean, na.rm=TRUE)) %>% 
+  rename(mean_use=1)
+KCOPE_means <-setDT(KCOPE_means, keep.rownames = "item")[]
+KCOPE_means[which.max(KCOPE_means$mean_use),]
+
+#most helpful coping mechanism = I did an activity or hobby to take my mind off it
+KCOPE_helpful <- as.data.frame(sapply(KCOPE_M1[, grepl("KCOPE_2", names(KCOPE_M1))], mean, na.rm=TRUE)) %>% 
+  rename(mean_helpfuln=1)
+KCOPE_helpful <-setDT(KCOPE_helpful, keep.rownames = "item")[]
+KCOPE_helpful[which.max(KCOPE_helpful$mean_helpfuln),]
+
+```
+
+```{r COVID lifestyle and emotions}
+COVIDlife_M1 <- filter(all_M1, grepl("lifestyle|emotion",item)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+scale_l <- c("1"="Not at all","2"="Very slightly","3"="Slightly","4"="Moderately","5"="Quite a bit","6"="Extremely")
+
+#social distancing
+ggplot(COVIDlife_M1,aes(lifestyle_1)) + geom_histogram(stat="count") + theme_minimal() + labs(title="How well are you following the social/physical distancing \n or shelter-in-place restrictions?",x=NULL) + scale_x_discrete(labels=scale_l)
+#stress from restrictions
+ggplot(COVIDlife_M1,aes(emotion_7)) + geom_histogram(stat="count") + theme_minimal() + labs(title="how stressful have the restrictions on leaving home been for you?",x=NULL) + scale_x_discrete(labels=scale_l)
+#Reasons for changes
+COVIDreasons_M1 <- COVIDlife_M1[, grepl("^lifestyle_2_", names(COVIDlife_M1))] %>%
+  rename(save_lives=lifestyle_2_1,parents=lifestyle_2_2,government=lifestyle_2_3,worry_sick=lifestyle_2_4,worry_lovedones_sick=lifestyle_2_5,other=lifestyle_2_6) %>%
+  select(-lifestyle_2_6_TEXT)
+reasons <- colSums(COVIDreasons_M1 == "1", na.rm = T)
+ggplot(stack(reasons),aes(x = ind, y = values)) + geom_bar(stat="identity") + theme_minimal() + labs(title="Reasons for making lifestyle changes",x=NULL)
+#Financial effects
+ggplot(COVIDlife_M1,aes(lifestyle_5)) + geom_histogram(stat="count") + theme_minimal() + labs(title="To what degree have changes related to the Coronavirus/COVID-19 crisis \n created financial problems for your family?",x=NULL) + scale_x_discrete(labels=scale_l)
+COVIDlife_M1 %>% group_by(lifestyle_5) %>%
+  summarise(n = n()) %>%   mutate(freq = n / sum(n)) %>% rename(Financial_effect=lifestyle_5)
+
+#worries
+COVIDworries_M1 <- COVIDlife_M1[, grepl("^emotion_", names(COVIDlife_M1))] 
+COVIDworries_M1 <- as.data.frame(sapply(COVIDworries_M1, as.numeric)) %>%
+  rename(being_infected=emotion_3,lovedones_infected=emotion_4,physical_health=emotion_5,mental_emotional_health=emotion_6) %>% select(being_infected,lovedones_infected,physical_health,mental_emotional_health)
+ggplot(stack(COVIDworries_M1),aes(x = ind, y = values)) + geom_boxplot() + theme_minimal() + labs(title="How worried have you been about...",x=NULL)
+#feelings because of the COVID-19 outbreak, and the resulting changes to daily life
+COVIDfeelings_M1 <- COVIDlife_M1[, grepl("^emotion_8_", names(COVIDlife_M1))] 
+COVIDfeelings_M1 <- as.data.frame(sapply(COVIDfeelings_M1, as.numeric)) %>%
+  rename(anxious=emotion_8_1,angry=emotion_8_2,content=emotion_8_3,afraid=emotion_8_4,happy=emotion_8_5,sad=emotion_8_6,worried=emotion_8_7,irritable=emotion_8_8,concerned=emotion_8_9,stressed=emotion_8_10,relieved=emotion_8_11,distressed=emotion_8_12,lonely=emotion_8_13,bored=emotion_8_14,hopeless=emotion_8_15,frustrated=emotion_8_16,disappointed=emotion_8_17,calm=emotion_8_18,appreciative=emotion_8_19,other=emotion_8_20)
+ggplot(stack(COVIDfeelings_M1),aes(x = ind, y = values)) + geom_boxplot() + theme_minimal() + labs(title="Feelings because of the COVID-19 outbreak, and the resulting changes to daily life",x=NULL)
+#concerns
+COVIDconcerns_M1 <- COVIDlife_M1[, grepl("^emotion_9_", names(COVIDlife_M1))] 
+COVIDconcerns_M1 <- as.data.frame(sapply(COVIDconcerns_M1, as.numeric)) %>%
+  rename(staying_home=emotion_9_1,not_seeing_friends=emotion_9_2,behind_on_school=emotion_9_3,time_with_family=emotion_9_4,people_dying=emotion_9_5,parent_losing_job=emotion_9_6,missing_events=emotion_9_7,other=emotion_9_8)
+ggplot(stack(COVIDconcerns_M1),aes(x = ind, y = values)) + geom_boxplot() + theme_minimal() + labs(title="Concerns about the impact of the COVID-19 outbreak on...",x=NULL)
+#negative and positive changes
+COVIDchanges_M1 <- as.data.frame(sapply(COVIDlife_M1, as.numeric))
+ggplot(stack(COVIDchanges_M1[,c("emotion_10","emotion_11")]),aes(x = ind, y = values)) + geom_boxplot() + theme_minimal() + labs(title="How much has the COVID-19 outbreak, and the resulting changes to daily life, \n affected your life in a negative/positive way?",x=NULL) + scale_x_discrete(labels=c("emotion_10"="negative","emotion_11"="positive"))
+
+ggplot(COVIDchanges_M1,aes(as.factor(emotion_10b))) + geom_histogram(stat="count") + theme_minimal() + labs(title="Most negative change",x=NULL) + scale_x_discrete(labels=c("1"="you or \n loved one \n infected","2"="staying home","3"="not seeing \n friends","4"="people dying","5"="no school","6"="more time \n with family","7"="other"))
+ggplot(COVIDchanges_M1,aes(as.factor(emotion_11b))) + geom_histogram(stat="count") + theme_minimal() + labs(title="Most positive change",x=NULL) + scale_x_discrete(labels=c("1"="less schoolwork","2"="more sleep","3"="more time \n with family","4"="not dealing \n with kids \n at school","5"="more online time","6"="other"))
+
+```
+
+```{r Flourishing}
+
+Flourishing_M1 <-filter(all_M1, grepl("Flourish",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+Flourishing_M1 <- Flourishing_M1 %>%
+  mutate(Flourishing_missing_perc=100*(rowSums(is.na(cbind(Flourishing_Scale_1,Flourishing_Scale_2,Flourishing_Scale_3,Flourishing_Scale_4,Flourishing_Scale_5,Flourishing_Scale_6,Flourishing_Scale_7,Flourishing_Scale_8)))/8),             Flourishing_mean=rowMeans(cbind(Flourishing_Scale_1,Flourishing_Scale_2,Flourishing_Scale_3,Flourishing_Scale_4,Flourishing_Scale_5,Flourishing_Scale_6,Flourishing_Scale_7,Flourishing_Scale_8),na.rm=T),
+         Flourishing_total=rowSums(cbind(Flourishing_Scale_1,Flourishing_Scale_2,Flourishing_Scale_3,Flourishing_Scale_4,Flourishing_Scale_5,Flourishing_Scale_6,Flourishing_Scale_7,Flourishing_Scale_8),na.rm=T)) %>%
+  mutate(Flourishing_total_75perc=ifelse(Flourishing_missing_perc <= 25,Flourishing_mean*8,NA))
+
+#plot
+ggplot(Flourishing_M1,aes(Flourishing_total_75perc)) + geom_histogram() + theme_minimal()
+summary(Flourishing_M1$Flourishing_total_75perc)
+
+#save
+write.csv(Flourishing_M1,file=paste0(cas_dir, "behavior/ACE/Month_1_data/Flourishing_M1.csv"),row.names = F)
+
+
+```
+
+```{r ASC}
+ASC_M1 <-filter(all_M1, grepl("ASC|^1.7|^2.7",item)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+ASC_M1 <- ASC_M1 %>% mutate(ASC_4.1=as.numeric(ASC_4.1),ASC_4.2=as.numeric(ASC_4.2),ASC_4.3=as.numeric(ASC_4.3),ASC_4.4=as.numeric(ASC_4.4),ASC_5family=as.numeric(ASC_5.1),ASC_5familystress=as.numeric(ASC_5.2),ASC_5friends=as.numeric(ASC_5.3),ASC_5friendsstress=as.numeric(ASC_5.4))
+
+#save
+write.csv(ASC_M1,file=paste0(cas_dir, "behavior/ACE/Month_1_data/ASC3_raw_M1.csv"),row.names = F)
+
+#ASC 1 versus 2  .7 meeting social needs
+ASC_socialneeds_M1 <- ASC_M1[, grepl(".7_", names(ASC_M1))]
+ASC_socialneeds_M1 <- as.data.frame(sapply(ASC_socialneeds_M1, as.numeric)) %>%
+  rename(pre_friends=`1.7_1`,post_friends=`2.7_1`,pre_peers=`1.7_2`,post_peers=`2.7_2`,pre_extfam=`1.7_3`,post_extfam=`2.7_3`,
+         pre_romanticp=`1.7_4`,post_romanticp=`2.7_4`,pre_household=`1.7_5`,post_household=`2.7_5`) %>%
+  select(pre_friends,post_friends,pre_peers,post_peers,pre_extfam,post_extfam,pre_romanticp,post_romanticp,pre_household,post_household)
+ggplot(stack(ASC_socialneeds_M1), aes(x = ind, y = values))+ geom_boxplot() + theme_minimal() + ggtitle("How well are the following groups meeting your social needs?")
+
+summary(ASC_socialneeds_M1)
+t.test(ASC_socialneeds_M1$pre_friends, ASC_socialneeds_M1$post_friends, paired = TRUE, alternative = "two.sided")
+t.test(ASC_socialneeds_M1$pre_peers, ASC_socialneeds_M1$post_peers, paired = TRUE, alternative = "two.sided")
+t.test(ASC_socialneeds_M1$pre_extfam, ASC_socialneeds_M1$post_extfam, paired = TRUE, alternative = "two.sided")
+t.test(ASC_socialneeds_M1$pre_romanticp, ASC_socialneeds_M1$post_romanticp, paired = TRUE, alternative = "two.sided")
+t.test(ASC_socialneeds_M1$pre_household, ASC_socialneeds_M1$post_household, paired = TRUE, alternative = "two.sided")
+
+#ASC_5 Relationship quality
+ggplot(stack(ASC_M1[,c("ASC_5family","ASC_5friends")]),aes(x = ind, y = values))+ geom_boxplot() + theme_minimal() + ggtitle("Changes in relationship quality (4=no change)")
+ggplot(stack(ASC_M1[,c("ASC_5familystress","ASC_5friendsstress")]),aes(x = ind, y = values))+ geom_boxplot() + theme_minimal() + ggtitle("Stress from changes in relationship quality")
+
+#### ASC_4 social and non-social risk taking
+#Average risk taking for social needs = never to once in the last two weeks
+#Average risk taking for non-social needs = once to twice in the last two weeks
+summary(ASC_M1[, grepl("ASC_4", names(ASC_M1))])
+table(ASC_M1$ASC_4.1)
+table(ASC_M1$ASC_4.2)
+#Physical risks for social needs: 71.9% meeting friend or family member in person , 18.8% physically touching friend or romantic partner, 9.4% other
+#Social risks for social needs: 39.1% talk to strangers online, 23.6% flirting or telling someone you like them or sexual stuff online, 23.6% inversting in existing relationships (getting more personal or talking to people you're not very close to), 8.7% other
+#Physical risks for non-social needs: 63.5% Groceries or other shopping, 23.8% exercise outside, 3.2% babysitting or other job,  9.5% other
+#Social risks for non-social needs: 48.6% not seeing friends or other close relationships, 29.7% calling out peers for not social distancing, 13.5% staying home or other general terms for social distancing, 8% other
+
+#### ASC_3 irreplacable relationship aspects 
+#hugs or other physical touch 27.4% of sample
+#hanging out or face-to-face time  26% of sample
+#social activities (sports, birthdays, sleepovers, lunch, music) 23.3%
+#Less time connecting with people 16.4%
+#Nothing 21.9%
+
+```
+
+```{r ASC connections}
+
+#### ASC 1 and 2 connections
+
+ASC_connecting_M1 <- ASC_M1[, grepl("ASC_1|ASC_2|tagid", names(ASC_M1))]
+ASC_connecting_renamed_M1 <-  ASC_connecting_M1 %>%
+  mutate(pre_reallife_freq=as.numeric(ASC_1.1.a),pre_scroll_freq=as.numeric(ASC_1.2.a),pre_friends_freq=as.numeric(ASC_1.3.a),pre_peers_freq=as.numeric(ASC_1.4.a),pre_extfam_freq=as.numeric(ASC_1.5.a),pre_romanticp_freq=as.numeric(ASC_1.6.a),post_reallife_freq=as.numeric(ASC_2.1.a),post_scroll_freq=as.numeric(ASC_2.2.a),post_friends_freq=as.numeric(ASC_2.3.a),post_peers_freq=as.numeric(ASC_2.4.a),post_extfam_freq=as.numeric(ASC_2.5.a),post_romanticp_freq=as.numeric(ASC_2.6.a), pre_reallife_feel=as.numeric(ASC_1.1.b),pre_scroll_feel=as.numeric(ASC_1.2.b),pre_friends_feel=as.numeric(ASC_1.3.c),pre_peers_feel=as.numeric(ASC_1.4.c),pre_extfam_feel=as.numeric(ASC_1.5.c),pre_romanticp_feel=as.numeric(ASC_1.6.c),post_reallife_feel=as.numeric(ASC_2.1.b),post_scroll_feel=as.numeric(ASC_2.2.b),post_friends_feel=as.numeric(ASC_2.3.c),post_peers_feel=as.numeric(ASC_2.4.c),post_extfam_feel=as.numeric(ASC_2.5.c),post_romanticp_feel=as.numeric(ASC_2.6.c),pre_friends=ASC_1.3.b.,pre_peers=ASC_1.4.b.,pre_extfam=ASC_1.5.b.,pre_romanticp=ASC_1.6.b.,post_friends=ASC_2.3.b.,post_peers=ASC_2.4.b.,post_extfam=ASC_2.5.b.,post_romanticp=ASC_2.6.b.) 
+
+#frequency
+ASC_connecting1_M1 <- as.data.frame(sapply(ASC_connecting_renamed_M1, as.numeric)) %>%
+  select(pre_reallife_freq,post_reallife_freq,pre_scroll_freq,post_scroll_freq,pre_friends_freq,post_friends_freq,pre_peers_freq,post_peers_freq,pre_extfam_freq,post_extfam_freq,pre_romanticp_freq,post_romanticp_freq)
+ggplot(stack(ASC_connecting1_M1), aes(x = ind, y = values))+ geom_boxplot() + theme_minimal() + ggtitle("How often did you connect with...")
+#feeling connected
+ASC_connecting2_M1 <- as.data.frame(sapply(ASC_connecting_renamed_M1, as.numeric)) %>% 
+  select(pre_reallife_feel,post_reallife_feel,pre_scroll_feel,post_scroll_feel,pre_friends_feel,post_friends_feel,pre_peers_feel,post_peers_feel,pre_extfam_feel,post_extfam_feel,pre_romanticp_feel,post_romanticp_feel)
+ggplot(stack(ASC_connecting2_M1), aes(x = ind, y = values))+ geom_boxplot() + theme_minimal() + ggtitle("How socially connected did this make you feel?")
+#most common method
+ASC_connecting3_M1 <- ASC_connecting_renamed_M1 %>% 
+  select(pre_friends,post_friends,pre_peers,post_peers,pre_extfam,post_extfam,pre_romanticp,post_romanticp)
+ggplot(stack(ASC_connecting3_M1), aes(x = ind, y = values,color = values))+ geom_jitter() + guides(color="none") + theme_minimal() + labs(title="What is your most common method?",x="",y="") + scale_y_discrete(labels=c("text","call","video \n call","post","like/ \n respond","online \n games","other","NA"))
+
+##Turn off scientific notation
+options(scipen=999)
+
+
+#ASC connections and mental health/flourishing
+ASC_mh_M1 <- merge(ASC_connecting_renamed_M1, CESDC_comp, by="tagid") %>%
+  merge(., Flourishing_M1, by="tagid")
+#frequency
+cor_freq_mh <- cor(ASC_mh_M1[,c("post_reallife_freq","post_scroll_freq","post_friends_freq","post_peers_freq","post_extfam_freq","post_romanticp_freq","CES_DC_total_75perc","CESDC_latestwave","Flourishing_mean")],use="pairwise.complete.obs",method = c("spearman"))
+corp_freq_mh <- cor_pmat(ASC_mh_M1[,c("post_reallife_freq","post_scroll_freq","post_friends_freq","post_peers_freq","post_extfam_freq","post_romanticp_freq","CES_DC_total_75perc","CESDC_latestwave","Flourishing_mean")])
+ggcorrplot(cor_freq_mh, p.mat=corp_freq_mh, lab=T, lab_size=3, title="correlations connection frequency and mental health/well-being")
+#social connectedness
+cor_feel_mh <- cor(ASC_mh_M1[,c("post_reallife_feel","post_scroll_feel","post_friends_feel","post_peers_feel","post_extfam_feel","post_romanticp_feel","CES_DC_total_75perc","CESDC_latestwave","Flourishing_mean")],use="pairwise.complete.obs",method = c("spearman"))
+corp_feel_mh <- cor_pmat(ASC_mh_M1[,c("post_reallife_feel","post_scroll_feel","post_friends_feel","post_peers_feel","post_extfam_feel","post_romanticp_feel","CES_DC_total_75perc","CESDC_latestwave","Flourishing_mean")])
+ggcorrplot(cor_feel_mh, p.mat=corp_feel_mh, lab=T, lab_size=3, title="correlations feelings of connectedness and mental health/well-being")
+#most commom method
+fit_cesdc_methodfr <- aov(CES_DC_total_75perc ~ post_friends, data=ASC_mh_M1)
+fit_cesdc_methodpe <- aov(CES_DC_total_75perc ~ post_peers, data=ASC_mh_M1)
+fit_cesdc_methodfa <- aov(CES_DC_total_75perc ~ post_extfam, data=ASC_mh_M1)
+fit_cesdc_methodrp <- aov(CES_DC_total_75perc ~ post_romanticp, data=ASC_mh_M1)
+summary(fit_cesdc_methodfr)
+summary(fit_cesdc_methodpe)
+summary(fit_cesdc_methodfa)
+summary(fit_cesdc_methodrp)
+fit_fl_methodfr <- aov(Flourishing_mean ~ post_friends, data=ASC_mh_M1)
+fit_fl_methodpe <- aov(Flourishing_mean ~ post_peers, data=ASC_mh_M1)
+fit_fl_methodfa <- aov(Flourishing_mean ~ post_extfam, data=ASC_mh_M1)
+fit_fl_methodrp <- aov(Flourishing_mean ~ post_romanticp, data=ASC_mh_M1)
+summary(fit_fl_methodfr)
+summary(fit_fl_methodpe)
+summary(fit_fl_methodfa)
+summary(fit_fl_methodrp)
+#re-analyze with multilevel model (connection (friend, peer, rom p) = factor)
+ASC_connecting1_M1 <- cbind(ASC_M1[, grepl("tagid", names(ASC_M1))], ASC_connecting1_M1)
+ASC_depr_M1 <- merge(ASC_connecting1_M1, CESDC_comp[,c("tagid","CES_DC_total_75perc")], by="tagid")
+ASC_mh_M1_long <- pivot_longer(ASC_depr_M1[,c("tagid","post_reallife_freq","post_scroll_freq","post_friends_freq","post_peers_freq","post_extfam_freq","post_romanticp_freq","CES_DC_total_75perc")], cols=c("post_reallife_freq","post_scroll_freq","post_friends_freq","post_peers_freq","post_extfam_freq","post_romanticp_freq"), names_to="connection",values_to="freq",names_prefix ="post_")
+fit_cesdc_freq <- lmer(CES_DC_total_75perc ~ freq + (1|tagid), data=ASC_mh_M1_long)
+ggplot(ASC_mh_M1_long,aes(x=freq,y=CES_DC_total_75perc))+geom_point(aes(color=connection))+geom_smooth(aes(group=connection,color=connection)) +theme_minimal() + labs(x="Frequency (Never to Almost constantly)",y="Depressive symptoms")+ scale_color_discrete(labels=c("Non-household family members online","Friends online","Other peers online","Friends in real life","Romantic partner/interest online","Scroll through social media"))
+
+ASC_fl_M1 <- merge(ASC_connecting1_M1, Flourishing_M1[,c("tagid","Flourishing_mean")], by="tagid")
+ASC_fl_M1_long <- pivot_longer(ASC_fl_M1[,c("tagid","post_reallife_freq","post_scroll_freq","post_friends_freq","post_peers_freq","post_extfam_freq","post_romanticp_freq","Flourishing_mean")], cols=c("post_reallife_freq","post_scroll_freq","post_friends_freq","post_peers_freq","post_extfam_freq","post_romanticp_freq"), names_to="connection",values_to="freq",names_prefix ="post_")
+fit_cesdc_freq <- lmer(Flourishing_mean ~ freq + (1|tagid), data=ASC_fl_M1_long)
+ggplot(ASC_fl_M1_long,aes(x=freq,y=Flourishing_mean))+geom_point(aes(color=connection))+geom_smooth(aes(group=connection,color=connection)) +theme_minimal() + labs(x="Frequency (Never to Almost constantly)",y="Flourishing mean score") + scale_color_discrete(labels=c("Non-household family members online","Friends online","Other peers online","Friends in real life","Romantic partner/interest online","Scroll through social media"))
+
+```
+
+```{r puberty}
+
+#Age at menarche data
+PDS_M1 <-filter(all_M1, grepl("PDS",item)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                   spread(item,value)
+
+```
+
+
+```{r social needs and physical distancing}
+
+#Merge data
+ASC_socialneeds <- cbind(ASC_M1[,"tagid"],ASC_socialneeds_M1)
+socialneeds_physdist <- merge(COVIDlife_M1[,c("tagid","lifestyle_1")], ASC_socialneeds,by="tagid") %>%
+  mutate(ch_friends=post_friends-pre_friends, ch_peers=post_peers-pre_peers,ch_extfam=post_extfam-pre_extfam,ch_romanticp=post_romanticp-pre_romanticp,ch_household=post_household-pre_household)
+
+#correlations between social needs and phys distancing
+socialneeds_physdist_n <- socialneeds_physdist %>% subset(select=-tagid) %>% mutate(lifestyle_1=as.numeric(lifestyle_1))
+cor(socialneeds_physdist_n, use="pairwise.complete.obs",method="spearman")
+cor_pmat(socialneeds_physdist_n, use="pairwise.complete.obs",method="spearman")
+
+#social needs and depressive symptoms
+socialneeds_physdist_depr <- merge(socialneeds_physdist,CESDC_comp[,c("tagid","CES_DC_total_75perc","CESDC_latestwave")],by="tagid") %>% 
+  mutate(ch_CESDC=CES_DC_total_75perc-CESDC_latestwave)
+
+cor(dplyr::select(socialneeds_physdist_depr,contains("ch")), use="pairwise.complete.obs",method="spearman")
+cor_pmat(dplyr::select(socialneeds_physdist_depr,contains("ch")), use="pairwise.complete.obs",method="spearman")
+
+ggplot(socialneeds_physdist_depr,aes(x=ch_friends,y=ch_CESDC)) + geom_point() + geom_smooth(method="lm") +theme_minimal() + labs(x="Change in how well friends are meeting social needs",y="Change in depressive symptoms")
+
+```
