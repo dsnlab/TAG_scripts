@@ -1,0 +1,641 @@
+---
+title: "Resting_State_Dissertation"
+output: html_document
+---
+
+
+Load required packages
+```{r Load Required Packages, message=FALSE, warning=FALSE, include=FALSE}
+## Load required packages ##
+packages <-  c("lme4", "nlme", "ggplot2", "zoo", "dplyr", "tidyr", "knitr",
+              "parallel", "data.table", "lubridate", "data.table", "stringr", "purrr", "psych", "DescTools", "mosaic")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+# Set directory
+rsfcMRI_subjects ="/projects/dsnlab/shared/tag/bids_data/derivatives/rsfMRI_preproc_wave2"
+
+```
+
+##Load Parcels##
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+# Amyg: "aseg_18", "aseg_54" 
+# Hipp: "aseg_17", "aseg_53" 
+# Caudate: "aseg_11", "aseg_50" 
+# Accumbens: "aseg_26", "aseg_58" 
+# sgACC: "lh.L_a24_ROI", "rh.R_a24_ROI"
+  
+```
+
+##Get Timecourses for networks
+```{r}
+rsfcMRI_subjects ="/projects/dsnlab/shared/tag/bids_data/derivatives/rsfMRI_preproc_wave2"
+subs<-list.files(path = rsfcMRI_subjects, pattern = "sub")
+sub_base_dir=rsfcMRI_subjects
+numcores<-detectCores()[1]
+scrubbingThreshold<-.2
+networks <- data.frame("Network_name"=c("salience", "frontoparietal", "default"))
+
+#/projects/dsnlab/shared/tag/bids_data/derivatives/rsfMRI_preproc_wave2/sub-TAG009/sub-TAG009.results/timecourses/sub-TAG009_both.salience.txt 
+write.csv(timecourses, "timecourse.csv")
+collectAndCorTimecourses_combined <- function(subs,networks,scrubbingThreshold, sub_base_dir) {
+   #below makes a df with every parcel file location, that then reads in the data from that parcel.
+   #result is a long data frame with indexes within each parcel (e.g. volume number 1:514)
+   timecourses <- data.frame(file_location=paste0(sub_base_dir, "/", subs, "/",subs,".results/timecourses/",subs,'_',"both.",networks$Network_name,'.txt'),
+                             subs=subs,
+                             network = networks$Network_name,
+                             stringsAsFactors=F) %>% 
+     group_by(subs,network) %>% do({
+       timecourse<-try(fread(.$file_location, stringsAsFactors=F))
+       if('try-error' %in% class(timecourse)) timecourse <- data.frame(NA)
+       timecourse
+     }) %>%
+     mutate(index=1:n()) %>% filter(!is.na(V1))
+   sub_dir <- paste0(sub_base_dir, "/", subs,"/",subs, ".results/")
+   #get the motion information and censor properly
+   fdfile <- data.frame(motion=read.table(paste0(sub_dir,"motion_",subs,"_enorm.1D"))$V1)
+   fdfile$index <- seq(1, nrow(fdfile))
+   censor_raw = fdfile$motion>scrubbingThreshold #censor if over the threshold
+   censor_1after = censor_raw | lag(censor_raw,1, default=F) #censor 1 after any censored vols
+   fdfile$censor = censor_1after | (lead(censor_1after,1, default=F) & lag(censor_1after,1, default=F)) #censor any vols between censored vols
+   #timecourse length == motion data length error checking
+   fdlength <- dim(fdfile)[1]
+   nada <- timecourses %>% group_by(network) %>%
+     summarize(n=n())%>% group_by(network) %>%
+     do(thing=if(.$n != fdlength) stop(paste0('fdfile and timecourse ARE NOT THE SAME LENGTH',
+                                              subs, ' ',.$parcel, '\n')))
+   #get a summary of motion for filtering later, and just for our info
+   motiondata <- summarize(fdfile,
+                           Blurps=sum(censor_raw),
+                           Numcensored=sum(censor))
+   #remove censored volumes
+   timecourses_censored <- left_join(timecourses, dplyr::select(fdfile,index,censor)) %>% filter(!censor)
+   #more summary info for filtering subjects later
+   motiondata$Framesremaining <- timecourses_censored  %>% group_by(network) %>%
+     summarize(frames_remaining=n()) %>% distinct(frames_remaining) %>%
+     unlist  
+   #make the timecourse data nice for correlations
+   timecourses_censored_w <- timecourses_censored %>% 
+     dplyr::select(subs, index, network, V1) %>% 
+     spread(network,V1) %>% ungroup %>% dplyr::select(-c(index, subs))
+   
+   #correlate!
+   CorrelationMatrix<-fisherz(cor(timecourses_censored_w))
+   #just take the bottom triangle
+   CorrelationMatrix[upper.tri(CorrelationMatrix, diag=TRUE)] <- NA
+   #this gets the names for the rows and columns and assigns each cor value
+   #a name that is the combination of the row and column.
+   CorrDF <- as.data.frame(CorrelationMatrix) %>% #matrix colnames become df column names
+     mutate(var2=rownames(CorrelationMatrix)) %>% #add a column for matrix row names
+     gather(var1, cor, -var2) %>% #make wide cor mat long, but keep indexed by matrix row name
+     filter(!is.na(cor)) %>% #remove NA (upper tri) rows
+     unite(coi, var1, var2) #unite the row and col names, now next to each other, into a single ame.
+   ## The CorrDF data frame now looks like, for example:
+   # key                         cor
+   # ---                         -----
+   # lh.Parcel_1_lh.Parcel_10    0.338
+   ##
+   # now we want to add in our summary timecourse info re motion etc, so we just 
+   # add columns to the correlation data frame, and turn it into a data table for
+   # efficiency later on.
+
+   subjDF <- CorrDF %>% mutate(subs=subs, 
+                               Blurps=motiondata$Blurps,
+                               Numcensored=motiondata$Numcensored,
+                               Framesremaining=motiondata$Framesremaining) %>% as.data.table
+
+  subjDF <- subjDF %>% filter(grepl("aseg", coi) | grepl("a24", coi)) #this filter step selects connections to amygdala, hippocampus, accumbens, caudate, and sgACC nly
+} # end of function
+ 
+coi_subs=read.table("/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/gutbrain/GUT_Rest_round2.txt", sep ="\t", header=FALSE, col.names="sub")
+coi_subs$sub= as.character(coi_subs$sub)
+
+###DMN####
+gordon_cois <- mclapply(as.list(coi_subs$sub),
+                      collectAndCorTimecourses_combined, 
+                      networks=networks$Network_names=="default",
+                      scrubbingThreshold=scrubbingThreshold, 
+                      sub_base_dir=sub_base_dir,
+                      mc.cores=1)
+
+print(object.size(gordon_cois_dmn), quote = FALSE, units = "Mb")
+ 
+ # bind list of data.tables into one long data.table and filter by frames remaining (< 5 mins)
+system.time(gordon_coisDT_dmn <- do.call(bind_rows, gordon_cois_dmn) %>% 
+               filter(Framesremaining >= 385) %>%
+               dplyr::select(-Blurps, -Numcensored, -Framesremaining) %>%  #we don't need these columns anymore
+               as.data.table)
+ print(object.size(gordon_coisDT_dmn), quote = FALSE, units = "Mb") #much smaller than the list of ata.tables
+ rm(gordon_cois_dmn);gc() #remove list, and garbage collect
+ save(gordon_coisDT_dmn,file = "/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/gutbrain/gordon_coisDT_dmn.RDS")
+ 
+ gordon_cois_dmn <- distinct(gordon_coisDT_dmn, coi)
+ write.csv(gordon_cois_dmn, "gordon_cois_dmn.csv")
+ 
+```
+
+
+
+
+
+##Load Parcels##
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#grab parcels#####
+numcores<-detectCores()[1]
+scrubbingThreshold<-.2
+sub_base_dir=rsfcMRI_subjects
+# parcellation_list_dir= "~/TAG_scripts/sMRI/templates/"
+# https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
+gordon_lhparcels<-as.data.frame(read.table("/projects/dsnlab/shared/tag/TAG_scripts/sMRI/templates/lists/lhlabels.txt")[[1]]) %>%
+    filter(grepl("lh.Parcel", .[[1]]))%>%
+    mutate(parcel_name=.[[1]]) %>%
+    dplyr::select(parcel_name)
+  gordon_rhparcels<-as.data.frame(read.table("/projects/dsnlab/shared/tag/TAG_scripts/sMRI/templates/lists/rhlabels.txt")[[1]]) %>%
+    filter(grepl("rh.Parcel", .[[1]]))%>%
+    mutate(parcel_name=.[[1]]) %>%
+    dplyr::select(parcel_name)
+  
+   subcorticalparcels<-as.data.frame(rbind("aseg_18","aseg_54","aseg_17","aseg_53", "aseg_11", "aseg_50","aseg_26", "aseg_58", "lh.L_a24_ROI", "rh.R_a24_ROI")) %>%
+    mutate(parcel_name=.[[1]]) %>%
+   dplyr::select(parcel_name) 
+
+   subcorticalparcels$parcel_name <-  as.character(subcorticalparcels$parcel_name)
+#reduce data set to 3 networks of interest
+labeled <- fread("/projects/dsnlab/shared/tag/TAG_scripts/sMRI/templates/Parcels.csv")
+   
+gordon_filtered <- labeled %>%
+   dplyr::filter(grepl("Default|FrontoParietal|Salience", Community)) %>%
+     mutate(parcel_name=ParcelID) %>%
+     dplyr::select(-ParcelID)
+
+gordon_filtered$parcel_name <-  as.character(gordon_filtered$parcel_name)
+# str(gordon_filtered$parcel_name)
+
+#filter by network####
+gordon_filtered_dmn <- gordon_filtered %>%
+  filter(Community=="Default")
+
+gordon_filtered_SN <- gordon_filtered %>%
+  filter(Community=="Salience")
+
+gordon_filtered_FPN <- gordon_filtered %>%
+  filter(Community=="FrontoParietal")
+
+gordon_rhparcels_filtered <- gordon_rhparcels %>%
+  separate(parcel_name, c("hemi", "parcel_name"), sep = "_")
+
+gordon_lhparcels_filtered <- gordon_lhparcels %>%
+  separate(parcel_name, c("hemi", "parcel_name"), sep = "_")
+
+#DMN####
+gordon_filtered_dmn_2 <- subset(gordon_rhparcels_filtered,parcel_name %in% gordon_filtered_dmn$parcel_name)
+
+gordon_filtered_dmn_2 <- gordon_filtered_dmn_2 %>%
+  unite(parcel_name, hemi, parcel_name)
+
+gordon_filtered_dmn_l <- subset(gordon_lhparcels_filtered,parcel_name %in% gordon_filtered_dmn$parcel_name)
+
+gordon_filtered_dmn_l <- gordon_filtered_dmn_l %>%
+  unite(parcel_name, hemi, parcel_name)
+
+ gordon_dmn <- bind_rows(gordon_filtered_dmn_2,gordon_filtered_dmn_l,subcorticalparcels)
+
+#SN####
+gordon_filtered_SN_2 <- subset(gordon_rhparcels_filtered,parcel_name %in% gordon_filtered_SN$parcel_name)
+
+gordon_filtered_SN_2 <- gordon_filtered_SN_2 %>%
+  unite(parcel_name, hemi, parcel_name)
+
+gordon_filtered_SN_l <- subset(gordon_lhparcels_filtered,parcel_name %in% gordon_filtered_SN$parcel_name)
+
+gordon_filtered_SN_l <- gordon_filtered_SN_l %>%
+  unite(parcel_name, hemi, parcel_name)
+
+ gordon_SN <- bind_rows(gordon_filtered_SN_2,gordon_filtered_SN_l,subcorticalparcels)
+
+#FPN####
+gordon_filtered_FPN_2 <- subset(gordon_rhparcels_filtered,parcel_name %in% gordon_filtered_FPN$parcel_name)
+
+gordon_filtered_FPN_2 <- gordon_filtered_FPN_2 %>%
+  unite(parcel_name, hemi, parcel_name)
+
+gordon_filtered_FPN_l <- subset(gordon_lhparcels_filtered,parcel_name %in% gordon_filtered_FPN$parcel_name)
+
+gordon_filtered_FPN_l <- gordon_filtered_FPN_l %>%
+  unite(parcel_name, hemi, parcel_name)
+
+ gordon_FPN <- bind_rows(gordon_filtered_FPN_2,gordon_filtered_FPN_l, subcorticalparcels)
+   
+# Amyg: "aseg_18", "aseg_54" 
+# Hipp: "aseg_17", "aseg_53" 
+# Caudate: "aseg_11", "aseg_50" 
+# Accumbens: "aseg_26", "aseg_58" 
+# sgACC: "lh.L_a24_ROI", "rh.R_a24_ROI"
+  
+```
+#
+##Get Timecourses by parcel ##
+```{r function}
+# # create sub list based on folders within the freesurfer subjects folder
+subs<-list.files(path = rsfcMRI_subjects, pattern = "sub")
+
+collectAndCorTimecourses <- function(subs, parcels, scrubbingThreshold, sub_base_dir) {
+   #below makes a df with every parcel file location, that then reads in the data from that parcel.
+   #result is a long data frame with indexes within each parcel (e.g. volume number 1:514)
+   timecourses <- data.frame(file_location=paste0(sub_base_dir, "/", subs, "/",subs,".results/timecourses/",subs,'_',parcels$parcel_name,'.txt'),
+                             subs=subs,
+                             parcel=parcels$parcel_name,
+                             stringsAsFactors=F) %>%
+     group_by(subs,parcel) %>% do({
+       timecourse<-try(fread(.$file_location, stringsAsFactors=F))
+       if('try-error' %in% class(timecourse)) timecourse <- data.frame(NA)
+       timecourse
+     }) %>%
+     mutate(index=1:n()) %>% filter(!is.na(V1))
+   sub_dir <- paste0(sub_base_dir, "/", subs,"/",subs, ".results/")
+   #get the motion information and censor properly
+   fdfile <- data.frame(motion=read.table(paste0(sub_dir,"motion_",subs,"_enorm.1D"))$V1)
+   fdfile$index <- seq(1, nrow(fdfile))
+   censor_raw = fdfile$motion>scrubbingThreshold #censor if over the threshold
+   censor_1after = censor_raw | lag(censor_raw,1, default=F) #censor 1 after any censored vols
+   fdfile$censor = censor_1after | (lead(censor_1after,1, default=F) & lag(censor_1after,1, default=F)) #censor any vols between censored vols
+   #timecourse length == motion data length error checking
+   fdlength <- dim(fdfile)[1]
+   nada <- timecourses %>% group_by(parcel) %>%
+     summarize(n=n()) %>% group_by(parcel) %>%
+     do(thing=if(.$n != fdlength) stop(paste0('fdfile and timecourse ARE NOT SAME LENGTH!!!',
+                                              subs, ' ', .$parcel, '\n')))
+   #get a summary of motion for filtering later, and just for our info
+   motiondata <- summarize(fdfile,
+                           Blurps=sum(censor_raw),
+                           Numcensored=sum(censor))
+   #remove censored volumes
+   timecourses_censored <- left_join(timecourses, dplyr::select(fdfile,index,censor)) %>% filter(!censor)
+   #more summary info for filtering subjects later
+   motiondata$Framesremaining <- timecourses_censored %>% group_by(parcel) %>% 
+     summarize(frames_remaining=n()) %>% distinct(frames_remaining) %>%
+     unlist  
+   #make the timecourse data nice for correlations
+   timecourses_censored_w <- timecourses_censored %>% 
+     dplyr::select(subs, index, parcel, V1) %>% 
+     spread(parcel,V1) %>% ungroup %>% dplyr::select(-c(index, subs))
+   
+   #correlate!
+   CorrelationMatrix<-fisherz(cor(timecourses_censored_w))
+   #just take the bottom triangle
+   CorrelationMatrix[upper.tri(CorrelationMatrix, diag=TRUE)] <- NA
+   #this gets the names for the rows and columns and assigns each cor value
+   #a name that is the combination of the row and column.
+   CorrDF <- as.data.frame(CorrelationMatrix) %>% #matrix colnames become df column names
+     mutate(var2=rownames(CorrelationMatrix)) %>% #add a column for matrix row names
+     gather(var1, cor, -var2) %>% #make wide cor mat long, but keep indexed by matrix row name
+     filter(!is.na(cor)) %>% #remove NA (upper tri) rows
+     unite(coi, var1, var2) #unite the row and col names, now next to each other, into a single ame.
+   ## The CorrDF data frame now looks like, for example:
+   # key                         cor
+   # ---                         -----
+   # lh.Parcel_1_lh.Parcel_10    0.338
+   ##
+   # now we want to add in our summary timecourse info re motion etc, so we just 
+   # add columns to the correlation data frame, and turn it into a data table for
+   # efficiency later on.
+
+   subjDF <- CorrDF %>% mutate(subs=subs, 
+                               Blurps=motiondata$Blurps,
+                               Numcensored=motiondata$Numcensored,
+                               Framesremaining=motiondata$Framesremaining) %>% as.data.table
+
+  subjDF <- subjDF %>% filter(grepl("aseg", coi) | grepl("a24", coi)) #this filter step selects connections to amygdala, hippocampus, accumbens, caudate, and sgACC nly
+} # end of function
+ 
+ # aseg_17: L hippocampus
+ # aseg_18: L amygdala
+ # aseg_53: R hippocampus
+ # aseg_54: R amygdala
+ # lh.L_a24: L sgACC
+ # rh.R_a24: R sgACC
+
+# list of ppc'ed subjects
+coi_subs=read.table("/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/gutbrain/GUT_Rest_round2.txt", sep ="\t", header=FALSE, col.names="sub")
+coi_subs$sub= as.character(coi_subs$sub)
+
+```
+
+##get COIs by network
+```{r}
+###DMN####
+gordon_cois <- mclapply(as.list(coi_subs$sub),
+                      collectAndCorTimecourses, 
+                      scrubbingThreshold=scrubbingThreshold, 
+                      sub_base_dir=sub_base_dir,
+                      mc.cores=1)
+
+print(object.size(gordon_cois_dmn), quote = FALSE, units = "Mb")
+ 
+ # bind list of data.tables into one long data.table and filter by frames remaining (< 5 mins)
+system.time(gordon_coisDT_dmn <- do.call(bind_rows, gordon_cois_dmn) %>% 
+               filter(Framesremaining >= 385) %>%
+               dplyr::select(-Blurps, -Numcensored, -Framesremaining) %>%  #we don't need these columns anymore
+               as.data.table)
+ print(object.size(gordon_coisDT_dmn), quote = FALSE, units = "Mb") #much smaller than the list of ata.tables
+ rm(gordon_cois_dmn);gc() #remove list, and garbage collect
+ save(gordon_coisDT_dmn,file = "/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/gutbrain/gordon_coisDT_dmn.RDS")
+ 
+ gordon_cois_dmn <- distinct(gordon_coisDT_dmn, coi)
+ write.csv(gordon_cois_dmn, "gordon_cois_dmn.csv")
+ 
+###DMN####
+gordon_cois_dmn <- mclapply(as.list(coi_subs$sub),
+                      collectAndCorTimecourses, 
+                      parcels=gordon_dmn,
+                      scrubbingThreshold=scrubbingThreshold, 
+                      sub_base_dir=sub_base_dir,
+                      mc.cores=1)
+
+print(object.size(gordon_cois_dmn), quote = FALSE, units = "Mb")
+ 
+ # bind list of data.tables into one long data.table and filter by frames remaining (< 5 mins)
+system.time(gordon_coisDT_dmn <- do.call(bind_rows, gordon_cois_dmn) %>% 
+               filter(Framesremaining >= 385) %>%
+               dplyr::select(-Blurps, -Numcensored, -Framesremaining) %>%  #we don't need these columns anymore
+               as.data.table)
+ print(object.size(gordon_coisDT_dmn), quote = FALSE, units = "Mb") #much smaller than the list of ata.tables
+ rm(gordon_cois_dmn);gc() #remove list, and garbage collect
+ save(gordon_coisDT_dmn,file = "/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/gutbrain/gordon_coisDT_dmn.RDS")
+ 
+ gordon_cois_dmn <- distinct(gordon_coisDT_dmn, coi)
+ write.csv(gordon_cois_dmn, "gordon_cois_dmn.csv")
+ 
+###SN#### 
+ gordon_cois_SN <- mclapply(as.list(coi_subs$sub),
+                      collectAndCorTimecourses, 
+                      parcels=gordon_SN,
+                      scrubbingThreshold=scrubbingThreshold, 
+                      sub_base_dir=sub_base_dir,
+                      mc.cores=1)
+
+print(object.size(gordon_cois_SN), quote = FALSE, units = "Mb")
+ 
+ # bind list of data.tables into one long data.table and filter by frames remaining (< 5 mins)
+system.time(gordon_coisDT_SN <- do.call(bind_rows, gordon_cois_SN) %>% 
+               filter(Framesremaining >= 385) %>%
+               dplyr::select(-Blurps, -Numcensored, -Framesremaining) %>%  #we don't need these columns anymore
+               as.data.table)
+ print(object.size(gordon_coisDT_SN), quote = FALSE, units = "Mb") #much smaller than the list of ata.tables
+ rm(gordon_cois_SN);gc() #remove list, and garbage collect
+ save(gordon_coisDT_SN,file = "/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/gutbrain/gordon_coisDT_SN.RDS")
+ 
+ gordon_cois_SN <- distinct(gordon_coisDT_SN, coi)
+ write.csv(gordon_cois_SN, "gordon_coisDT_SN.csv")
+ 
+ 
+###FPN####
+  gordon_cois_FPN <- mclapply(as.list(coi_subs$sub),
+                      collectAndCorTimecourses, 
+                      parcels=gordon_FPN,
+                      scrubbingThreshold=scrubbingThreshold, 
+                      sub_base_dir=sub_base_dir,
+                      mc.cores=1)
+
+print(object.size(gordon_cois_FPN), quote = FALSE, units = "Mb")
+ 
+ # bind list of data.tables into one long data.table and filter by frames remaining (< 5 mins)
+system.time(gordon_coisDT_FPN <- do.call(bind_rows, gordon_cois_FPN) %>% 
+               filter(Framesremaining >= 385) %>%
+               dplyr::select(-Blurps, -Numcensored, -Framesremaining) %>%  #we don't need these columns anymore
+               as.data.table)
+ print(object.size(gordon_coisDT_FPN), quote = FALSE, units = "Mb") #much smaller than the list of ata.tables
+ rm(gordon_cois_FPN);gc() #remove list, and garbage collect
+ save(gordon_coisDT_FPN,file = "/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/gutbrain/gordon_coisDT_FPN.RDS")
+ 
+ gordon_cois_FPN <- distinct(gordon_coisDT_FPN, coi)
+ write.csv(gordon_cois_FPN, "gordon_coisDT_FPN.csv")
+
+```
+ 
+ #FPN 
+```{r}
+#FPN AMY####
+ gordon_coisDT_FPN_Lamy <- gordon_coisDT_FPN %>%
+   filter(str_detect(coi, "aseg_18_rh.Parcel|aseg_18_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(amy_FPN=mean(cor))
+ 
+  gordon_coisDT_FPN_Ramy <- gordon_coisDT_FPN %>%
+   filter(str_detect(coi, "aseg_54_rh.Parcel|aseg_54_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(amy_FPN=mean(cor))
+  
+  gordon_coisDT_FPN_amy <- bind_rows(gordon_coisDT_FPN_Lamy,gordon_coisDT_FPN_Ramy) %>%
+    group_by(subs) %>%
+    mutate(amy_FPN_group=mean(cor)) %>%
+    dplyr::select(-c(coi,cor, amy_FPN))
+  
+   gordon_amyFPN_matrix <- gordon_coisDT_FPN_amy %>%
+     distinct(subs,amy_FPN_group)
+
+#FPN HIPP ####
+   gordon_coisDT_FPN_Lhipp <- gordon_coisDT_FPN %>%
+   filter(str_detect(coi, "aseg_17_rh.Parcel|aseg_17_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(hipp_FPN=mean(cor))
+ 
+  gordon_coisDT_FPN_Rhipp <- gordon_coisDT_FPN %>%
+   filter(str_detect(coi, "aseg_53_rh.Parcel|aseg_53_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(hipp_FPN=mean(cor))
+  
+  gordon_coisDT_FPN_hipp <- bind_rows(gordon_coisDT_FPN_Lhipp,gordon_coisDT_FPN_Rhipp) %>%
+    group_by(subs) %>%
+    mutate(hipp_FPN_group= mean(cor)) %>%
+    dplyr::select(-c(coi, cor, hipp_FPN))
+  
+   gordon_hippFPN_matrix <- gordon_coisDT_FPN_hipp %>%
+     distinct(subs,hipp_FPN_group)
+```
+
+ #DMN 
+```{r}
+#DMN AMY####
+ gordon_coisDT_dmn_Lamy <- gordon_coisDT_dmn %>%
+   filter(str_detect(coi, "aseg_18_rh.Parcel|aseg_18_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(amy_dmn=mean(cor))
+ 
+  gordon_coisDT_dmn_Ramy <- gordon_coisDT_dmn %>%
+   filter(str_detect(coi, "aseg_54_rh.Parcel|aseg_54_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(amy_dmn=mean(cor))
+  
+  gordon_coisDT_dmn_amy <- bind_rows(gordon_coisDT_dmn_Lamy,gordon_coisDT_dmn_Ramy) %>%
+    group_by(subs) %>%
+    mutate(amy_dmn_group=mean(cor)) %>%
+    dplyr::select(-c(coi,cor, amy_dmn))
+  
+   gordon_amyDMN_matrix <- gordon_coisDT_dmn_amy %>%
+     distinct(subs,amy_dmn_group)
+  
+#DMN HIPP ####
+   gordon_coisDT_dmn_Lhipp <- gordon_coisDT_dmn %>%
+   filter(str_detect(coi, "aseg_17_rh.Parcel|aseg_17_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(hipp_dmn=mean(cor))
+ 
+  gordon_coisDT_dmn_Rhipp <- gordon_coisDT_dmn %>%
+   filter(str_detect(coi, "aseg_53_rh.Parcel|aseg_53_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(hipp_dmn=mean(cor))
+  
+  gordon_coisDT_dmn_hipp <- bind_rows(gordon_coisDT_dmn_Lhipp,gordon_coisDT_dmn_Rhipp) %>%
+    group_by(subs) %>%
+    mutate(hipp_dmn_group=mean(cor)) %>%
+    dplyr::select(-c(coi,cor,hipp_dmn))
+  
+   gordon_hippDMN_matrix <- gordon_coisDT_dmn_hipp %>%
+     distinct(subs,hipp_dmn_group)
+  
+```
+
+ #SN 
+```{r}
+#SN AMY####
+ gordon_coisDT_SN_Lamy <- gordon_coisDT_SN %>%
+   filter(str_detect(coi, "aseg_18_rh.Parcel|aseg_18_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(amy_SN=mean(cor))
+ 
+  gordon_coisDT_SN_Ramy <- gordon_coisDT_SN %>%
+   filter(str_detect(coi, "aseg_54_rh.Parcel|aseg_54_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(amy_SN=mean(cor))
+  
+  gordon_coisDT_SN_amy <- bind_rows(gordon_coisDT_SN_Lamy,gordon_coisDT_SN_Ramy) %>%
+    group_by(subs) %>%
+    mutate(amy_SN_group=mean(cor)) %>%
+    dplyr::select(-c(coi,cor, amy_SN))
+  
+   gordon_amySN_matrix <- gordon_coisDT_SN_amy %>%
+     distinct(subs,amy_SN_group)
+  
+#SN HIPP ####
+   gordon_coisDT_SN_Lhipp <- gordon_coisDT_SN %>%
+   filter(str_detect(coi, "aseg_17_rh.Parcel|aseg_17_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(hipp_SN=mean(cor))
+ 
+  gordon_coisDT_SN_Rhipp <- gordon_coisDT_SN %>%
+   filter(str_detect(coi, "aseg_53_rh.Parcel|aseg_53_lh.Parcel")) %>%
+   group_by(subs) %>%
+   mutate(hipp_SN=mean(cor))
+  
+  gordon_coisDT_SN_hipp <- bind_rows(gordon_coisDT_SN_Lhipp,gordon_coisDT_SN_Rhipp) %>%
+    group_by(subs) %>%
+    mutate(hipp_SN_group=mean(cor)) %>%
+    dplyr::select(-c(coi,cor, hipp_SN))
+  
+  gordon_hippSN_matrix <- gordon_coisDT_SN_hipp %>%
+     distinct(subs,hipp_SN_group)
+```
+
+
+#regroup networks by seed
+```{r}
+
+hipp_gordon_network_DMN_SN <- left_join(gordon_hippSN_matrix, gordon_hippDMN_matrix, by= "subs") 
+
+hipp_gordon_network_matrix <- left_join(hipp_gordon_network_DMN_SN, gordon_hippFPN_matrix, by= "subs") 
+
+amy_gordon_network_DMN_SN <- left_join(gordon_amySN_matrix, gordon_amyDMN_matrix, by= "subs") 
+
+amy_gordon_network_matrix <- left_join(amy_gordon_network_DMN_SN, gordon_amyFPN_matrix, by= "subs") 
+
+#didn't pass QC: 
+#failed structual: 8, 30, 78, 113
+#failed functional: 26, 194
+#failed segmentation: 33, 34
+#failed minimual minutes: 22, 85, 86, 89
+gordon_network_matrix <- left_join(hipp_gordon_network_matrix,amy_gordon_network_matrix, by= "subs") 
+
+write.csv(gordon_network_matrix, "gordon_network_matrix.csv")
+
+
+# gordon_network_matrix_matchgut_t <- as.data.frame(t(gordon_network_matrix_matchgut))
+# colnames$gordon_network_matrix_matchgut_t <- gordon_network_matrix_matchgut_t[1, ]
+# write.csv(gordon_network_matrix_matchgut_t, "gordon_network_matrix_matchgut_t.csv")
+```
+
+```{r}
+
+# Amyg: "aseg_18", "aseg_54" 
+# Hipp: "aseg_17", "aseg_53" 
+# Caudate: "aseg_11", "aseg_50" 
+# Accumbens: "aseg_26", "aseg_58" 
+# sgACC: "lh.L_a24_ROI", "rh.R_a24_ROI"
+
+
+gordon_seedtoseed_bilat <- gordon_coisDT_SN %>%
+   filter(str_detect(coi, "aseg_18_aseg_54|aseg_17_aseg_53|aseg_11_aseg_50|aseg_26_aseg_58|lh.L_a24_ROI_rh.R_a24_ROI")) %>%
+  mutate(coi  = derivedFactor(
+  "amy" = coi %in% c("aseg_18_aseg_54"),
+  "hipp" = coi %in% c("aseg_17_aseg_53"),
+  "caudate" = coi %in% c("aseg_11_aseg_50"),
+  "accumbens" = coi %in% c("aseg_26_aseg_58"),
+  "sgACC" = coi %in% c("lh.L_a24_ROI_rh.R_a24_ROI"),
+  .default = NA))
+
+# gordon_seedtoseed_bilat_matrix <- gordon_seedtoseed_bilat %>%
+  spread(subs, cor)
+
+gordon_seedtoseed_bilat_matrix_t <- as.data.frame(t(gordon_seedtoseed_bilat_matrix))
+colnames(gordon_seedtoseed_bilat_matrix_t) <- c("amy", "hipp", "caudate", "accumbens", "sgACC")
+gordon_seedtoseed_bilat_matrix_t <- gordon_seedtoseed_bilat_matrix_t[-1,]
+# str(gordon_seedtoseed_bilat_matrix_t$amy)
+
+gordon_seedtoseed_bilat_matrix_t$amy <- as.character(gordon_seedtoseed_bilat_matrix_t$amy)
+gordon_seedtoseed_bilat_matrix_t$hipp <- as.character(gordon_seedtoseed_bilat_matrix_t$hipp)
+gordon_seedtoseed_bilat_matrix_t$caudate <- as.character(gordon_seedtoseed_bilat_matrix_t$caudate)
+gordon_seedtoseed_bilat_matrix_t$accumbens <- as.character(gordon_seedtoseed_bilat_matrix_t$accumbens)
+gordon_seedtoseed_bilat_matrix_t$sgACC <- as.character(gordon_seedtoseed_bilat_matrix_t$sgACC)
+
+gordon_seedtoseed_bilat_matrix_t$amy <- as.numeric(gordon_seedtoseed_bilat_matrix_t$amy)
+gordon_seedtoseed_bilat_matrix_t$hipp <- as.numeric(gordon_seedtoseed_bilat_matrix_t$hipp)
+gordon_seedtoseed_bilat_matrix_t$caudate <- as.numeric(gordon_seedtoseed_bilat_matrix_t$caudate)
+gordon_seedtoseed_bilat_matrix_t$accumbens <- as.numeric(gordon_seedtoseed_bilat_matrix_t$accumbens)
+gordon_seedtoseed_bilat_matrix_t$sgACC <- as.numeric(gordon_seedtoseed_bilat_matrix_t$sgACC)
+
+#summarytools::view(descr(gordon_seedtoseed_bilat_matrix_t))
+
+
+gordon_seedtoseed_matrix_ave <- gordon_coisDT_SN %>%
+  spread(coi, cor) %>%
+  group_by(subs) %>%
+  mutate(amy_hipp= mean(aseg_17_aseg_18,aseg_53_aseg_54,aseg_18_aseg_53,aseg_54_aseg_17), 
+         amy_sgACC= mean(aseg_18_lh.L_a24_ROI,aseg_54_rh.R_a24_ROI,aseg_18_rh.R_a24_ROI,aseg_54_lh.L_a24_ROI),
+         amy_caudate= mean(aseg_11_aseg_18,aseg_50_aseg_54,aseg_18_aseg_50,aseg_54_aseg_11),
+         amy_accumbens= mean(aseg_18_aseg_26,aseg_54_aseg_58,aseg_18_aseg_58,aseg_54_aseg_26),
+         hipp_sgACC= mean(aseg_17_lh.L_a24_ROI,aseg_53_rh.R_a24_ROI,aseg_17_rh.R_a24_ROI,aseg_53_lh.L_a24_ROI),
+         hipp_caudate= mean(aseg_11_aseg_17,aseg_50_aseg_53,aseg_17_aseg_50,aseg_53_aseg_11),
+         hipp_accumbens= mean(aseg_17_aseg_26,aseg_53_aseg_58,aseg_17_aseg_58,aseg_53_aseg_26),
+         sgACC_caudate= mean(aseg_11_lh.L_a24_ROI,aseg_50_rh.R_a24_ROI,aseg_11_rh.R_a24_ROI,aseg_50_lh.L_a24_ROI),
+         sgACC_accumbens= mean(aseg_26_lh.L_a24_ROI,aseg_58_rh.R_a24_ROI,aseg_26_rh.R_a24_ROI,aseg_58_lh.L_a24_ROI)) %>%
+  select(c(subs, amy_hipp, amy_sgACC, amy_caudate,amy_accumbens, hipp_sgACC, hipp_caudate,hipp_accumbens, sgACC_caudate, sgACC_caudate, sgACC_accumbens))
+
+gordon_network_seeds <- left_join(gordon_seedtoseed_matrix_ave, gordon_network_matrix, by = "subs") %>%
+  separate(subs, 
+           into = c("subs", "ID"), 
+           sep = "(?<=[A-Za-z])(?=[0-9])"
+           ) %>%
+  select(-subs)
+ 
+gordon_network_seeds$ID <- as.numeric(gordon_network_seeds$ID)
+rownames(gordon_network_seeds) <- gordon_network_seeds$ID
+write.csv(gordon_network_seeds, "gordon_network_seeds.csv")
+
+gordon_network_seeds_matrix <- as.data.frame(t(gordon_network_seeds))
+colnames(gordon_network_seeds_matrix) <- as.character(unlist(gordon_network_seeds_matrix["ID",]))
+# gordon_network_seeds_matrix <- gordon_network_seeds_matrix[-1,]
+write.csv(gordon_network_seeds_matrix, "gordon_network_seeds_matrix.csv")
+
+```
+
