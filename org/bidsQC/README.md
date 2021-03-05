@@ -1,3 +1,5 @@
+Note from TWC (02/11/2021): Started a new bidsQC repo for Wave 3 that is located in /projects/dsnlab/shared/tag/. This repo is able to pull recent bidsQC changes from GitHub (it doesn't seem like this version, located within TAG_scripts, can do so). Estelle will inquire about best practices (i.e., the goal is to have one bidsQC folder--should it be inside or outside of TAG_scripts?)
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1326895.svg)](https://doi.org/10.5281/zenodo.1326895)
 
 # Important note:  
