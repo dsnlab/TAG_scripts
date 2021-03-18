@@ -5,8 +5,8 @@
 # in the derivatives folder.
 
 # Set bids directories
-bids_dir="${group_dir}""${study}"/bids_data2
-derivatives="${group_dir}""${study}"/fmriprep_1.5.2/wave2
+bids_dir="${group_dir}""${study}"/bids_data
+derivatives="${group_dir}""${study}"/fmriprep_20.2.1/wave2
 working_dir="${derivatives}"/working_wave2/
 image="${group_dir}""${container}"
 

@@ -5,9 +5,9 @@
 # in the derivatives folder.
 
 # Set bids directories
-bids_dir="${group_dir}""${study}"/bids_data
-derivatives="${group_dir}""${study}"/fmriprep_20.2.1/wave2
-working_dir="${derivatives}"/working_wave2/
+bids_dir="${group_dir}""${study}"/bids_data_sep_wave
+derivatives="${group_dir}""${study}"/fmriprep_20.2.1
+working_dir="${derivatives}"
 image="${group_dir}""${container}"
 
 echo -e "\nFmriprep on ${subid}_${sessid}"
@@ -37,7 +37,7 @@ export SINGULARITYENV_FS_LICENSE=/projects/dsnlab/shared/BIDS/freesurfer_license
 singularity run --cleanenv --bind "${group_dir}":"${group_dir}" $image $bids_dir $derivatives \
 	participant --participant_label ${subid} -w $working_dir -t $task \
 	--output-spaces T1w MNI152NLin2009cAsym MNIPediatricAsym:res-2:cohort-5 fsaverage5 fsnative \
-	--fs-license-file ${group_dir}BIDS/license.txt --ignore slicetiming 
+	--fs-license-file ${group_dir}BIDS/license.txt --ignore slicetiming fieldmaps
 
 echo $FS_LICENSE
 echo -e "\n"

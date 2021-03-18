@@ -6,8 +6,8 @@
 
 # Set bids directories
 bids_dir="${group_dir}""${study}"/bids_data
-derivatives="${group_dir}""${study}"/fmriprep_20.2.1/wave2
-working_dir="${derivatives}"/working_wave2/
+derivatives="${group_dir}""${study}"/fmriprep_20.2.1/wave3
+working_dir="${derivatives}"/working_wave3/
 image="${group_dir}""${container}"
 
 echo -e "\nFmriprep on ${subid}_${sessid}"
