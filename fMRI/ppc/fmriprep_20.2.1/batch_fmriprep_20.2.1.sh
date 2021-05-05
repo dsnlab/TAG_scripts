@@ -37,8 +37,8 @@ else
 
     sbatch --export subid=${subid},sessid=${sessid},group_dir=${group_dir},study=${study},container=${container} \
 --job-name ${subid}fmriprep_20.2.1 --account=dsnlab --partition=ctn --time=0-23:50:00 --mem=25G --cpus-per-task=8 \
--o "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/fmriprep_20.2.1/output/"${subid}"_fmriprep_20.2.1_fmapless_output.txt \
--e "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/fmriprep_20.2.1/output/"${subid}"_fmriprep_20.2.1_fmapless_error.txt \
+-o "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/fmriprep_20.2.1/output/"${subid}"_fmriprep_20.2.1_output.txt \
+-e "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/fmriprep_20.2.1/output/"${subid}"_fmriprep_20.2.1_error.txt \
 job_fmriprep_20.2.1.sh
 
 fi 
