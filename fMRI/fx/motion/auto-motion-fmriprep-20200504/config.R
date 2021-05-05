@@ -19,8 +19,8 @@
 # * figDPI = plot resolution in dots per inch
 
 # paths
-confoundDir = '/projects/dsnlab/shared/tag/fmriprep_1.5.2/wave2'
-outputDir = '/projects/dsnlab/shared/tag/fmriprep_1.5.2/wave2'
+confoundDir = '/projects/dsnlab/shared/tag/fmriprep_1.5.2/wave1'
+outputDir = '/projects/dsnlab/shared/tag/fmriprep_1.5.2/wave1'
 
 # variables
 study = 'TAG'
