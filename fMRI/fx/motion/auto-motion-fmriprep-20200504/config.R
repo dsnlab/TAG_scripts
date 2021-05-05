@@ -12,6 +12,7 @@
 #   Euclidean distance translation, Euclidean distance rotation, Euclidean distance derivative translation, 
 #   Euclidean distance derivative rotation, trash. If TRUE, motion regressors files will include the following columns: 
 #   X, Y, Z, RotX, RotY RotZ, trash.
+# * FD = use framewise displacement as the trash regressor; specify a numeric value or NULL to use the classifier's predictions
 # * figIndicators = motion indicators to print in plot
 # * figFormat = file format for plot
 # * figHeight = plot height in inches
@@ -30,6 +31,7 @@ noRP = FALSE
 noNames = TRUE
 noPlot = FALSE
 noEuclidean = TRUE
+FD = 1
 figIndicators = c('FramewiseDisplacement', 'GlobalSignal', 'stdDVARS')
 figFormat = '.png'
 figHeight = 5.5

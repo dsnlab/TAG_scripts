@@ -147,16 +147,25 @@ if (oldfmriprep == TRUE) {
 #------------------------------------------------------
 message('--------Applying classifier--------')
 
-# load classifier
-mlModel = readRDS('motion_classifier.rds')
+if (!is.null(FD)) {
 
-# apply model
-dataset$trash = predict(mlModel, dataset)
+  # recode trash as 1 or 0
+  dataset = dataset %>%
+    mutate(trash = ifelse(FramewiseDisplacement > FD, 1, 0),
+           trash = ifelse(is.na(trash), 0, trash))
 
-# recode trash as 1 or 0
-dataset = dataset %>%
-  mutate(trash = ifelse(trash == "yes", 1, 0),
-         trash = ifelse(is.na(trash), 0, trash))
+} else {
+  # load classifier
+  mlModel = readRDS('motion_classifier.rds')
+
+  # apply model
+  dataset$trash = predict(mlModel, dataset)
+
+  # recode trash as 1 or 0
+  dataset = dataset %>%
+    mutate(trash = ifelse(trash == "yes", 1, 0),
+           trash = ifelse(is.na(trash), 0, trash))
+}
 
 #------------------------------------------------------
 # summarize data and write csv files
@@ -187,9 +196,15 @@ if (!file.exists(outputDir)) {
 }
 
 # write files
-write.csv(summaryRun, file.path(outputDir, paste0(study, '_summaryRun.csv')), row.names = FALSE)
-write.csv(summaryTask, file.path(outputDir, paste0(study, '_summaryTask.csv')), row.names = FALSE)
-write.csv(summaryTrash, file.path(outputDir, paste0(study, '_trashVols.csv')), row.names = FALSE)
+if (!is.null(FD)) {
+  write.csv(summaryRun, file.path(outputDir, paste0(study, '_summaryRun._FDcsv')), row.names = FALSE)
+  write.csv(summaryTask, file.path(outputDir, paste0(study, '_summaryTask._FDcsv')), row.names = FALSE)
+  write.csv(summaryTrash, file.path(outputDir, paste0(study, '_trashVols_FD.csv')), row.names = FALSE)
+} else {
+  write.csv(summaryRun, file.path(outputDir, paste0(study, '_summaryRun.csv')), row.names = FALSE)
+  write.csv(summaryTask, file.path(outputDir, paste0(study, '_summaryTask.csv')), row.names = FALSE)
+  write.csv(summaryTrash, file.path(outputDir, paste0(study, '_trashVols.csv')), row.names = FALSE)
+}
 
 #------------------------------------------------------
 # write rps
@@ -241,10 +256,18 @@ if (noRP == FALSE) {
   }
   
   # write the files
-  if (ses == TRUE) {
-    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_ses-%s_task-%s_run-%s_desc-motion_regressors.tsv', .$subjectID[[1]], .$wave[[1]], .$task[[1]], .$run[[1]]))" 
+  if (!is.null(FD)) {
+      if (ses == TRUE) {
+        fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_ses-%s_task-%s_run-%s_desc-motion_regressors_FD.tsv', .$subjectID[[1]], .$wave[[1]], .$task[[1]], .$run[[1]]))" 
+      } else {
+        fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_task-%s_run-%s_desc-motion_regressors_FD.tsv', .$subjectID[[1]], .$task[[1]], .$run[[1]]))" 
+      }
   } else {
-    fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_task-%s_run-%s_desc-motion_regressors.tsv', .$subjectID[[1]], .$task[[1]], .$run[[1]]))" 
+      if (ses == TRUE) {
+        fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_ses-%s_task-%s_run-%s_desc-motion_regressors.tsv', .$subjectID[[1]], .$wave[[1]], .$task[[1]], .$run[[1]]))" 
+      } else {
+        fnameString = "file.path(.$subDir[[1]], sprintf('sub-%s_task-%s_run-%s_desc-motion_regressors.tsv', .$subjectID[[1]], .$task[[1]], .$run[[1]]))" 
+      }
   }
   
   if (noNames == TRUE) {
