@@ -1,0 +1,45 @@
+---
+title: "1_createBetaseriesMulticonds"
+author: "Theresa Cheng"
+date: "5/12/2021"
+output: html_document
+---
+
+This script reads cleaned behavioral output from DSD, formats the data, and saves subject-specific files that that can be used to create multicond files in MATLAB. These files are for betaseries analysis, meaning that each disclosure trial is modeled as a separate regressor (name, onset, and duration).
+
+Input:
+- dsd_trials_long.csv (output from 'TAG_scripts/behavior/dsd/cleanDSD_behavior.Rmd')
+
+Output: 
+- subject-specific files to be passed to '2_generateBetaseriesMulticonds.m'
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+#Load packages
+packages <- c("nlme", "ggplot2", "tidyr", "stringr", "knitr","corrplot","data.table", "readxl", "gridExtra", "dplyr", "psych","kableExtra","lavaan", "stringi")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+# Set inputs/outputs
+input_file <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/DSD/dsd_trials_long.csv'
+
+# directory to save output. make sure folder is created.
+out_dir <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/'
+```
+
+```{r read data}
+
+input_df <- read.csv(input_file)
+# input_df <- input_df %>% filter(wave==1)
+ids <- as.vector(unique(input_df$sid))
+```
+
+```{r format multiconds}
+
+```
+
+# check that there are no NA - should all be coded as condition 5 now (?)

@@ -116,7 +116,7 @@ files <- lapply(X=ids, df=out_df, FUN=function(id, df) {
   
     fid = str_pad(id, 3, 0, side = "left")
     
-  write.table(df, file=paste0(outDataDir,'subjects/Wave3_extra/tag',fid,'_w',chosen_wave,'.csv'),sep=",",row.names=F,col.names=F,na = "")
+  write.table(df, file=paste0(outDataDir,'subjects/Wave3/tag',fid,'_w',chosen_wave,'.csv'),sep=",",row.names=F,col.names=F,na = "")
    })
   
 ```

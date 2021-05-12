@@ -25,7 +25,7 @@ if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
 lapply(packages, library, character.only = TRUE)
 
 # read input file from
-input_file <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/dsd_trials_long.csv'
+input_file <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/DSD/dsd_trials_long.csv'
 
 # directory to save output. make sure folder is created.
 out_dir <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/wave1/Summary/'
