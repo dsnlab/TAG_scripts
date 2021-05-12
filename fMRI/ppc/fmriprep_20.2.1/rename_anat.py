@@ -14,11 +14,10 @@ Inputs:
 * Output folder
 
 Outputs: 
-* Reformatted bids data anat files
-* Error and output txt files in output folder
+* Reformatted files in bids data anat dir
 
 Sample command on Talapas:
-rename_anat.py '/projects/dsnlab/shared/tag/' 'TAG_scripts/fMRI/ppc/fmriprep_20.2.1/subject_list_test.txt' 'bids_data_sep_wave' 'TAG_scripts/fMRI/ppc/fmriprep_20.2.1/rename_anat_output'
+python2 rename_anat.py '/projects/dsnlab/shared/tag/' 'TAG_scripts/fMRI/ppc/fmriprep_20.2.1/subject_list_test.txt' 'bids_data_sep_wave' > 'rename_anat_output/rename_anat_output.txt' 
 
 Date: 05/05/2021
 """
@@ -32,30 +31,46 @@ __email__ = "tcheng@uoregon.edu"
 
 
 # Inputs
-project_dir=sys.argv[1] # '/projects/dsnlab/shared/tag/'
-subject_list_file = sys.argv[2] # 'TAG_scripts/fMRI/ppc/fmriprep_20.2.1/subject_list_test.txt'
-bids_data_dir = sys.argv[3]  # 'bids_data_sep_wave'
-output_dir = sys.argv[4] # 'TAG_scripts/fMRI/ppc/fmriprep_20.2.1/rename_anat_output'
+project_dir=argv[1] # '/projects/dsnlab/shared/tag/'
+subject_list_file = argv[2] # 'TAG_scripts/fMRI/ppc/fmriprep_20.2.1/subject_list_test.txt'
+bids_data_dir = argv[3]  # 'bids_data_sep_wave'
 
 # read in subject_list_file as subject_list
-subject_list_file = open(project_dir + subject_list_file, "r") 
-subject_list_file.read()
+infile = open(project_dir + subject_list_file, "r") 
+subject_list = infile.readlines()
+infile.close()
 
-# rename anat files
+# delete and rename anat files
+for line in subject_list: # for each line of the subject list
+    sline = line.rstrip()
+    sline = sline.split(',') # split lines by comma
+    
+    sub = sline[0]
+    ses = sline[1]
+    
+    sub_dir = project_dir + bids_data_dir + "sub-" + sub + "/ses-" + ses + "/anat"
+    os.chdir(sub_dir)
+    print("Changing into " + sub_dir)
+    
+    del_json_file = "sub-" + sub + "_ses-" + ses + "_run-01_T1w.json"
+    del_nii_file = "sub-" + sub + "_ses-" + ses + "_run-01_T1w.nii.gz"
+    
+    json_init_file = "sub-" + sub + "_ses-" + ses + "_run-02_T1w.json"
+    json_target_file = "sub-" + sub + "_ses-" + ses + "_T1w.json"
+    
+    nii_init_file = "sub-" + sub + "_ses-" + ses + "_run-02_T1w.nii.gz"
+    nii_target_file = "sub-" + sub + "_ses-" + ses + "_T1w.nii.gz"
+    
+    if os.path.exists(del_nii_file):
+        os.remove(del_json_file)
+        os.remove(del_nii_file)
+        print("Deleting " + del_json_file + " " + del_nii_file)
 
-for subject_id,wave_num in subject_list
+        os.rename(json_init_file, json_target_file)
+        print("Replacing " + json_init_file + " with " + json_target_file)
 
-# Delete 
-# sub-{subject_id}_ses-{wave_num}_run-01_T1w.json
-# sub-{subject_id}_ses-{wave_num}_run-01_T1w.nii.gz
-# print("Deleted {subject_id} and {wave_num} mprage_ND")
-
-# Rename
-# sub-{subject_id}_ses-{wave_num}_run-02_T1w.json 
-#	to sub-{subject_id}_ses-{wave_num}_T1w.json
-# print("Renamed {subject_id} and {wave_num} mprage json from run-02 to default")
-
-# Rename
-# sub-{subject_id}_ses-{wave_num}_run-02_T1w.nii.gz 
-#	to sub-{subject_id}_ses-{wave_num}_T1w.nii.gz
-# print("Renamed {subject_id} and {wave_num} mprage nii.gz from run-02 to default")
+        os.rename(nii_init_file, nii_target_file)
+        print("Replacing " + nii_init_file + " with " + nii_target_file)
+    
+    elif os.path.exists(nii_target_file):
+        print("No T1w file renaming needed")
