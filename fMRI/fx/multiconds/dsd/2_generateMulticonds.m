@@ -6,9 +6,10 @@
 % This script generates .mat files containing names,
 % onsets, durations based on summary.csv files 
 
-% Model: 1=affect_statement,2=neutral_statement,
-% 3=affect_share,4=neutral_share, 
-% 5=affect_private, 6=neutral_private
+% Model: Multicond file types copied over from 1_createMulticonds.Rmd
+% 1: all, 2: no missing, 3: no neut_pri, 4: no neut_pri & missing, 5: no aff_pri
+% 6: no aff_pri & missing, 7: no aff_pri & neut_pri, 8: no aff_pri & neut_pri & missing
+% 9: no neut_share, 10: no aff_share
 
 %% SET VARIABLES & FOLDERS 
 
