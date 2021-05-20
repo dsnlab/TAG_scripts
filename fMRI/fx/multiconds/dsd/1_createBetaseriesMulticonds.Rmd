@@ -85,7 +85,7 @@ if(nrow(df) > 0){
   saveDisc <- df_disc_nod %>% group_by(run) %>%
     do({
       ungroup(.)
-      write.csv(.,  file=paste0(out_dir, 'disclosure_nod/wave', curr_wave, '/TAG',fid, 'w0', curr_wave, '_DSD', .$run[[1]],'_disc_betaseries_summary.csv'),row.names = F,na = "",)
+      write.csv(.,  file=paste0(out_dir, 'disclosure_summary/wave', curr_wave, '/TAG',fid, 'w0', curr_wave, '_DSD', .$run[[1]],'_disc_betaseries_summary.csv'),row.names = F,na = "",)
       data.frame()
       })
 
@@ -93,7 +93,7 @@ if(nrow(df) > 0){
   saveEval <- df_eval_nod %>% group_by(run) %>%
     do({
       ungroup(.)
-      write.csv(., file = paste0(out_dir, 'eval_nod/wave', curr_wave, '/TAG',fid, 'w0', curr_wave, '_DSD', .$run[[1]],'_eval_betaseries_summary.csv'),row.names = F,na = "",)
+      write.csv(., file = paste0(out_dir, 'eval_summary/wave', curr_wave, '/TAG',fid, 'w0', curr_wave, '_DSD', .$run[[1]],'_eval_betaseries_summary.csv'),row.names = F,na = "",)
       data.frame()
       })
 
