@@ -10,13 +10,13 @@
 # Set your directories
 
 group_dir=/projects/dsnlab/shared/
-container=BIDS/SingularityContainers/fmriprep-1.5.2.simg
+container=BIDS/SingularityContainers/fmriprep-20.2.1.simg
 study="tag"
 
 # Set subject list
 #SUBJLIST=`cat subject_list_wfmap_w2.txt`
-#SUBJLIST=`cat subject_list_fmapless_w2.txt`
-SUBJLIST=`cat subject_list_56.txt`
+SUBJLIST=`cat subject_list_fmapless_w2.txt`
+#SUBJLIST=`cat subject_list_56.txt`
 
 # 
 for SUBJ in $SUBJLIST; do

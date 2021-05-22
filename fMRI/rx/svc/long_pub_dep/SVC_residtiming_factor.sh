@@ -18,7 +18,7 @@ module load afni
 rxdir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/svc/long/
 cd $rxdir ; mkdir -p ResidTiming ; cd ResidTiming/
 
-#See https://afni.nimh.nih.gov/pub/dist/doc/program_help/3dLME.html #Assuming there is no need for Wave by having ResidTiming as within-subj covariate
+#See https://afni.nimh.nih.gov/pub/dist/doc/program_help/3dLME.html #3dLMEr would be needed to model 1|Subj and 1|Wave
 3dLME -prefix ResidTiming_by_factor -jobs 8                               \
           -model  "ResidTiming*Factor"                                  \
 		  -qVars "ResidTiming"                                   \
