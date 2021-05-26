@@ -1,0 +1,107 @@
+---
+title: "update_automotion_manualQC_DSD_waves1_2_3"
+author: "Theresa Cheng"
+date: "5/26/2021"
+output: html_document
+---
+
+Adapted from Nandi's update_automotion_with_manualQC.Rmd script. This script formats and names motion confound files for fx models. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load packages
+packages <- c("dplyr","tidyr","data.table","tibble","stringr", "rio")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+```
+
+```{r set variables, include = FALSE}
+
+#Set variables
+study = 'TAG'
+subPattern = 'sub-TAG([0-9]{3})'
+wavePattern = 'ses-wave([0-9]{1})'
+taskPattern = 'task-(DSD|SVC)'
+runPattern = 'run-([0-9]{2})'
+
+#Set scripts directory
+scriptDir = '~/projects/dsnlab/TAG/TAG_scripts/fMRI/fx/motion/'
+
+#Set motion directories
+motionDir <-'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/'
+wave1_rptxtDir <- paste0(motionDir, 'wave1/auto-motion-fmriprep/rp_txt/DSDwith_manualEdits/renamed_as_bids_subject_ids')
+wave123_rptxtDir <- paste0(motionDir, 'waves123/DSD_manualQC/rp_txt')
+
+motionDir2 <- '/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/fmriprep_20.2.1_QC/auto_motion/'
+
+# rptxtDir = paste0(motionDir,'rp_txt/')
+# classDir = paste0(motionDir,'classification/')
+
+#Set output directory to save final motion regressors (with euclidean and artifact regressors). Make sure this folder exists
+outputDir = paste0(motionDir, 'waves123/DSD_manualQC/')
+```
+
+# Wave 1 
+We will be using the rp_art.txt motion files that were edited for as created by Nandi for the 
+```{r import wave1 previous manualQC, include = FALSE}
+
+# setwd(wave1_rptxtDir)
+
+wave1_rptxt_filenames <- list.files(wave1_rptxtDir)
+
+# file.rename(list.files(wave1_rptxtDir)
+wave1_rptxt_filenames_edited <- unlist(lapply(str_split(wave1_rptxt_filenames, "_"), function(x) {
+  prefix <- x[1]
+  suffix <- x[3]
+  new_subject_id <- paste0("sub-TAG", x[2], "w01")
+  wave1_rptxt_filenames_edited <- paste(prefix, new_subject_id, suffix, sep = "_")
+}))
+
+# file.rename(wave1_rptxt_filenames, wave1_rptxt_filenames_edited) # already ran
+
+# rsync these files to the output dir: rsync -aiv /Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/DSDwith_manualEdits/renamed_as_bids_subject_ids/rp_*.txt /Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/waves123/DSD_manualQC/rp_txt
+```
+
+# Waves 2 and 3
+
+## Prepare for manual QC
+For this step, read in the manual QC files and identify which Volumes were flagged as trash regressors (participants with auto-motion trash regressors comprising 15-20% of the run only) -- this is to facilitate the speed and ease of the manual QC. 
+```{r export manualQC files}
+
+# read in subject info for those needing manual QC
+subject_ids_for_manualQC <- import(paste0(scriptDir, "subject_ids_for_manualQC_waves2and3.txt"), header = TRUE)
+
+motionQC_df <- data.frame(subject_id = as.character(),
+                          run_num = as.integer(),
+                          trash_volumes = integer())
+
+# read in
+for (i in 1:nrow(subject_ids_for_manualQC)){
+  subject_id <- subject_ids_for_manualQC$subject_id[i]
+  wave_num <- subject_ids_for_manualQC$wave_num[i]
+  run_num <- subject_ids_for_manualQC$run_num[i]
+  
+  rptxt <- import(paste0(motionDir2, "sub-", subject_id, "_ses-", wave_num, "_task-DSD_run-", run_num, "_desc-motion_regressors.txt"))
+
+  motionQC_this_subject <- data.frame(subject_id = rep(subject_id, length(which(rptxt$trash == 1))),
+                                      run_num = rep(run_num, length(which(rptxt$trash == 1))),
+                                      trash_volumes = which(rptxt$trash == 1))
+    
+  motionQC_df <- rbind(motionQC_df, motionQC_this_subject)
+}
+
+# write.csv(motionQC_df, paste0(outputDir, "manualQC_template_w_auto-motion_trash_regressor,csv"))
+```
+
+## Overwrite trash regressors with manual QC
+For this step, read in the manual QC edits and overwrite the trash regressor with these more accurate values.
+```{r overwrite with manual QC edits}
+
+
+```
+
+## Edit all other files
+For participants that did not need manual QC edits, remove the header and move to the correct location only. 
