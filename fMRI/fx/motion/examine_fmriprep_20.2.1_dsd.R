@@ -26,6 +26,3 @@ dsd_inspect <- dsd_summary[which(dsd_summary$motion == "inspect"), ]
 dsd_inspect <- dsd_inspect[order(dsd_inspect$wave),]
 
 nrow(dsd_inspect %>% filter(wave == "wave1"))
-
-
-
