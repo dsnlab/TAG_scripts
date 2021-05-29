@@ -32,7 +32,7 @@ scriptDir = '~/projects/dsnlab/TAG/TAG_scripts/fMRI/fx/motion/'
 
 #Set motion directories
 motionDir <-'/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/'
-wave1_rptxtDir <- paste0(motionDir, 'wave1/auto-motion-fmriprep/rp_txt/DSDwith_manualEdits/renamed_as_bids_subject_ids')
+#wave1_rptxtDir <- paste0(motionDir, 'wave1/auto-motion-fmriprep/rp_txt/DSDwith_manualEdits/renamed_as_bids_subject_ids')
 wave123_rptxtDir <- paste0(motionDir, 'waves123/DSD_manualQC/rp_txt')
 
 motionDir2 <- '/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/fmriprep_20.2.1_QC/auto_motion/'
@@ -44,35 +44,12 @@ motionDir2 <- '/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/fmriprep_20.2
 outputDir = paste0(motionDir, 'waves123/DSD_manualQC/')
 ```
 
-# Wave 1 
-We will be using the rp_art.txt motion files that were edited for as created by Nandi for the 
-```{r import wave1 previous manualQC, include = FALSE}
-
-# setwd(wave1_rptxtDir)
-
-wave1_rptxt_filenames <- list.files(wave1_rptxtDir)
-
-# file.rename(list.files(wave1_rptxtDir)
-wave1_rptxt_filenames_edited <- unlist(lapply(str_split(wave1_rptxt_filenames, "_"), function(x) {
-  prefix <- x[1]
-  suffix <- x[3]
-  new_subject_id <- paste0("sub-TAG", x[2], "w01")
-  wave1_rptxt_filenames_edited <- paste(prefix, new_subject_id, suffix, sep = "_")
-}))
-
-# file.rename(wave1_rptxt_filenames, wave1_rptxt_filenames_edited) # already ran
-
-# rsync these files to the output dir: rsync -aiv /Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/DSDwith_manualEdits/renamed_as_bids_subject_ids/rp_*.txt /Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/waves123/DSD_manualQC/rp_txt
-```
-
-# Waves 2 and 3
-
-## Prepare for manual QC
+# Prepare for manual QC
 For this step, read in the manual QC files and identify which Volumes were flagged as trash regressors (participants with auto-motion trash regressors comprising 15-20% of the run only) -- this is to facilitate the speed and ease of the manual QC. 
 ```{r export manualQC files}
 
 # read in subject info for those needing manual QC
-subject_ids_for_manualQC <- import(paste0(scriptDir, "subject_ids_for_manualQC_waves2and3.txt"), header = TRUE)
+subject_ids_for_manualQC <- import(paste0(scriptDir, "subject_ids_for_manualQC.txt"), header = TRUE)
 
 motionQC_df <- data.frame(subject_id = as.character(),
                           run_num = as.integer(),
@@ -93,11 +70,12 @@ for (i in 1:nrow(subject_ids_for_manualQC)){
   motionQC_df <- rbind(motionQC_df, motionQC_this_subject)
 }
 
-# write.csv(motionQC_df, paste0(outputDir, "manualQC_template_w_auto-motion_trash_regressor.csv"))
+#write.csv(motionQC_df, paste0(outputDir, "manualQC_template_w_auto-motion_trash_regressor.csv"))
 ```
 
-## Edit wave 2 and 3 files
-For participants that did not need manual QC edits, remove the header and move to the correct location only. 
+
+# Edit files with manual QC
+For all participants, remove the header and move to the correct location only. 
 ```{r }
 
 automotion_rptxt_filenames <- list.files(motionDir2)
@@ -117,33 +95,29 @@ output_df <- do.call(rbind,output)
 output_df$original_filename <- automotion_rptxt_filenames
 output_df <- output_df[-nrow(output_df), ] # remove last row
 
-# rename wave 2 and 3 files only within the test folder
-setwd(paste0(motionDir2, "test"))
+# rename files only within the test folder
+setwd(paste0(motionDir2, "test")) 
 
+## stopped here on 5/28 1:30am - currently waiting to rsync all _desc-motion_regressors.txt into the test folder so that i can run the rest 
+
+# rewrite filenames (should combine with apply function below)
 apply(output_df, 1, function(x){
   
   target_filename <- x[1]
-  wave <- x[2]
   original_filename <- x[3]
   
-  # if (wave != "ses-wave1"){
-  #   file.rename(original_filename, target_filename)
-  # }
+  file.rename(original_filename, target_filename)
 })
 
 # remove headers
 apply(output_df, 1, function(x){
   
   target_filename <- x[1]
-  wave <- x[2]
   original_filename <- x[3]
   
-  if (wave != "ses-wave1"){
-    
-    rptxt_orig <- import(target_filename)
-    #write.table(rptxt_orig, target_filename, col.names = FALSE, row.names = FALSE)
-  }
-})
+  rptxt_orig <- import(target_filename)
+  write.table(rptxt_orig, target_filename, col.names = FALSE, row.names = FALSE)
+}) 
 
 # now rsync files beginning with rp* into output directory: rsync -aiv /Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/fmriprep_20.2.1_QC/auto_motion/test/rp_*.txt /Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/waves123/DSD_manualQC/rp_txt
 ```
@@ -154,20 +128,48 @@ For this step, read in the manual QC edits and overwrite the trash regressor wit
 
 subject_ids_for_manualQC_replacement <- import(paste0(scriptDir, "subject_ids_for_manualQC_replacement.txt"), header = TRUE)
 
-manualQC_override <- import(paste0(motionDir, 'waves123/DSD_manualQC/DSD_motionQC_waves2and3_edited_to_keep.csv'))
+manualQC_override <- import(paste0(motionDir, 'waves123/DSD_manualQC/DSD_motionQC_edited_to_keep.csv'))
 manualQC_override$Volume <- manualQC_override$Volume_minus1 + 1
 
-# there is only one participant that needs manual QC replacement, so 
-subject_id_manualQC_edit <- subject_ids_for_manualQC_replacement$subject_id[1]
-wave_num_manualQC_edit <- subject_ids_for_manualQC_replacement$wave_num[1]
-run_num_manualQC_edit <- subject_ids_for_manualQC_replacement$run_num[1]
-
-rptxt_orig <- import(paste0(motionDir2, "sub-", subject_id_manualQC_edit, "_ses-", wave_num_manualQC_edit, "_task-DSD_run-", run_num_manualQC_edit, "_desc-motion_regressors.txt"))
-# rptxt_orig$volume_num <- 
-
-rptxt_edited <- rptxt_orig %>% 
-  mutate(trash = ifelse(rownames(.) %in%  manualQC_override$Volume, 1, 0))
+for (i in 1:nrow(subject_ids_for_manualQC_replacement)){
+  # set subject specific variables
+  subject_id_manualQC_edit <- subject_ids_for_manualQC_replacement$subject_id[i]
+  wave_num_manualQC_edit <- subject_ids_for_manualQC_replacement$wave_num[i]
+  run_num_manualQC_edit <- subject_ids_for_manualQC_replacement$run_num[i]
+  
+  # obtain original rp_txt file
+  rptxt_orig <- import(paste0(motionDir2, "sub-", subject_id_manualQC_edit, "_ses-", wave_num_manualQC_edit, "_task-DSD_run-", run_num_manualQC_edit, "_desc-motion_regressors.txt"))
+  
+  # filter manualQC_override to relevant variables
+  manualQC_override_this_subject <- filter(manualQC_override, Subject == subject_id_manualQC_edit)
+  
+  rptxt_edited <- rptxt_orig %>% 
+  mutate(trash = ifelse(rownames(.) %in%  manualQC_override_this_subject$Volume, 1, 0))
+  
+  write.table(rptxt_edited, paste0(outputDir, "rp_txt/rp_sub-", subject_id_manualQC_edit, "_DSD", run_num_manualQC_edit, ".txt"), col.names = FALSE, row.names = FALSE)
+  
+}
 
 #write.table(rptxt_edited, paste0(outputDir, "rp_txt/rp_sub-", subject_id_manualQC_edit, "_DSD", run_num_manualQC_edit, ".txt"), col.names = FALSE, row.names = FALSE)
 ```
 
+# OLD: Wave 1 
+Originally I thought that I would be using Nandi's rp_art.txt motion files, but I was wrong! Hers are on a per participant basis, whereas mine are more on a per run basis.
+```{r import wave1 previous manualQC, include = FALSE}
+
+# setwd(wave1_rptxtDir)
+# 
+# wave1_rptxt_filenames <- list.files(wave1_rptxtDir)
+# 
+# # file.rename(list.files(wave1_rptxtDir)
+# wave1_rptxt_filenames_edited <- unlist(lapply(str_split(wave1_rptxt_filenames, "_"), function(x) {
+#   prefix <- x[1]
+#   suffix <- x[3]
+#   new_subject_id <- paste0("sub-TAG", x[2], "w01")
+#   wave1_rptxt_filenames_edited <- paste(prefix, new_subject_id, suffix, sep = "_")
+# }))
+
+# file.rename(wave1_rptxt_filenames, wave1_rptxt_filenames_edited) # already ran
+
+# rsync these files to the output dir: rsync -aiv /Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/wave1/auto-motion-fmriprep/rp_txt/DSDwith_manualEdits/renamed_as_bids_subject_ids/rp_*.txt /Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/waves123/DSD_manualQC/rp_txt
+```
