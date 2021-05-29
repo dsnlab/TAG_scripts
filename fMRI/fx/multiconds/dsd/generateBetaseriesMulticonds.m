@@ -13,7 +13,7 @@
 clear all
 
 % which wave?
-wave_num = '1';
+wave_num = '3';
 
 % which cond? disclosure or eval
 cond = 'disclosure';
@@ -28,9 +28,9 @@ d = dir(fullfile(input_dir,'*summary.csv'));
 %% READ RAW DATA 
 
 % for each subject and run
-%for k=1:length(d)
+for k=1:length(d)
 
-k=1;
+%k=2;
     
 cd (input_dir)
 
@@ -97,4 +97,4 @@ save(saveName{1},'names','onsets','durations')
 
 clearvars -except input_dir output_dir d
 
-%end
+end
