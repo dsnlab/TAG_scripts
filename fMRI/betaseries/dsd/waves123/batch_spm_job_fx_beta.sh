@@ -2,23 +2,26 @@
 #--------------------------------------------------------------
 # This script executes $SHELL_SCRIPT for $SUB and matlab $SCRIPT
 #	
-# Marjolein Oct2020
+# T Cheng | 05/2021
 #--------------------------------------------------------------
+
+SUBJLIST_FILE=$1
+SCRIPT_FILE=$2
 
 # Set your study
 STUDY=/projects/dsnlab/shared/tag/TAG_scripts
 
 # Set subject list
-SUBJLIST=`cat subject_list_wave1.txt`
+SUBJLIST=`cat "$SUBJLIST_FILE"`
 
 # Which SID should be replaced?
-REPLACESID=001w01
+REPLACESID=001w02
 
 # SPM Path
 SPM_PATH=/projects/dsnlab/shared/SPM12
 
 # Set MATLAB script path
-SCRIPT=${STUDY}/fMRI/betaseries/dsd/waves123/fx_betaseries_wave1.m
+SCRIPT=${STUDY}/fMRI/betaseries/dsd/waves123/"$SCRIPT_FILE"
 
 # Set shell script to execute
 SHELL_SCRIPT=spm_job.sh
@@ -44,7 +47,7 @@ for SUB in $SUBJLIST; do
 		 	-o ${OUTPUTDIR}/${SUB}_${RESULTS_INFIX}.log \
 		 	--cpus-per-task=${cpuspertask} \
 		 	--mem-per-cpu=${mempercpu} \
-			--partition=ctn \
+			--partition=short \
 			--account=dsnlab \
 			--time=0-01:00:00 \
 		 	${SHELL_SCRIPT}
