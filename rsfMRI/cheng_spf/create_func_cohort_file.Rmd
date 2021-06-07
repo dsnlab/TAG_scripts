@@ -17,22 +17,22 @@ lapply(packages, library, character.only = TRUE)
 
 # Set inputs
 data_dir <- '/projects/dsnlab/shared/tag/fmriprep_20.2.1/fmriprep'
-inclusion_info_file <- '/home/tcheng/xcpengine/data/rsfc_inclusion.csv'
+inclusion_info_dir <-'/home/tcheng/xcpengine/data/'
+inclusion_info_file <- 'rsfc_inclusion.csv'
+inclusion_info_three_runs_file <- 'rsfc_inclusion_three_runs.csv'
 output_dir <- '/projects/dsnlab/shared/tag/fmriprep_20.2.1/fmriprep/derivatives'
-
 ```
 
 ```{r read in and clean subject list}
 
-inclusion_info <- import(inclusion_info_file)
-
+inclusion_info <- import(paste0(inclusion_info_dir, inclusion_info_file))
 inclusion_info <- inclusion_info %>% 
   filter(!is.na(wave)) # remove extra lines 
-
 inclusion_info$exclude_rs_w1 <- ifelse(is.na(inclusion_info$exclude_rs_w1), 0, inclusion_info$exclude_rs_w1) # fill in NAs with zeros
-
-inclusion_info$tag_id <- inclusion_info$subject_id
+inclusion_info$tag_id <- inclusion_info$subject_id # duplicate and reformat subject IDs
 inclusion_info$subject_id <- paste0(unlist(lapply(str_split(inclusion_info$subject_id, "TAG"), function(x){x[2]})), "w0", inclusion_info$wave)
+
+inclusion_info_three_runs <- import(paste0(inclusion_info_dir, inclusion_info_three_runs_file))
 ```
 
 ```{r obtain confounds dataset}
@@ -98,6 +98,21 @@ if (rerun_confounds == TRUE){
 }
 ```
 
+
+```{r remove extra runs}
+
+# dataset_orig <- dataset # save a copy of the dataset
+
+for (i in 1:nrow(inclusion_info_three_runs)){ # for every row of the inclusion info three runs df
+  
+  if (inclusion_info_three_runs$use_run1[i] == 0){ # if you're not supposed to use run1, filter out those subject's run 1s
+    dataset <- filter(dataset, !(subjectID == paste0("TAG", inclusion_info_three_runs$subject_id[i]) & run == 1))
+  } else if (inclusion_info_three_runs$use_run2[i] == 0){ # likewise for run2
+    dataset <- filter(dataset, !(subjectID == paste0("TAG", inclusion_info_three_runs$subject_id[i]) & run == 2))
+  } # note that no participants were not supposed to have run3
+}
+```
+
 ```{r}
 
 dataset$FD_below_thresh <- ifelse(dataset$FramewiseDisplacement < 0.2, 1, 0)
@@ -105,7 +120,8 @@ dataset$FD_below_thresh <- ifelse(dataset$FramewiseDisplacement < 0.2, 1, 0)
 enough_good_frames <- dataset %>% 
   group_by(subjectID) %>% 
   summarise(num_frames_below_thresh = sum(FD_below_thresh)) %>% 
-  mutate(enough_good_frames = ifelse(num_frames_below_thresh >= 385, 1, 0))
+  mutate(enough_good_frames = ifelse(num_frames_below_thresh >= 385, 1, 0), # five minutes of data 
+         enough_good_frames_4min30s = ifelse(num_frames_below_thresh >= 347, 1, 0)) # 4 mins 30 seconds of data
 
 enough_good_frames$subject_id = unlist(lapply(str_split(enough_good_frames$subjectID, "TAG"), function(x){x[2]}))
 
@@ -113,17 +129,30 @@ inclusion_df <- full_join(inclusion_info, enough_good_frames, by = "subject_id")
 inclusion_df$enough_good_frames <- replace_na(inclusion_df$enough_good_frames, 0)
 
 inclusion_df <- inclusion_df %>% 
-  select(subject_id, wave, exclude_rs_w1, rs1_use, rs2_use, num_frames_below_thresh, enough_good_frames)
+  select(subject_id, wave, exclude_rs_w1, rs1_use, rs2_use, num_frames_below_thresh, enough_good_frames, enough_good_frames_4min30s)
 
+# add variable re: third run
+inclusion_df$third_run <- ifelse(inclusion_df$subject_id %in% unique(inclusion_info_three_runs$subject_id), 1, 0)
+
+# do some plots and basic stats re: subject inclusion
 inclusion_df$wave <- as.factor(inclusion_df$wave)
 
 ggplot(inclusion_df, aes(x = num_frames_below_thresh, fill = wave)) + 
   geom_histogram() +
-  geom_vline(aes(xintercept = 385))
-             
+  geom_vline(aes(xintercept = 385))+
+  geom_vline (aes(xintercept = 347))
+
 inclusion_df %>% 
+  filter(exclude_rs_w1 != 1) %>% 
+  group_by(wave) %>% 
+  count(enough_good_frames_4min30s)
+
+inclusion_df %>% 
+  filter(exclude_rs_w1 == 0) %>% 
   group_by(wave) %>% 
   count(enough_good_frames)
+
+
 ```
 
 ```{r write func_cohort.csv file for xcp engine}
@@ -137,7 +166,7 @@ func_cohort = data.frame(id0 = as.character(),
 
 for (i in 1:nrow(inclusion_df)){
   
-  if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 0){
+  if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 0 & inclusion_df$third_run == 0){
     id0 <- paste0("sub-TAG", inclusion_df$subject_id[i])
     id1 <- paste0("ses-wave", inclusion_df$wave[i])
     img1 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-1_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
@@ -148,7 +177,7 @@ for (i in 1:nrow(inclusion_df)){
                id1 = rep(id1, 2),
                id2 = c("run-1", "run-2"),
                img = c(img1, img2)))
-  } else if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 1 & inclusion_df$rs1_use[i] == 1){
+  } else if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 1 & inclusion_df$rs1_use[i] == 1 & inclusion_df$third_run == 0){
     id0 <- paste0("sub-TAG", inclusion_df$subject_id[i])
     id1 <- paste0("ses-wave", inclusion_df$wave[i])
     img1 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-1_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
@@ -158,7 +187,7 @@ for (i in 1:nrow(inclusion_df)){
                                     id1 = id1,
                                     id2 = "run-1",
                                     img = img1))
-  } else if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 1 & inclusion_df$rs2_use[i] == 1){
+  } else if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 1 & inclusion_df$rs2_use[i] == 1 & inclusion_df$third_run == 0){
     id0 <- paste0("sub-TAG", inclusion_df$subject_id[i])
     id1 <- paste0("ses-wave", inclusion_df$wave[i])
     img2 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
@@ -168,45 +197,49 @@ for (i in 1:nrow(inclusion_df)){
                                     id1 = id1,
                                     id2 = "run-2",
                                     img = img2))
-  
   }
 }
 
 
-output <- sapply(inclusion_df, function(x){
+# third runs 
+func_cohort_three_runs = data.frame(id0 = as.character(),
+                         id1 = as.character(),
+                         id2 = as.character(),
+                         img = as.character())
+
+
+for (i in 1:nrow(inclusion_info_three_runs)){
   
-  if (x[7] == 1 & x[3] == 0){
-      id0 <- paste0("sub-TAG", x[1])
-      id1 <- paste0("ses-wave", x[2])
-     # 
-    #  img2 <- paste0("fmriprep/sub-TAG", x[1], "/ses-wave", x[2], "/func/sub-TAG", x[1], "_ses-wave", x[2], "_task-rest_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+  temp_df <- filter(inclusion_df, subject_id == inclusion_info_three_runs$subject_id[i])
+  
+  if (temp_df$enough_good_frames == 1 & temp_df$exclude_rs_w1 == 0 & inclusion_info_three_runs$use_run1[i] == 1){
+    id0 <- paste0("sub-TAG", temp_df$subject_id)
+    id1 <- paste0("ses-wave", temp_df$wave)
+    img1 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-1_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+    img3 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-3_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
     
-      data.frame(
-  }
+    func_cohort_three_runs <- rbind(func_cohort_three_runs,
+          data.frame(id0 = rep(id0, 2),
+               id1 = rep(id1, 2),
+               id2 = c("run-1", "run-3"),
+               img = c(img1, img3)))
+    
+  } else if (temp_df$enough_good_frames == 1 & temp_df$exclude_rs_w1 == 0 & inclusion_info_three_runs$use_run2[i] == 1){
+    id0 <- paste0("sub-TAG", temp_df$subject_id)
+    id1 <- paste0("ses-wave", temp_df$wave)
+    img2 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+    img3 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-3_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+    
+    func_cohort_three_runs <- rbind(func_cohort_three_runs,
+          data.frame(id0 = rep(id0, 2),
+               id1 = rep(id1, 2),
+               id2 = c("run-2", "run-3"),
+               img = c(img2, img3)))
+  }  
 }
-)
-
-output_df <- do.call(rbind, output)
-
-if (inclusion_df$enough_good_frames == 1 & inclusion_df$exclude_rs_w1 == 0){
-  id0 <- paste0("sub-TAG", inclusion_df$subject_id)
-  id1 <- paste0("ses-wave", wave)
-  img1 <- paste0("fmriprep/sub-TAG", inclusion_df$subject_id, "/ses-wave", inclusion_df$wave, "/func/sub-TAG", inclusion_df$subject_id, "ses-wave", inclusiond_df$wave, "_task-rest_run-1_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
-  img2 <- paste0("fmriprep/sub-TAG", inclusion_df$subject_id, "/ses-wave", inclusion_df$wave, "/func/sub-TAG", inclusion_df$subject_id, "ses-wave", inclusiond_df$wave, "_task-rest_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
-  
-  data.frame(id0 = rep(id0, 2),
-             id1 = rep(id1, 2),
-             id2 = c("run-1", "run-2"),
-             img = c(img1, img2))
-}
-             
-
-# if inclusion_df$enough_good_frames == 1 and inclusion_df$exclude_rs_w1 ==1 (should really be called "exclude_any"), check to see if either rs1_use or rs_2_use is 1 --> if so, then include that run ONLY
-
-
-# figure out what to do for participants with three runs
 
 
 
-
+func_cohort <- rbind(func_cohort, func_cohort_three_runs)
+# write.csv(func_cohort, paste0(inclusion_info_dir, "func_cohort_files/func_cohort_tag.csv"))
 ```
