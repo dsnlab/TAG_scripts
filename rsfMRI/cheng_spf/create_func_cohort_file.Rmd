@@ -1,0 +1,212 @@
+---
+title: "Create func cohort file"
+author: "Theresa Cheng"
+date: "June 6, 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load packages
+packages <- c("ggplot2", "tidyverse", "stringr", "knitr", "rio", "snakecase")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+# Set inputs
+data_dir <- '/projects/dsnlab/shared/tag/fmriprep_20.2.1/fmriprep'
+inclusion_info_file <- '/home/tcheng/xcpengine/data/rsfc_inclusion.csv'
+output_dir <- '/projects/dsnlab/shared/tag/fmriprep_20.2.1/fmriprep/derivatives'
+
+```
+
+```{r read in and clean subject list}
+
+inclusion_info <- import(inclusion_info_file)
+
+inclusion_info <- inclusion_info %>% 
+  filter(!is.na(wave)) # remove extra lines 
+
+inclusion_info$exclude_rs_w1 <- ifelse(is.na(inclusion_info$exclude_rs_w1), 0, inclusion_info$exclude_rs_w1) # fill in NAs with zeros
+
+inclusion_info$tag_id <- inclusion_info$subject_id
+inclusion_info$subject_id <- paste0(unlist(lapply(str_split(inclusion_info$subject_id, "TAG"), function(x){x[2]})), "w0", inclusion_info$wave)
+```
+
+```{r obtain confounds dataset}
+
+rerun_confounds = FALSE
+
+if (rerun_confounds == TRUE){
+  # Source config file from auto-motion-fmriprep
+  source('/projects/dsnlab/shared/tag/TAG_scripts/fMRI/fx/motion/auto-motion-fmriprep-20210518/config.R')
+  
+  dataset = data.frame()
+  columnNames = c("subjectID", "wave", "task", "run", "volume", "CSF", "WhiteMatter", 
+                "GlobalSignal", "stdDVARS", "non.stdDVARS", "vx.wisestdDVARS", 
+                "FramewiseDisplacement", "tCompCor00", "tCompCor01", "tCompCor02", 
+                "tCompCor03", "tCompCor04", "tCompCor05", "aCompCor00", "aCompCor01", 
+                "aCompCor02", "aCompCor03", "aCompCor04", "aCompCor05", "Cosine00", 
+                "X", "Y", "Z", "RotX", "RotY", "RotZ")
+  
+  fileRegex = '.*func/sub-(.*)_ses-(.*)_task-(.*)_run-(.*)_desc-.*.tsv'
+  fileVars = c('subjectID', 'wave', 'task', 'run')
+  
+  fileList = list.files(data_dir, pattern = '.*rest.*confounds.*.tsv', recursive = TRUE)
+  
+    for (file in fileList) {
+
+      tmp = tryCatch(read_tsv(file.path(confoundDir, file)) %>%
+                       setNames(snakecase::to_upper_camel_case(names(.))) %>%
+                       setNames(gsub("AComp", "aComp", names(.))) %>%
+                       setNames(gsub("TComp", "tComp", names(.))) %>%
+                       setNames(gsub("Trans", "", names(.))) %>%
+                       mutate(file = ifelse(!grepl("ses", file), gsub("task", "ses-1_task", file), file),
+                              file = ifelse(!grepl("run", file), gsub("desc", "run-1_desc", file), file)) %>%
+                       extract(file, fileVars,
+                               fileRegex) %>%
+                       rename("CSF" = Csf,
+                              "stdDVARS" = StdDvars,
+                              "non.stdDVARS" = Dvars) %>%
+                       mutate(run = str_extract(run, "[[:digit:]]+"),
+                              run = as.integer(run),
+                              volume = row_number()) %>%
+                       mutate_if(is.character, list(~ ifelse(. == "n/a", 0, .))) %>%
+                       mutate_at(vars(contains("DVARS"), contains("Framewise")), as.numeric), error = function(e) message(file))
+    
+    # add missing columns and select subset classifier columns
+    missingColumns = setdiff(columnNames, names(tmp))
+    tmp[missingColumns] = 0 
+    
+    tmp = tmp  %>%
+      select(subjectID, wave, task, run, volume, CSF, WhiteMatter, 
+             GlobalSignal, stdDVARS, non.stdDVARS, vx.wisestdDVARS, 
+             FramewiseDisplacement, tCompCor00, tCompCor01, tCompCor02, 
+             tCompCor03, tCompCor04, tCompCor05, aCompCor00, aCompCor01, 
+             aCompCor02, aCompCor03, aCompCor04, aCompCor05, Cosine00, 
+             X, Y, Z, RotX, RotY, RotZ)
+    
+    if (length(tmp) > 0) {
+      dataset = bind_rows(dataset, tmp)
+      rm(tmp)
+    }
+    }
+} else {
+    dataset <- readRDS(paste0(output_dir, "all_confound_info.rds"))
+}
+```
+
+```{r}
+
+dataset$FD_below_thresh <- ifelse(dataset$FramewiseDisplacement < 0.2, 1, 0)
+
+enough_good_frames <- dataset %>% 
+  group_by(subjectID) %>% 
+  summarise(num_frames_below_thresh = sum(FD_below_thresh)) %>% 
+  mutate(enough_good_frames = ifelse(num_frames_below_thresh >= 385, 1, 0))
+
+enough_good_frames$subject_id = unlist(lapply(str_split(enough_good_frames$subjectID, "TAG"), function(x){x[2]}))
+
+inclusion_df <- full_join(inclusion_info, enough_good_frames, by = "subject_id")
+inclusion_df$enough_good_frames <- replace_na(inclusion_df$enough_good_frames, 0)
+
+inclusion_df <- inclusion_df %>% 
+  select(subject_id, wave, exclude_rs_w1, rs1_use, rs2_use, num_frames_below_thresh, enough_good_frames)
+
+inclusion_df$wave <- as.factor(inclusion_df$wave)
+
+ggplot(inclusion_df, aes(x = num_frames_below_thresh, fill = wave)) + 
+  geom_histogram() +
+  geom_vline(aes(xintercept = 385))
+             
+inclusion_df %>% 
+  group_by(wave) %>% 
+  count(enough_good_frames)
+```
+
+```{r write func_cohort.csv file for xcp engine}
+
+# if inclusion_df$enough_good_frames == 1 and inclusion_df$exclude_rs_w1 !=1
+# then use assume both runs are available
+func_cohort = data.frame(id0 = as.character(),
+                         id1 = as.character(),
+                         id2 = as.character(),
+                         img = as.character())
+
+for (i in 1:nrow(inclusion_df)){
+  
+  if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 0){
+    id0 <- paste0("sub-TAG", inclusion_df$subject_id[i])
+    id1 <- paste0("ses-wave", inclusion_df$wave[i])
+    img1 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-1_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+    img2 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+    
+    func_cohort <- rbind(func_cohort,
+          data.frame(id0 = rep(id0, 2),
+               id1 = rep(id1, 2),
+               id2 = c("run-1", "run-2"),
+               img = c(img1, img2)))
+  } else if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 1 & inclusion_df$rs1_use[i] == 1){
+    id0 <- paste0("sub-TAG", inclusion_df$subject_id[i])
+    id1 <- paste0("ses-wave", inclusion_df$wave[i])
+    img1 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-1_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+    
+    func_cohort <- rbind(func_cohort,
+                         data.frame(id0 = id0,
+                                    id1 = id1,
+                                    id2 = "run-1",
+                                    img = img1))
+  } else if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 1 & inclusion_df$rs2_use[i] == 1){
+    id0 <- paste0("sub-TAG", inclusion_df$subject_id[i])
+    id1 <- paste0("ses-wave", inclusion_df$wave[i])
+    img2 <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+    
+    func_cohort <- rbind(func_cohort,
+                         data.frame(id0 = id0,
+                                    id1 = id1,
+                                    id2 = "run-2",
+                                    img = img2))
+  
+  }
+}
+
+
+output <- sapply(inclusion_df, function(x){
+  
+  if (x[7] == 1 & x[3] == 0){
+      id0 <- paste0("sub-TAG", x[1])
+      id1 <- paste0("ses-wave", x[2])
+     # 
+    #  img2 <- paste0("fmriprep/sub-TAG", x[1], "/ses-wave", x[2], "/func/sub-TAG", x[1], "_ses-wave", x[2], "_task-rest_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+    
+      data.frame(
+  }
+}
+)
+
+output_df <- do.call(rbind, output)
+
+if (inclusion_df$enough_good_frames == 1 & inclusion_df$exclude_rs_w1 == 0){
+  id0 <- paste0("sub-TAG", inclusion_df$subject_id)
+  id1 <- paste0("ses-wave", wave)
+  img1 <- paste0("fmriprep/sub-TAG", inclusion_df$subject_id, "/ses-wave", inclusion_df$wave, "/func/sub-TAG", inclusion_df$subject_id, "ses-wave", inclusiond_df$wave, "_task-rest_run-1_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+  img2 <- paste0("fmriprep/sub-TAG", inclusion_df$subject_id, "/ses-wave", inclusion_df$wave, "/func/sub-TAG", inclusion_df$subject_id, "ses-wave", inclusiond_df$wave, "_task-rest_run-2_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz")
+  
+  data.frame(id0 = rep(id0, 2),
+             id1 = rep(id1, 2),
+             id2 = c("run-1", "run-2"),
+             img = c(img1, img2))
+}
+             
+
+# if inclusion_df$enough_good_frames == 1 and inclusion_df$exclude_rs_w1 ==1 (should really be called "exclude_any"), check to see if either rs1_use or rs_2_use is 1 --> if so, then include that run ONLY
+
+
+# figure out what to do for participants with three runs
+
+
+
+
+```
