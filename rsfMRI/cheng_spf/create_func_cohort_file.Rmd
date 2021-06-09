@@ -21,6 +21,9 @@ inclusion_info_dir <-'/home/tcheng/xcpengine/data/'
 inclusion_info_file <- 'rsfc_inclusion.csv'
 inclusion_info_three_runs_file <- 'rsfc_inclusion_three_runs.csv'
 output_dir <- '/projects/dsnlab/shared/tag/fmriprep_20.2.1/fmriprep/derivatives'
+
+# write tcat subjects list
+tcat_dir <- '/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/cheng_spf/tcat'
 ```
 
 ```{r read in and clean subject list}
@@ -101,9 +104,7 @@ if (rerun_confounds == TRUE){
 
 ```{r remove extra runs}
 
-# dataset_orig <- dataset # save a copy of the dataset
-
-for (i in 1:nrow(inclusion_info_three_runs)){ # for every row of the inclusion info three runs df
+for (i in 1:nrow(inclusion_info_three_runs)){ # for every row of the inclusion info three runs df, remove runs that should not be concatenated
   
   if (inclusion_info_three_runs$use_run1[i] == 0){ # if you're not supposed to use run1, filter out those subject's run 1s
     dataset <- filter(dataset, !(subjectID == paste0("TAG", inclusion_info_three_runs$subject_id[i]) & run == 1))
@@ -151,11 +152,112 @@ inclusion_df %>%
   filter(exclude_rs_w1 == 0) %>% 
   group_by(wave) %>% 
   count(enough_good_frames)
+```
+```{r write subject list for concatenation, include = FALSE}
+# target format: 001w01,wave1,run-1,run-2
 
+tcat_subjects = data.frame(subject_id = as.character(),
+                           wave = as.character(),
+                           first_run = as.character(),
+                           second_run = as.character())
 
+# if the participant should have both runs included, then concatenate them
+for (i in 1:nrow(inclusion_df)){
+  
+  if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 0 & inclusion_df$third_run[i] == 0){
+    subject_id <- inclusion_df$subject_id[i]
+    wave <- paste0("wave", inclusion_df$wave[i])
+    
+    tcat_subjects <-rbind(tcat_subjects,
+                          data.frame(subject_id = subject_id,
+                                     wave = wave,
+                                     first_run = "run-1", 
+                                     second_run = "run-2"))
+  }
+}
+
+# third runs 
+tcat_subjects_three_runs = data.frame(subject_id = as.character(),
+                           wave = as.character(),
+                           first_run = as.character(),
+                           second_run = as.character())
+
+for (i in 1:nrow(inclusion_info_three_runs)){
+  
+  temp_df <- filter(inclusion_df, subject_id == inclusion_info_three_runs$subject_id[i])
+  subject_id <- temp_df$subject_id
+  wave <- paste0("wave", temp_df$wave)
+  
+  if (temp_df$enough_good_frames == 1 & temp_df$exclude_rs_w1 == 0 & inclusion_info_three_runs$use_run1[i] == 1){
+    tcat_subjects_three_runs <-rbind(tcat_subjects_three_runs,
+                          data.frame(subject_id = subject_id,
+                                     wave = wave,
+                                     first_run = "run-1", 
+                                     second_run = "run-3"))
+    
+  } else if (temp_df$enough_good_frames == 1 & temp_df$exclude_rs_w1 == 0 & inclusion_info_three_runs$use_run2[i] == 1){
+    tcat_subjects_three_runs <-rbind(tcat_subjects_three_runs,
+                          data.frame(subject_id = subject_id,
+                                     wave = wave,
+                                     first_run = "run-2", 
+                                     second_run = "run-3"))
+  }  
+}
+
+tcat_subjects <- rbind(tcat_subjects, tcat_subjects_three_runs)
+#write.table(tcat_subjects, paste0(tcat_dir, "/tcat_subject_list.txt"), row.names = FALSE, quote = FALSE, sep = ",")
 ```
 
-```{r write func_cohort.csv file for xcp engine}
+```{r write func_cohort.csv file for xcp engine - CONCATENATED RUNS}
+
+# if inclusion_df$enough_good_frames == 1 and inclusion_df$exclude_rs_w1 !=1
+# then use assume both runs are available
+
+func_cohort = data.frame(id0 = as.character(),
+                         id1 = as.character(),
+                         id2 = as.character(),
+                         img = as.character())
+
+for (i in 1:nrow(inclusion_df)){
+  
+  if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 0){
+    id0 <- paste0("sub-TAG", inclusion_df$subject_id[i])
+    id1 <- paste0("ses-wave", inclusion_df$wave[i])
+    img <- paste0("fmriprep/", id0, "/", id1, "/func/tcat_", id0, "_", id1, "_task-rest_space-MNI152NLin2009cAsym.nii.gz")
+    
+    func_cohort <- rbind(func_cohort,
+          data.frame(id0 = id0,
+               id1 = id1,
+               img = img))
+    
+  } else if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 1 & inclusion_df$rs1_use[i] == 1 & inclusion_df$third_run == 0){
+    id0 <- paste0("sub-TAG", inclusion_df$subject_id[i])
+    id1 <- paste0("ses-wave", inclusion_df$wave[i])
+    img <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-1_space-MNI152NLin2009cAsym.nii.gz")
+    
+    func_cohort <- rbind(func_cohort,
+                         data.frame(id0 = id0,
+                                    id1 = id1,
+                                    img = img))
+    
+  } else if (inclusion_df$enough_good_frames[i] == 1 & inclusion_df$exclude_rs_w1[i] == 1 & inclusion_df$rs2_use[i] == 1 & inclusion_df$third_run == 0){
+    id0 <- paste0("sub-TAG", inclusion_df$subject_id[i])
+    id1 <- paste0("ses-wave", inclusion_df$wave[i])
+    img <- paste0("fmriprep/", id0, "/", id1, "/func/", id0, "_", id1, "_task-rest_run-2_space-MNI152NLin2009cAsym.nii.gz")
+    
+    func_cohort <- rbind(func_cohort,
+                         data.frame(id0 = id0,
+                                    id1 = id1,
+                                    img = img))
+  }
+}
+
+
+# write.table(func_cohort, paste0(inclusion_info_dir, "func_cohort_files/func_cohort_tag.csv"), row.names = FALSE, quote = FALSE, sep = ",")
+```
+
+
+```{r write func_cohort.csv file for xcp engine - SEPARATE RUNS, include = FALSE}
 
 # if inclusion_df$enough_good_frames == 1 and inclusion_df$exclude_rs_w1 !=1
 # then use assume both runs are available
@@ -241,5 +343,5 @@ for (i in 1:nrow(inclusion_info_three_runs)){
 
 
 func_cohort <- rbind(func_cohort, func_cohort_three_runs)
-# write.csv(func_cohort, paste0(inclusion_info_dir, "func_cohort_files/func_cohort_tag.csv"))
+#write.table(func_cohort, paste0(inclusion_info_dir, "func_cohort_files/func_cohort_tag.csv"), row.names = FALSE, quote = FALSE, sep = ",")
 ```
