@@ -152,7 +152,10 @@ inclusion_df %>%
   filter(exclude_rs_w1 == 0) %>% 
   group_by(wave) %>% 
   count(enough_good_frames)
+
+write.csv(inclusion_df, paste0(inclusion_info_dir, "rsfc_enough_frames.csv"))
 ```
+
 ```{r write subject list for concatenation, include = FALSE}
 # target format: 001w01,wave1,run-1,run-2
 
