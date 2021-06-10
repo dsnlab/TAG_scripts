@@ -16,7 +16,7 @@ clear all
 wave_num = '3';
 
 % which cond? disclosure or eval
-cond = 'disclosure';
+cond = 'full_trial';
 
 f = filesep();
 
@@ -29,8 +29,6 @@ d = dir(fullfile(input_dir,'*summary.csv'));
 
 % for each subject and run
 for k=1:length(d)
-
-%k=2;
     
 cd (input_dir)
 
@@ -91,7 +89,7 @@ durations= transpose(M{14});
 % SAVE
 sid = strrep(M{1}(1), '"', '');
 run = strrep(M{2}(1), '"','');
-saveName=strcat(sprintf('%s', sid{1}),'_DSD', run, '_disc_betaseries_NOD.mat') 
+saveName=strcat(sprintf('%s', sid{1}),'_DSD', run, '_full_trial_NOD.mat') 
 cd (output_dir) 
 save(saveName{1},'names','onsets','durations')
 

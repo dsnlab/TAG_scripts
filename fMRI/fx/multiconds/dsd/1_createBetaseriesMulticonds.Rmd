@@ -30,7 +30,7 @@ input_file <- '/Volumes/psych-cog/dsnlab/TAG/behavior/task/processed/DSD/dsd_tri
 # directory to save output. make sure folder is created.
 out_dir <- '/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/betaseries/'
 #out_dir <- '~/Downloads/wave1_dsd/'
-curr_wave = 3
+curr_wave = 1
 ```
 
 ```{r read data}
@@ -45,7 +45,11 @@ ids <- as.vector(unique(input_df$sid))
 multicondsDF <- lapply(X = ids, df = input_df, FUN = function(id, df) {
 
 df <- input_df %>% filter(sid == id & wave == curr_wave)
+
+# df$run <- c(rep(1, 41), rep(2, 41)) # this line is for if the runs were entered incorrectly
+
 fid = stri_pad_left(id, 3, 0)
+print(fid)
 
 # if(nrow(df %>% filter(run==1)) > 0 & nrow(df %>% filter(run==2)) > 0) {
 if(nrow(df) > 0){
@@ -62,7 +66,12 @@ if(nrow(df) > 0){
     select(subject_id, run, trial, intimate_cond, statement.onset, statement.rt.seconds, disclosed, disc.onset, target.rt.seconds, share.value, share_value_cond) %>% 
     rename(disc.rt.seconds=target.rt.seconds)
 
-  # create disclosure betaseries summaries
+  # add ful trial information
+  df$trial_onset <- df$statement.onset
+  df$trial_duration <- ifelse(is.na(df$disc.rt.seconds), round(df$disc.onset - df$statement.onset + mean(df$disc.rt.seconds, na.rm = TRUE), 3), # if the participant didn't make a disclosure decision, take the difference between the onsets and add an average decision response time
+                              df$disc.onset - df$statement.onset + df$disc.rt.seconds) # if the participant did make a decision, add the actual response time
+ 
+   # create disclosure betaseries summaries
   df_disc_nod <- df %>% 
     mutate(name = paste("trial", df$trial, sep = "_"),
            onset = disc.onset,
@@ -79,21 +88,36 @@ if(nrow(df) > 0){
            duration = ifelse(is.na(statement.rt.seconds), round(mean(statement.rt.seconds, na.rm = TRUE), 3), statement.rt.seconds)) #%>% 
     #select(subject_id, run, name, onset, duration, eval_missed, intimate_cond, disclosed, share_value_cond) 
   
-  df_eval_nod$run <- as.factor(df_disc_nod$run)
+   # create full trial betaseries summaries
+  df_trial_nod <- df %>% 
+    mutate(name = paste("trial", df$trial, sep = "_"),
+           onset = trial_onset,
+           duration = trial_duration) #%>% 
+   #select(subject_id, run, name, onset, duration, intimate_cond, disclosed, share_value_cond)
   
-  #save disclosure summaries
-  saveDisc <- df_disc_nod %>% group_by(run) %>%
+  df_trial_nod$run <- as.factor(df_trial_nod$run)
+  
+  # #save disclosure summaries
+  # saveDisc <- df_disc_nod %>% group_by(run) %>%
+  #   do({
+  #     ungroup(.)
+  #     write.csv(.,  file=paste0(out_dir, 'disclosure_summary/wave', curr_wave, '/TAG',fid, 'w0', curr_wave, '_DSD', .$run[[1]],'_disc_betaseries_summary.csv'),row.names = F,na = "",)
+  #     data.frame()
+  #     })
+  # 
+  # # save eval summaries
+  # saveEval <- df_eval_nod %>% group_by(run) %>%
+  #   do({
+  #     ungroup(.)
+  #     write.csv(., file = paste0(out_dir, 'eval_summary/wave', curr_wave, '/TAG',fid, 'w0', curr_wave, '_DSD', .$run[[1]],'_eval_betaseries_summary.csv'),row.names = F,na = "",)
+  #     data.frame()
+  #     })
+  
+  # save trial summaries
+  saveTrials <- df_trial_nod %>% group_by(run) %>%
     do({
       ungroup(.)
-      write.csv(.,  file=paste0(out_dir, 'disclosure_summary/wave', curr_wave, '/TAG',fid, 'w0', curr_wave, '_DSD', .$run[[1]],'_disc_betaseries_summary.csv'),row.names = F,na = "",)
-      data.frame()
-      })
-
-  # save eval summaries
-  saveEval <- df_eval_nod %>% group_by(run) %>%
-    do({
-      ungroup(.)
-      write.csv(., file = paste0(out_dir, 'eval_summary/wave', curr_wave, '/TAG',fid, 'w0', curr_wave, '_DSD', .$run[[1]],'_eval_betaseries_summary.csv'),row.names = F,na = "",)
+      write.csv(., file = paste0(out_dir, 'full_trial_summary/wave', curr_wave, '/TAG', fid, 'w0', curr_wave, '_DSD', .$run[[1]],'_full_trial_betaseries_summary.csv'), row.names = F, na = "",)
       data.frame()
       })
 
