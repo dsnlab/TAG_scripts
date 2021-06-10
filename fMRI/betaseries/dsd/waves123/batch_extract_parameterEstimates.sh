@@ -5,17 +5,18 @@
 # Marjolein Oct 2020 | Adapted T Cheng June 2021
 #--------------------------------------------------------------
 
-SUBJLIST=$1
+SUBJLIST_FILENAME=$1
+SHELL_SCRIPT=$2
 
 # Set your study
 STUDY=/projects/dsnlab/shared/tag/TAG_scripts
 
 # Set subject list
-# SUBJLIST=`cat subject_list_2waves_err.txt`
+SUBJLIST=`cat ${SUBJLIST_FILENAME}`
 #SUBJLIST=`echo "TAG001"`
 
 # Set shell script to execute
-SHELL_SCRIPT=extract_parameterEstimates.sh
+#SHELL_SCRIPT=extract_parameterEstimates.sh
 
 # FP the results files
 RESULTS_INFIX=extract_pe

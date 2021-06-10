@@ -27,7 +27,7 @@ SCRIPT=${STUDY}/fMRI/betaseries/dsd/waves123/"$SCRIPT_FILE"
 SHELL_SCRIPT=spm_job.sh
 
 # FP the results files
-RESULTS_INFIX=fx_beta_disc_
+RESULTS_INFIX=fx_beta_ft_
 
 # Set output dir and make it if it doesn't exist
 OUTPUTDIR=${STUDY}/fMRI/betaseries/dsd/waves123/output
@@ -38,7 +38,7 @@ fi
 
 # Set job parameters
 cpuspertask=1
-mempercpu=8G
+mempercpu=16G
 
 # Create and execute batch job
 for SUB in $SUBJLIST; do
