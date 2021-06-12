@@ -1,0 +1,86 @@
+---
+title: "Calculate rsfMRI correlations"
+author: "Theresa Cheng"
+date: "6/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load packages
+packages <- c("ggplot2", "tidyr", "stringr", "corrplot", "dplyr", "psych", "rio", "DescTools")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+# Inputs
+timecourses_dir <- "/Volumes/psych-cog/dsnlab/TAG/nonbids_data/rsfMRI/cheng_spf/timecourses"
+subjects_dir <- "/Volumes/psych-cog/dsnlab/cheng_spf/code/"
+rois <- c("inflated_vmPFC", "NAcc", "primary_aud_sphere_rad4_n56_n16_0", "primary_vis_sphere_rad4_n4_n88_4")
+
+# Outputs 
+output_dir <- "/Volumes/psych-cog/dsnlab/cheng_spf/data/rsfMRI_Zcor_timecourses"
+```
+
+```{r load and clean data}
+
+file_list <- list.files(paste0(timecourses_dir))
+subject_list <- import(paste0(subjects_dir, "subject_list_rsfMRI_timecourses.txt"))
+```
+
+
+```{r check if timecourses exist}
+
+
+
+
+```
+
+
+```{r create merged timecourses}
+
+# for each subject and run
+
+output <- lapply(paste0(timecourses_dir, "/", file_list), function(x){
+ 
+  num_lines <- R.utils::countLines(x)
+  df <- data.frame(read.table(x, skip = num_lines -1))
+  colnames(df)[1:2] <- c("subject_id", "run")
+  
+  df <- df %>% 
+    pivot_longer(cols = -c("subject_id", "run"))
+  
+  df$volume <- paste("vol", 1:nrow(df), sep = "_")
+  df$file_name <- str_split(x, "/")[[1]][10]
+  
+  df <- df %>% 
+    mutate(roi = case_when(
+      grepl("inflated_vmPFC", df$file_name) ~ "inflated_vmPFC", 
+      grepl("NAcc", df$file_name) ~ "NAcc", 
+      grepl("aud", df$file_name) ~ "aud", 
+      grepl("vis", df$file_name) ~ "vis"))
+  
+  df %>% 
+    select(subject_id, run, roi, volume, value)
+  
+})
+
+df_output <- do.call(rbind, output)
+
+df_output_wide <- df_output %>% 
+  pivot_wider(names_from = roi, values_from = value)
+
+temp <- df_output_wide %>% filter(subject_id == "002w01") 
+
+
+
+#         do.call(rbind,
+#           lapply(paste0(task_summary_dir, "/wave2/", summary_files_wave2), import)),
+#         do.call(rbind,
+#           lapply(paste0(task_summary_dir, "/wave3/", summary_files_wave3), import)))
+# 
+# write.csv(merged_summary_files, paste0(task_summary_dir, "merged_disclosure_summary_files.csv"))
+
+```
