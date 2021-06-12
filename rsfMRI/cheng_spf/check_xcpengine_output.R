@@ -34,11 +34,16 @@ output_df$file_names <- as.character(output_df$file_names)
 output_df$file_exists <- file.exists(output_df$file_names)
 
 missing_file_idx <- which(output_df$file_exists == FALSE)
+output_df[missing_file_idx, ]
 
 # okay, one subset of errors has to do with Bus errors: 
-bus_error_indices <-import(paste0(inclusion_info_dir, "/bus_error_indices.txt"), header = FALSE)
-func_cohort_bus_errors <- func_cohort[bus_error_indices$V1, ]
-write.table(func_cohort_bus_errors, paste0(inclusion_info_dir, "/func_cohort_files/func_cohort_bus_errors.csv"), row.names = FALSE, quote = FALSE, sep = ",")
+# bus_error_indices <-import(paste0(inclusion_info_dir, "/bus_error_indices.txt"), header = FALSE)
+# func_cohort_bus_errors <- func_cohort[bus_error_indices$V1, ]
+# write.table(func_cohort_bus_errors, paste0(inclusion_info_dir, "/func_cohort_files/func_cohort_bus_errors.csv"), row.names = FALSE, quote = FALSE, sep = ",")
 
 func_cohort_rerun <- func_cohort[missing_file_idx[!(missing_file_idx %in% bus_error_indices$V1)], ]
-write.table(func_cohort_rerun, paste0(inclusion_info_dir, "/func_cohort_files/func_cohort_rerun.csv"), row.names = FALSE, quote = FALSE, sep = ",")
+# write.table(func_cohort_rerun, paste0(inclusion_info_dir, "/func_cohort_files/func_cohort_rerun.csv"), row.names = FALSE, quote = FALSE, sep = ",")
+
+single_subject <- func_cohort[which(func_cohort$id0 == "sub-TAG181w02" & func_cohort$id1 == "ses-wave2" & func_cohort$id2 == "run-1"), ]
+write.table(single_subject, paste0(inclusion_info_dir, "/func_cohort_files/func_cohort_single_subject.csv"), row.names = FALSE, quote = FALSE, sep = ",")
+
