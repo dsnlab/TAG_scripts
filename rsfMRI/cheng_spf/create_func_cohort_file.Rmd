@@ -24,6 +24,10 @@ output_dir <- '/projects/dsnlab/shared/tag/fmriprep_20.2.1/fmriprep/derivatives'
 
 # write tcat subjects list
 tcat_dir <- '/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/cheng_spf/tcat'
+
+# extract timecourses subject list
+timecourses_dir <- '/projects/dsnlab/shared/tag/TAG_scripts/rsfMRI/cheng_spf/timecourses'
+
 ```
 
 ```{r read in and clean subject list}
@@ -126,6 +130,9 @@ enough_good_frames <- dataset %>%
 
 enough_good_frames$subject_id = unlist(lapply(str_split(enough_good_frames$subjectID, "TAG"), function(x){x[2]}))
 
+enough_good_frames_by_run <- dataset %>% 
+  group_by(subjectID, run) %>% 
+  summarise(num_frames_below_thresh = sum (FD_below_thresh))
 inclusion_df <- full_join(inclusion_info, enough_good_frames, by = "subject_id")
 inclusion_df$enough_good_frames <- replace_na(inclusion_df$enough_good_frames, 0)
 
@@ -153,12 +160,16 @@ inclusion_df %>%
   group_by(wave) %>% 
   count(enough_good_frames)
 
-write.csv(inclusion_df, paste0(inclusion_info_dir, "rsfc_enough_frames.csv"))
+# write.csv(inclusion_df, paste0(inclusion_info_dir, "rsfc_enough_frames.csv"))
 ```
 
 ```{r write subject list for concatenation, include = FALSE}
-# target format: 001w01,wave1,run-1,run-2
 
+rerun_tcat = FALSE
+
+if (rerun_tcat == TRUE) {
+
+# target format: 001w01,wave1,run-1,run-2
 tcat_subjects = data.frame(subject_id = as.character(),
                            wave = as.character(),
                            first_run = as.character(),
@@ -209,6 +220,10 @@ for (i in 1:nrow(inclusion_info_three_runs)){
 
 tcat_subjects <- rbind(tcat_subjects, tcat_subjects_three_runs)
 #write.table(tcat_subjects, paste0(tcat_dir, "/tcat_subject_list.txt"), row.names = FALSE, quote = FALSE, sep = ",")
+} else {
+  tcat_subjects <- import(paste0(tcat_dir, "/tcat_subject_list.txt"))
+}
+
 ```
 
 ```{r write func_cohort.csv file for xcp engine - CONCATENATED RUNS}
