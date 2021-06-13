@@ -30,57 +30,121 @@ file_list <- list.files(paste0(timecourses_dir))
 subject_list <- import(paste0(subjects_dir, "subject_list_rsfMRI_timecourses.txt"))
 ```
 
-
-```{r check if timecourses exist}
-
-
-
-
-```
-
-
 ```{r create merged timecourses}
 
-# for each subject and run
+rerun_merge_timecourses <- FALSE
 
-output <- lapply(paste0(timecourses_dir, "/", file_list), function(x){
- 
-  num_lines <- R.utils::countLines(x)
-  df <- data.frame(read.table(x, skip = num_lines -1))
-  colnames(df)[1:2] <- c("subject_id", "run")
+if (rerun_merge_timecourses == TRUE) {
   
-  df <- df %>% 
-    pivot_longer(cols = -c("subject_id", "run"))
+  output <- lapply(paste0(timecourses_dir, "/", file_list), function(x){
+    
+    print(x)
+    df <- data.frame(read.table(x)) # , skip = num_lines -1))
+    colnames(df)[1:4] <- c("subject_id", "wave", "roi", "run")
+    
+    if (length(df) > 4){
+      
+      df <- df %>% 
+        pivot_longer(cols = -c("subject_id", "wave", "roi", "run"), names_prefix = "V")
+      
+      df$metric = ifelse((as.numeric(df$name) %% 2), "mean", "sd")
+      df$volume <- rep(paste("vol", 1:(nrow(df)/2), sep = "_"), each = 2)
+      
+      df <- df %>% 
+        select(-name) %>% 
+        pivot_wider(names_from = metric, values_from = value)
+      
+    } else {
+      
+      df <- data.frame(subject_id = df$subject_id,
+                       wave = df$wave,
+                       roi = df$roi,
+                       run = df$run,
+                       volume = NA,
+                       mean = NA, 
+                       sd = NA)
+    }
+  })
   
-  df$volume <- paste("vol", 1:nrow(df), sep = "_")
-  df$file_name <- str_split(x, "/")[[1]][10]
+  merged_timecourses <- do.call(rbind, output)
+  saveRDS(merged_timecourses, paste0(output_dir, "/merged_timecourses.rds"))
   
-  df <- df %>% 
-    mutate(roi = case_when(
-      grepl("inflated_vmPFC", df$file_name) ~ "inflated_vmPFC", 
-      grepl("NAcc", df$file_name) ~ "NAcc", 
-      grepl("aud", df$file_name) ~ "aud", 
-      grepl("vis", df$file_name) ~ "vis"))
+} else {
+  merged_timecourses <- readRDS(paste0(output_dir, "/merged_timecourses.rds"))
+}
+   
+levels(merged_timecourses$roi) <- c("vmPFC", "NAcc", "aud", "vis") # rename rois
+merged_timecourses <- filter(merged_timecourses, !is.na(merged_timecourses$mean))
+```
+
+```{r calculate Fisher Z cors}
+
+# reduce subject list to ID and wave (collapse across run)
+subject_list<- subject_list %>% 
+  select("subject_id", "wave") %>% 
+  distinct()
+
+# for each participant at each wave,
+output <- apply(subject_list[9,], 1, function(x){
   
-  df %>% 
-    select(subject_id, run, roi, volume, value)
+  subject <- x[[1]][1]
+  wave <- x[[2]][1]
   
+  print(subject)
+  print(wave)
+  
+  # filter to the relevant df_output 
+  timecourses <- filter(merged_timecourses, subject_id == subject & wave == wave) %>% 
+     pivot_wider(names_from = roi, values_from = c(mean, sd)) # make a wide dataframe with separate mean and sd columns per ROI
+
+  if (nrow(timecourses) >= 385){
+    
+    timecourses_trunc <- timecourses[sample(nrow(timecourses), 385), ] # subsample to 385 volumes
+  
+    vmPFC_NAcc <- data.frame(subject_id = unique(timecourses_trunc$subject_id),
+                             wave = unique(timecourses_trunc$wave),
+                             rs_cor = round(cor(timecourses_trunc$mean_vmPFC, timecourses_trunc$mean_NAcc), 3),
+                             coi = "vmPFC_NAcc")
+  
+    aud_NAcc <- data.frame(subject_id = unique(timecourses_trunc$subject_id),
+                             wave = unique(timecourses_trunc$wave),
+                             rs_cor = round(cor(timecourses_trunc$mean_aud, timecourses_trunc$mean_NAcc), 3),
+                             coi = "aud_NAcc")
+  
+    vis_NAcc <- data.frame(subject_id = unique(timecourses_trunc$subject_id),
+                             wave = unique(timecourses_trunc$wave),
+                             rs_cor = round(cor(timecourses_trunc$mean_vis, timecourses_trunc$mean_NAcc), 3),
+                             coi = "vis_NAcc")
+  
+    # bind the output
+    rs_cor <- rbind(vmPFC_NAcc, aud_NAcc, vis_NAcc)
+    rs_cor$Zcor <- round(DescTools::FisherZ(rs_cor$rs_cor), 3)
+    rs_cor 
+  } else{
+
+    rs_cor <- data.frame(subject_id = unique(timecourses$subject_id),
+                         wave = unique(timecourses$wave),
+                         rs_cor = NA,
+                         coi = NA,
+                         Zcor = NA)
+}
 })
 
-df_output <- do.call(rbind, output)
+merged_rs_cors <- do.call(rbind, output)
+merged_rs_cors$wave <- factor(merged_rs_cors$wave, levels = c("wave1", "wave2", "wave3"))
 
-df_output_wide <- df_output %>% 
-  pivot_wider(names_from = roi, values_from = value)
+write.table(merged_rs_cors, paste0(output_dir, "/merged_rs_cors.csv"), row.names = FALSE, sep = ",")
 
-temp <- df_output_wide %>% filter(subject_id == "002w01") 
+ggplot(filter(merged_rs_cors, !is.na(rs_cor)), aes(x = coi, y = Zcor, fill = coi)) + 
+  geom_violin() + 
+  geom_point(size = 0.2) + 
+  facet_grid(. ~ wave)
 
+ggplot(filter(merged_rs_cors, !is.na(rs_cor)), aes(x = wave, y = Zcor, fill = wave)) + 
+  geom_violin() + 
+  geom_point(size = 0.2) + 
+  facet_grid(. ~ coi)
 
-
-#         do.call(rbind,
-#           lapply(paste0(task_summary_dir, "/wave2/", summary_files_wave2), import)),
-#         do.call(rbind,
-#           lapply(paste0(task_summary_dir, "/wave3/", summary_files_wave3), import)))
-# 
-# write.csv(merged_summary_files, paste0(task_summary_dir, "merged_disclosure_summary_files.csv"))
-
+# merged_rs_cors[which(merged_rs_cors$Zcor > .5), ]
+# which(subject_list == "014w01")
 ```
