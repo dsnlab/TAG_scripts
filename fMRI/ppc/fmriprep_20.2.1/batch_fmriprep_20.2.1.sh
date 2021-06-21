@@ -7,7 +7,8 @@
 # It saves the ouput and error files in their specified directories.
 
 SUBJLIST_FILENAME=$1
-PARTITION=$2
+FMAPLESS_FILENAME=$2
+PARTITION=$3
 
 # Set your directories
 
@@ -16,7 +17,7 @@ container=BIDS/SingularityContainers/fmriprep-20.2.1.simg
 study="tag"
 
 # Set subject list
-SUBJLIST=`cat "$SUBJLIST_FILENAME".txt`
+SUBJLIST=`cat "$SUBJLIST_FILENAME"`
 
 # 
 for SUBJ in $SUBJLIST; do
@@ -24,11 +25,11 @@ for SUBJ in $SUBJLIST; do
 subid=`echo $SUBJ|awk '{print $1}' FS=","`
 sessid=`echo $SUBJ|awk '{print $2}' FS=","` 
 
-if [[ "$subid" =~ $(echo ^\($(paste -sd'|' "$SUBJLIST_FILENAME"_fmapless.txt)\)$) ]]; then
+if [[ "$subid" =~ $(echo ^\($(paste -sd'|' "$FMAPLESS_FILENAME")\)$) ]]; then
     echo "run $subid fmapless" 
 
     sbatch --export subid=${subid},sessid=${sessid},group_dir=${group_dir},study=${study},container=${container} \
---job-name ${subid}fmriprep_20.2.1 --account=dsnlab --partition=$PARTITION --time=0-23:50:00 --mem=40G --cpus-per-task=8 \
+--job-name ${subid}fmriprep_20.2.1 --account=dsnlab --partition=$PARTITION --time=0-23:50:00 --mem=35G --cpus-per-task=8 \
 -o "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/fmriprep_20.2.1/output/"${subid}"_fmriprep_20.2.1_fmapless_output.txt \
 -e "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/fmriprep_20.2.1/output/"${subid}"_fmriprep_20.2.1_fmapless_error.txt \
 job_fmriprep_20.2.1_fmapless.sh
@@ -37,7 +38,7 @@ else
     echo "run $subid with fieldmap"  
 
     sbatch --export subid=${subid},sessid=${sessid},group_dir=${group_dir},study=${study},container=${container} \
---job-name ${subid}fmriprep_20.2.1 --account=dsnlab --partition=$PARTITION --time=0-23:50:00 --mem=40G --cpus-per-task=8 \
+--job-name ${subid}fmriprep_20.2.1 --account=dsnlab --partition=$PARTITION --time=0-23:50:00 --mem=35G --cpus-per-task=8 \
 -o "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/fmriprep_20.2.1/output/"${subid}"_fmriprep_20.2.1_output.txt \
 -e "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/fmriprep_20.2.1/output/"${subid}"_fmriprep_20.2.1_error.txt \
 job_fmriprep_20.2.1.sh

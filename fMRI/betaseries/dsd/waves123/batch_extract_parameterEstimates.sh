@@ -19,7 +19,7 @@ SUBJLIST=`cat ${SUBJLIST_FILENAME}`
 #SHELL_SCRIPT=extract_parameterEstimates.sh
 
 # FP the results files
-RESULTS_INFIX=extract_pe
+RESULTS_INFIX=extract_pe_ft
 
 # Set output dir and make it if it doesn't exist
 OUTPUTDIR=${STUDY}/fMRI/betaseries/dsd/waves123/output

@@ -22,9 +22,9 @@ betas=`echo $(printf "beta_%04d.nii\n" {1..41})`
 #for WAVE in ${waves[@]} ; do
 
 # paths
-beta_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/waves123/betaseries/sub-TAG"${SUB}" #beta directory
+beta_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/waves123/betaseries/full_trial/sub-TAG"${SUB}" #beta directory
 roi_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/roi/cheng_spf  #roi directory
-output_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/waves123/betaseries/parameterEstimates #parameter e$
+output_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/waves123/betaseries/full_trial/parameterEstimates #parameter e$
 
 if [ ! -d ${output_dir} ]; then
         mkdir -p ${output_dir}

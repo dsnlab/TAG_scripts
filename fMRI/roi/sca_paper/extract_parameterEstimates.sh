@@ -35,18 +35,20 @@ con_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/svc/wave1and2/ev
 # ------------------------------------------------------------------------------------------
 # HCP atlas
 for roi in ${hcp_rois[@]}; do 
-3dAllineate -overwrite -source "${roi_dir}"/"${roi}".nii.gz -master "${con_dir}"/mask.nii -final NN -1Dparam_apply '1D: 12@0'\' -prefix "${roi_dir}"/aligned_"${roi}"
+3dAllineate -overwrite -source "${roi_dir}"/"${roi}".nii.gz -master "${con_dir}"/mask.nii -final NN -1Dparam_apply '1D: 12@0'\' -prefix "${roi_dir}"/aligned_"${roi}"_"${SUB}"
 for con in ${cons_files[@]}; do 
-echo "${SUB}" "${wave}" "${model}" "${con}" HCP "${roi}" `3dmaskave -sigma -quiet -mask "${roi_dir}"/aligned_"${roi}"+tlrc "${con_dir}"/"${con}"` >> "${output_dir}"/"${SUB}"_parameterEstimates.txt
+echo "${SUB}" "${wave}" "${model}" "${con}" HCP "${roi}" `3dmaskave -sigma -quiet -mask "${roi_dir}"/aligned_"${roi}"_"${SUB}"+tlrc "${con_dir}"/"${con}"` >> "${output_dir}"/"${SUB}"_parameterEstimates.txt
 done
+rm  "${roi_dir}"/aligned_"${roi}"_"${SUB}"*
 done
 
 # Schaefer atlas
 for roi in ${schaefer_rois[@]}; do 
-3dAllineate -overwrite -source "${roi_dir}"/"${roi}".nii.gz -master "${con_dir}"/mask.nii -final NN -1Dparam_apply '1D: 12@0'\' -prefix "${roi_dir}"/aligned_"${roi}"
+3dAllineate -overwrite -source "${roi_dir}"/"${roi}".nii.gz -master "${con_dir}"/mask.nii -final NN -1Dparam_apply '1D: 12@0'\' -prefix "${roi_dir}"/aligned_"${roi}"_"${SUB}"
 for con in ${cons_files[@]}; do 
-echo "${SUB}" "${wave}" "${model}" "${con}" schaefer "${roi}" `3dmaskave -sigma -quiet -mask "${roi_dir}"/aligned_"${roi}"+tlrc "${con_dir}"/"${con}"` >> "${output_dir}"/"${SUB}"_parameterEstimates.txt
+echo "${SUB}" "${wave}" "${model}" "${con}" schaefer "${roi}" `3dmaskave -sigma -quiet -mask "${roi_dir}"/aligned_"${roi}"_"${SUB}"+tlrc "${con_dir}"/"${con}"` >> "${output_dir}"/"${SUB}"_parameterEstimates.txt
 done
+rm  "${roi_dir}"/aligned_"${roi}"_"${SUB}"*
 done
 
 done

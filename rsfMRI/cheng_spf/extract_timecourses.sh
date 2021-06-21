@@ -34,6 +34,6 @@ for roi in ${rois[@]}; do
 	
 	3dAllineate -source "${roi_dir}"/"${roi}".nii.gz -master "${xcp_sub_dir}"/norm/sub-TAG"${SUB}"_ses-"${WAVE}"_run-"${RUN}"_maskStd.nii.gz -final NN -1Dparam_apply '1D: 12@0'\' -prefix "${roi_dir}"/aligned/"${SUB}"_run-"${RUN}"_xcp_aligned_"${roi}"
 
-	echo ${SUB} ${RUN} `3dmaskave -sigma -quiet -mask "${roi_dir}"/aligned/"${SUB}"_run-"${RUN}"_xcp_aligned_"${roi}"+orig "${xcp_sub_dir}"/norm/sub-TAG"${SUB}"_ses-"${WAVE}"_run-"${RUN}"_std.nii.gz` >> "${output_dir}"/"${SUB}"_run-"${RUN}"_"${roi}"_timecourse.txt
+	echo ${SUB} ${WAVE} ${roi} ${RUN} `3dmaskave -sigma -quiet -mask "${roi_dir}"/aligned/"${SUB}"_run-"${RUN}"_xcp_aligned_"${roi}"+orig "${xcp_sub_dir}"/norm/sub-TAG"${SUB}"_ses-"${WAVE}"_run-"${RUN}"_std.nii.gz` > "${output_dir}"/"${SUB}"_run-"${RUN}"_"${roi}"_timecourse.txt
 
 done

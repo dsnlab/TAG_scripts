@@ -47,7 +47,7 @@ for SUB in $SUBJLIST; do
 		 	-o ${OUTPUTDIR}/${SUB}_${RESULTS_INFIX}.log \
 		 	--cpus-per-task=${cpuspertask} \
 		 	--mem-per-cpu=${mempercpu} \
-			--partition=short \
+			--partition=ctn \
 			--account=dsnlab \
 			--time=0-01:00:00 \
 		 	${SHELL_SCRIPT}
