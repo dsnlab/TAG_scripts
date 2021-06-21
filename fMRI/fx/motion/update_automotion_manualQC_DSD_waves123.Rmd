@@ -80,7 +80,7 @@ For all participants, remove the header and move to the correct location only.
 
 automotion_rptxt_filenames <- list.files(motionDir2)
 
-redo_automotion_subjects = c("sub-TAG088w01") #, "sub-TAG048w03")
+redo_automotion_subjects = c("sub-TAG140w01") #, "sub-TAG048w03")
 idx = which(startsWith(automotion_rptxt_filenames, redo_automotion_subjects[1]))
 
 output <- lapply(str_split(automotion_rptxt_filenames[idx], "_"), function(x) {

@@ -23,7 +23,8 @@ w2_pse_df$wave = 2
 
 w3_pse_df <- import(paste0(inputDir, 'W3_results_no_hdr_20Feb20.csv'))
 w3_pse_df_extras <- import(paste0(inputDir, 'results_no_hdr_W3_extras_26Feb20.csv'))
-w3_pse_df <- rbind(w3_pse_df, w3_pse_df_extras)
+w3_pse_df_precovid <- import(paste0(inputDir, 'results_no_hdr_W3_pre_covid_17Jun21.csv'))
+w3_pse_df <- rbind(w3_pse_df, w3_pse_df_extras, w3_pse_df_precovid)
 colnames(w3_pse_df)<- headers 
 w3_pse_df$wave = 3
 
@@ -48,5 +49,5 @@ pse_df_summary <- pse_df %>%
             sd_loss_per_affect = sd(loss_per_affect, na.rm = TRUE)) #%>% 
   #pivot_longer(cols = -wave, names_to = "param", values_to = "values")
 
-
-write.csv(pse_df_summary, paste0(inputDir, "disclosure_summary_allWaves_20200228.csv"))
+write.csv(pse_df, paste0(inputDir, "disclosure_data_waves123_20210617.csv"))
+write.csv(pse_df_summary, paste0(inputDir, "disclosure_summary_allWaves_20210617.csv"))

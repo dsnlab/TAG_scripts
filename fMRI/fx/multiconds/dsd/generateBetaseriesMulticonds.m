@@ -13,7 +13,7 @@
 clear all
 
 % which wave?
-wave_num = '2';
+wave_num = '1';
 
 % which cond? disclosure or eval
 cond = 'full_trial';
@@ -29,13 +29,15 @@ d = dir(fullfile(input_dir,'*summary.csv'));
 
 % for each subject and run
 for k=1:length(d)
-    
+
+k = 1;
 cd (input_dir)
 
 filename = d(k).name;
 fid=fopen(filename, 'r');
 % disc and eval: M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%s%f%f\n','delimiter',',','Headerlines',1); 
-M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%f%f%s%f%f\n','delimiter',',','Headerlines',1); 
+%M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%f%f%s%f%f\n','delimiter',',','Headerlines',1); 
+M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%f%f%s%f%f','delimiter',',','Headerlines',1); 
 fclose(fid);
 
 % SET NAMES BASED ON CONDITIONS THAT ARE PRESENT
@@ -53,7 +55,7 @@ M{14} = strrep(M{14},'}','');
 % PREPARE ONSETS & DURATIONS
 % changing durations from double to cell format (previously 13 and 14)
 M{15} = num2cell(M{15});
-M{16} = num2cell(M{16 });
+M{16} = num2cell(M{16});
 
 names = transpose(M{14});
 onsets = transpose(M{15});

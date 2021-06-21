@@ -92,21 +92,24 @@ longDF <- lapply(X=dsdFiles$dsdFiles, FUN=function(file) {
 longDF <- rbindlist(longDF)
 
 # filter dsd files to be in 
-extras <- c(10, 18, 32, 42, 88, 160, 164, 177, 210)
+extras <- c(14,99,112,132,167,192)# c(10, 18, 32, 42, 88, 160, 164, 177, 210) 
 test <- longDF %>% 
   filter((sid %in% extras) & wave == 3)
 
-write.csv(longDF,paste0(outDataDir,'dsd_trials_long.csv'),row.names=F)
+# write.csv(longDF,paste0(outDataDir,'dsd_trials_long.csv'),row.names=F)
 ```
 
 #Save subject-specific files for behavioral analyses (i.e. PSE analyses in Matlab)
 ```{r}
+
+longDF <- read.csv(paste0(outDataDir,'dsd_trials_long.csv'))
+
 chosen_wave = 3
 out_df <- longDF %>% filter(wave==chosen_wave)
 #ids <- as.vector(unique(out_df$sid))
 ids <- extras
 
-files <- lapply(X=ids, df=out_df, FUN=function(id, df) {
+files <- lapply(X=ids[2], df=out_df, FUN=function(id, df) {
   
   df <- df %>% filter(sid == id) %>% select(-statement) %>%
     mutate(affective = ifelse(affective==TRUE,1,
@@ -116,7 +119,7 @@ files <- lapply(X=ids, df=out_df, FUN=function(id, df) {
   
     fid = str_pad(id, 3, 0, side = "left")
     
-  write.table(df, file=paste0(outDataDir,'subjects/Wave3/tag',fid,'_w',chosen_wave,'.csv'),sep=",",row.names=F,col.names=F,na = "")
+  write.table(df, file=paste0(outDataDir,'subjects/Wave3/pre_covid/tag',fid,'_w',chosen_wave,'.csv'),sep=",",row.names=F,col.names=F,na = "")
    })
   
 ```
