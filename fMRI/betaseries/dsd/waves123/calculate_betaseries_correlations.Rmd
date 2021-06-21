@@ -1,0 +1,569 @@
+---
+title: "Calculate betaseries regressors"
+author: "Theresa Cheng"
+date: "6/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load packages
+packages <- c("ggplot2", "tidyr", "stringr", "knitr","corrplot", "dplyr", "psych", "rio", "DescTools")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
+  install.packages(setdiff(packages, rownames(installed.packages())))  
+}
+lapply(packages, library, character.only = TRUE)
+
+# Inputs
+param_input_dir <- "/Volumes/psych-cog/dsnlab/cheng_spf/data/betaseries_paramEst/"
+task_summary_dir <- "/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/betaseries/full_trial_summary/"
+subjects_dir <- "/Volumes/psych-cog/dsnlab/cheng_spf/subjects/dsd_subject_lists"
+fx_model_type <- "full_trial"
+
+# Outputs 
+output_dir <- "/Volumes/psych-cog/dsnlab/cheng_spf/data/betaseries_paramEst/summaries"
+```
+
+```{r create additional inputs, include = FALSE}
+
+rerun_merge_summaries <- FALSE
+
+if (rerun_merge_summaries == TRUE) {
+  # complete_betas <- df$beta
+  # write.table(complete_betas, "/Volumes/psych-cog/dsnlab/cheng_spf/data/betaseries_paramEst/complete_betas.txt",col.names = FALSE, row.names = FALSE)
+
+  summary_files_wave1 <- list.files(paste0(task_summary_dir, "wave1")) 
+  summary_files_wave2 <- list.files(paste0(task_summary_dir, "wave2"))
+  summary_files_wave3 <- list.files(paste0(task_summary_dir, "wave3"))
+  
+  merged_summary_files <-
+    rbind(do.call(rbind,
+            lapply(paste0(task_summary_dir, "/wave1/", summary_files_wave1), import)),
+          do.call(rbind,
+            lapply(paste0(task_summary_dir, "/wave2/", summary_files_wave2), import)),
+          do.call(rbind,
+            lapply(paste0(task_summary_dir, "/wave3/", summary_files_wave3), import)))
+   
+  write.csv(merged_summary_files, paste0(task_summary_dir, "merged_full_trial_summary_files.csv"))
+} 
+```
+
+```{r load inputs}
+
+file_list <- list.files(paste0(param_input_dir, "full_trial"))
+complete_betas <- import(paste0(param_input_dir, "complete_betas.txt"), header = FALSE)
+# merged_disc_summary_files <- import(paste0(task_summary_dir, "merged_disclosure_summary_files.csv"))
+# merged_disc_summary_files$subject_id <- unlist(lapply(str_split(merged_disc_summary_files$subject_id, "TAG"), function(x){x[2]}))
+
+merged_full_trial_summary_files <- import(paste0(task_summary_dir, "merged_full_trial_summary_files.csv"))
+merged_full_trial_summary_files$subject_id <- unlist(lapply(str_split(merged_full_trial_summary_files$subject_id, "TAG"), function(x){x[2]}))
+
+subject_list_both_runs <- import(paste0(subjects_dir, "/dsd_both_runs.txt"), header = FALSE)
+colnames(subject_list_both_runs) <- "subject_id"
+
+subject_list_single_run <- import(paste0(subjects_dir, "subject_list_single_run_labeled.txt"), header = FALSE)
+colnames(subject_list_single_run) <- c("subject_id","run")
+```
+
+```{r examine task data}
+
+trials_per_subject <- data.frame(table(merged_full_trial_summary_files$subject_id))
+colnames(trials_per_subject) <- c("subject_id", "num_trials")
+
+trials_per_subject <- trials_per_subject %>% 
+  mutate(both_runs = ifelse(num_trials == "82", 1, 0), 
+         single_run = ifelse(num_trials == "41", 1, 0), 
+         atypical_run = ifelse(both_runs == 0 & single_run == 0, 1, 0))
+
+trial_summary <- merged_full_trial_summary_files %>% 
+  group_by(subject_id, run) %>% 
+  summarise(num_trials = max(trial))
+
+trial_summary_wide <- pivot_wider(trial_summary, names_from = run, values_from = num_trials, names_prefix = "run")
+
+# trial_summary_wide <- trial_summary_wide %>% 
+#   mutate(#both_runs = ifelse(run1 ==41 & run2 == 41, 1, 0), # index participants with two complete runs -- use imported subject list
+#          # single_run = ifelse((run1 == 41 & is.na(run2)) | (run2 == 41 & is.na(run1)), 1, 0), # with only a single run -- use imported subject list
+#          atypical_run = ifelse(run1 != 41 | run2 != 41, 1, 0))
+
+# How many participants should be excluded for having an atypical number of runs? 
+atypical_runs <- trial_summary_wide[which(trials_per_subject$atypical_run == 1), ]
+
+subject_list_both_runs[which(subject_list_both_runs$subject_id %in% atypical_runs$subject_id), ] # four participants with two runs have an atypical number of trials per run
+subject_list_single_run[which(subject_list_single_run$subject_id %in% atypical_runs$subject_id), ] # no participants with only one run have an atypical number of trials per run
+
+# create separate file lists for participants with two runs vs. only one run
+file_list_df <- data.frame(subject_id = unlist(lapply(str_split(file_list, "_"), function(x){x[1]})),
+           file_name = file_list)
+
+file_list_both_runs_df <- file_list_df %>% 
+  filter(subject_id %in% subject_list_both_runs$subject_id)
+
+file_list_single_run_df <- file_list_df %>% 
+  filter(subject_id %in% subject_list_single_run$subject_id)
+
+file_list_atypical_runs_df <- file_list_df %>% 
+  filter(subject_id %in% atypical_runs$subject_id)
+
+not_atypical <- c("030w01", "094w02", "143w02", "200w01", "210w01") # these participants have just a single run, and the run that is NOT included is atypical
+
+file_list_atypical_runs_df <- filter(file_list_atypical_runs_df, !(subject_id %in% not_atypical))
+```
+
+```{r both runs: calculate betas}
+
+# for all participants with both runs (typical number of trials)
+output_both_runs <- apply(file_list_both_runs_df, 1, function(x) {
+  # read in parameter estimates 
+  df <- read.delim(paste0(param_input_dir, "full_trial/", x[[2]]), sep = "", header = FALSE)
+  
+  if (!(x[[1]] %in% atypical_runs$subject_id)){
+
+    # if there are the correct number of columns, then
+    if (length(df) == 5) {
+    
+      # format dataframe
+      colnames(df) <- c("subject_id", "beta", "roi", "mean", "sd")
+      levels(df$roi) <- c("vmPFC", "NAcc", "aud", "vis") # rename rois
+
+      df_wide <- pivot_wider(df, names_from = roi, values_from = c(mean, sd)) %>% 
+        filter(beta != "beta_0088.nii")
+    
+      # label trials as intimate or superficial
+      print(x[[1]])
+      trial_data <- filter(merged_full_trial_summary_files, subject_id == x[[1]])
+      df_wide$intimate_cond <- trial_data$intimate_cond
+      
+      upper_limit_NAcc <- mean(df_wide$mean_NAcc) + 3*sd(df_wide$mean_NAcc)
+      lower_limit_NAcc <- mean(df_wide$mean_NAcc) - 3*sd(df_wide$mean_NAcc)
+      
+      num_censored <- sum(df_wide$mean_NAcc > upper_limit_NAcc | df_wide$mean_NAcc < lower_limit_NAcc)
+      
+      df_wide <- df_wide %>% 
+        filter(mean_NAcc < upper_limit_NAcc & mean_NAcc > lower_limit_NAcc )
+
+      upper_limit_vmPFC <- mean(df_wide$mean_vmPFC) + 3*sd(df_wide$mean_vmPFC)
+      lower_limit_vmPFC <- mean(df_wide$mean_vmPFC) - 3*sd(df_wide$mean_vmPFC)
+      
+      num_censored <- num_censored + sum(df_wide$mean_vmPFC > upper_limit_vmPFC | df_wide$mean_vmPFC < lower_limit_vmPFC)
+      
+      df_wide <- df_wide %>% 
+        filter(mean_vmPFC < upper_limit_vmPFC & mean_vmPFC > lower_limit_vmPFC)
+      
+      # create separate data frames for intimate and superficial trials
+      df_wide_INT <- df_wide %>% 
+        filter(intimate_cond == 1)
+      
+      df_wide_SUP <- df_wide %>% 
+        filter(intimate_cond == 0)
+      
+      ##  NAcc_vmPFC
+      # run regression models 
+      vmPFC_NAcc_ALL <- lm(mean_vmPFC ~ mean_NAcc, df_wide)
+      vmPFC_NAcc_INT <- lm(mean_vmPFC ~ mean_NAcc, df_wide_INT)
+      vmPFC_NAcc_SUP <- lm(mean_vmPFC ~ mean_NAcc, df_wide_SUP)
+      
+      # save output 
+      vmPFC_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
+                               bs_cor_ALL = round(cor(df_wide$mean_vmPFC, df_wide$mean_NAcc), 3),
+                               bs_cor_INT = round(cor(df_wide_INT$mean_vmPFC, df_wide_INT$mean_NAcc), 3), # create an intimate, superficial, and overall correlation value
+                               bs_cor_SUP = round(cor(df_wide_SUP$mean_vmPFC, df_wide_SUP$mean_NAcc), 3),
+                               bs_beta_ALL = round(vmPFC_NAcc_ALL$coefficients[[2]], 3),
+                               bs_beta_INT = round(vmPFC_NAcc_INT$coefficients[[2]], 3),
+                               bs_beta_SUP = round(vmPFC_NAcc_SUP$coefficients[[2]], 3),
+                               num_trials = nrow(df_wide),
+                               coi = "vmPFC_NAcc",
+                               num_censored = num_censored,
+                               completeness = ifelse(nrow(df_wide == 82), "both_runs", "something weird happened"))
+      
+      ## NAcc-auditory
+      
+      # run regression models 
+      aud_NAcc_ALL <- lm(mean_aud ~ mean_NAcc, df_wide)
+      aud_NAcc_INT <- lm(mean_aud ~ mean_NAcc, df_wide_INT)
+      aud_NAcc_SUP <- lm(mean_aud ~ mean_NAcc, df_wide_SUP)
+      
+      aud_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
+                             bs_cor_ALL = round(cor(df_wide$mean_aud, df_wide$mean_NAcc), 3),
+                             bs_cor_INT = round(cor(df_wide_INT$mean_aud, df_wide_INT$mean_NAcc), 3), # create an intimate, superficial, and overall correlation value
+                             bs_cor_SUP = round(cor(df_wide_SUP$mean_aud, df_wide_SUP$mean_NAcc), 3),
+                             bs_beta_ALL = round(aud_NAcc_ALL$coefficients[[2]], 3),
+                             bs_beta_INT = round(aud_NAcc_INT$coefficients[[2]], 3),
+                             bs_beta_SUP = round(aud_NAcc_SUP$coefficients[[2]], 3),
+                             num_trials = nrow(df_wide),
+                             coi = "aud_NAcc",
+                             num_censored = num_censored,
+                             completeness = ifelse(nrow(df_wide == 82), "both_runs", "something weird happened"))
+      
+      ## vis 
+      
+      # run regression models 
+      vis_NAcc_ALL <- lm(mean_vis ~ mean_NAcc, df_wide)
+      vis_NAcc_INT <- lm(mean_vis ~ mean_NAcc, df_wide_INT)
+      vis_NAcc_SUP <- lm(mean_vis ~ mean_NAcc, df_wide_SUP)
+      
+      vis_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
+                             bs_cor_ALL = round(cor(df_wide$mean_vis, df_wide$mean_NAcc), 3),
+                             bs_cor_INT = round(cor(df_wide_INT$mean_vis, df_wide_INT$mean_NAcc), 3), # create an intimate, superficial, and overall correlation value
+                             bs_cor_SUP = round(cor(df_wide_SUP$mean_vis, df_wide_SUP$mean_NAcc), 3),
+                             bs_beta_ALL = round(vis_NAcc_ALL$coefficients[[2]], 3),
+                             bs_beta_INT = round(vis_NAcc_INT$coefficients[[2]], 3),
+                             bs_beta_SUP = round(vis_NAcc_SUP$coefficients[[2]], 3),
+                             num_trials = nrow(df_wide),
+                             coi = "vis_NAcc",
+                             num_censored = num_censored,
+                             completeness = ifelse(nrow(df_wide == 82), "both_runs", "something weird happened"))
+      
+      rbind(vmPFC_NAcc, aud_NAcc, vis_NAcc)
+  
+    } else
+        print(paste(x[[1]], "is missing columns", sep = " "))
+  } else 
+      print(paste(x[[1]], "has an atypical number of runs ", sep = " "))
+  })
+
+df_output_both_runs <- do.call(rbind, output_both_runs)
+df_output_both_runs <- filter(df_output_both_runs, !is.na(subject_id))
+```
+
+```{r single run: calculate betas}
+
+output_single_run <- apply(file_list_single_run_df, 1, function(x) {
+  # read in parameter estimates 
+  df <- read.delim(paste0(param_input_dir, "full_trial/", x[[2]]), sep = "", header = FALSE)
+  
+  if (!(x[[1]] %in% atypical_runs$subject_id)){
+
+    # if there are the correct number of columns, then
+    if (length(df) == 5) {
+    
+      # format dataframe
+      colnames(df) <- c("subject_id", "beta", "roi", "mean", "sd")
+      levels(df$roi) <- c("vmPFC", "NAcc", "aud", "vis") # rename rois
+      df_wide <- pivot_wider(df, names_from = roi, values_from = c(mean, sd))
+      df_wide <- df_wide[1:41, ]
+    
+      # figure out DSD1 or DSD2
+      run <- filter(subject_list_single_run, subject_id == x[[1]]) %>% 
+        select(run)
+      
+      # label trials as intimate or superficial
+      print(x[[1]])
+      trial_data <- filter(merged_full_trial_summary_files, subject_id == x[[1]]) %>% 
+        filter(run == run[[1]])
+      
+      df_wide$intimate_cond <- trial_data$intimate_cond
+      
+      upper_limit_NAcc <- mean(df_wide$mean_NAcc) + 3*sd(df_wide$mean_NAcc)
+      lower_limit_NAcc <- mean(df_wide$mean_NAcc) - 3*sd(df_wide$mean_NAcc)
+      
+      num_censored <- sum(df_wide$mean_NAcc > upper_limit_NAcc | df_wide$mean_NAcc < lower_limit_NAcc)
+      
+      df_wide <- df_wide %>% 
+        filter(mean_NAcc < upper_limit_NAcc & mean_NAcc > lower_limit_NAcc )
+
+      upper_limit_vmPFC <- mean(df_wide$mean_vmPFC) + 3*sd(df_wide$mean_vmPFC)
+      lower_limit_vmPFC <- mean(df_wide$mean_vmPFC) - 3*sd(df_wide$mean_vmPFC)
+      
+      num_censored <- num_censored + sum(df_wide$mean_vmPFC > upper_limit_vmPFC | df_wide$mean_vmPFC < lower_limit_vmPFC)
+      
+      df_wide <- df_wide %>% 
+        filter(mean_vmPFC < upper_limit_vmPFC & mean_vmPFC > lower_limit_vmPFC)
+      
+      # create separate data frames for intimate and superficial trials
+      df_wide_INT <- df_wide %>% 
+        filter(intimate_cond == 1)
+      
+      df_wide_SUP <- df_wide %>% 
+        filter(intimate_cond == 0)
+      
+      ##  NAcc_vmPFC
+      # run regression models 
+      vmPFC_NAcc_ALL <- lm(mean_vmPFC ~ mean_NAcc, df_wide)
+      vmPFC_NAcc_INT <- lm(mean_vmPFC ~ mean_NAcc, df_wide_INT)
+      vmPFC_NAcc_SUP <- lm(mean_vmPFC ~ mean_NAcc, df_wide_SUP)
+      
+      # save output 
+      vmPFC_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
+                               bs_cor_ALL = round(cor(df_wide$mean_vmPFC, df_wide$mean_NAcc), 3),
+                               bs_cor_INT = round(cor(df_wide_INT$mean_vmPFC, df_wide_INT$mean_NAcc), 3), # create an intimate, superficial, and overall correlation value
+                               bs_cor_SUP = round(cor(df_wide_SUP$mean_vmPFC, df_wide_SUP$mean_NAcc), 3),
+                               bs_beta_ALL = round(vmPFC_NAcc_ALL$coefficients[[2]], 3),
+                               bs_beta_INT = round(vmPFC_NAcc_INT$coefficients[[2]], 3),
+                               bs_beta_SUP = round(vmPFC_NAcc_SUP$coefficients[[2]], 3),
+                               num_trials = nrow(df_wide),
+                               coi = "vmPFC_NAcc",
+                               num_censored = num_censored,
+                               completeness = ifelse(nrow(df_wide == 82), "both_runs", "something weird happened"))
+      
+      ## NAcc-auditory
+      
+      # run regression models 
+      aud_NAcc_ALL <- lm(mean_aud ~ mean_NAcc, df_wide)
+      aud_NAcc_INT <- lm(mean_aud ~ mean_NAcc, df_wide_INT)
+      aud_NAcc_SUP <- lm(mean_aud ~ mean_NAcc, df_wide_SUP)
+      
+      aud_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
+                             bs_cor_ALL = round(cor(df_wide$mean_aud, df_wide$mean_NAcc), 3),
+                             bs_cor_INT = round(cor(df_wide_INT$mean_aud, df_wide_INT$mean_NAcc), 3), # create an intimate, superficial, and overall correlation value
+                             bs_cor_SUP = round(cor(df_wide_SUP$mean_aud, df_wide_SUP$mean_NAcc), 3),
+                             bs_beta_ALL = round(aud_NAcc_ALL$coefficients[[2]], 3),
+                             bs_beta_INT = round(aud_NAcc_INT$coefficients[[2]], 3),
+                             bs_beta_SUP = round(aud_NAcc_SUP$coefficients[[2]], 3),
+                             num_trials = nrow(df_wide),
+                             coi = "aud_NAcc",
+                             num_censored = num_censored,
+                             completeness = ifelse(nrow(df_wide == 82), "both_runs", "something weird happened"))
+      
+      ## vis 
+      
+      # run regression models 
+      vis_NAcc_ALL <- lm(mean_vis ~ mean_NAcc, df_wide)
+      vis_NAcc_INT <- lm(mean_vis ~ mean_NAcc, df_wide_INT)
+      vis_NAcc_SUP <- lm(mean_vis ~ mean_NAcc, df_wide_SUP)
+      
+      vis_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
+                             bs_cor_ALL = round(cor(df_wide$mean_vis, df_wide$mean_NAcc), 3),
+                             bs_cor_INT = round(cor(df_wide_INT$mean_vis, df_wide_INT$mean_NAcc), 3), # create an intimate, superficial, and overall correlation value
+                             bs_cor_SUP = round(cor(df_wide_SUP$mean_vis, df_wide_SUP$mean_NAcc), 3),
+                             bs_beta_ALL = round(vis_NAcc_ALL$coefficients[[2]], 3),
+                             bs_beta_INT = round(vis_NAcc_INT$coefficients[[2]], 3),
+                             bs_beta_SUP = round(vis_NAcc_SUP$coefficients[[2]], 3),
+                             num_trials = nrow(df_wide),
+                             coi = "vis_NAcc",
+                             num_censored = num_censored,
+                             completeness = ifelse(nrow(df_wide == 82), "both_runs", "something weird happened"))
+      
+      rbind(vmPFC_NAcc, aud_NAcc, vis_NAcc)
+  
+    } else
+        print(paste(x[[1]], "is missing columns", sep = " "))
+  } else 
+      print(paste(x[[1]], "has an atypical number of runs ", sep = " "))
+  })
+
+df_output_single_run <- do.call(rbind, output_single_run) 
+df_output_single_run <- filter(df_output_single_run, !is.na(subject_id))
+```
+
+```{r atypical runs: calculate betas}
+
+output_atypical_runs <- apply(file_list_atypical_runs_df, 1, function(x) {
+  # read in parameter estimates 
+  df <- read.delim(paste0(param_input_dir, "full_trial/", x[[2]]), sep = "", header = FALSE)
+
+    # if there are the correct number of columns, then
+    if (length(df) == 5) {
+    
+    print(x[[1]])
+      
+    # format dataframe
+    colnames(df) <- c("subject_id", "beta", "roi", "mean", "sd")
+    levels(df$roi) <- c("vmPFC", "NAcc", "aud", "vis") # rename rois
+    df_wide <- pivot_wider(df, names_from = roi, values_from = c(mean, sd))
+  
+    # select correct trials
+    trial_data <- filter(merged_full_trial_summary_files, subject_id == x[[1]])
+    num_trials_run1 <- filter(trial_summary, subject_id == x[[1]], run == 1)$num_trials 
+    num_trials_run2 <- filter(trial_summary, subject_id == x[[1]], run == 2)$num_trials 
+    
+    betas_run1 <- paste0("beta_", str_pad(c(1:num_trials_run1), 4, side = "left", pad = "0"), ".nii")
+    betas_run2 <- paste0("beta_", str_pad(c((num_trials_run1 + 6) : (num_trials_run1 + 6 + num_trials_run2 -1)), 4, side = "left", pad = "0"), ".nii")
+  
+    df_wide <- df_wide %>% 
+      filter(beta %in% c(betas_run1, betas_run2))
+    
+    # label trials as intimate or superficial
+    df_wide$intimate_cond <- trial_data$intimate_cond
+    
+    upper_limit_NAcc <- mean(df_wide$mean_NAcc) + 3*sd(df_wide$mean_NAcc)
+    lower_limit_NAcc <- mean(df_wide$mean_NAcc) - 3*sd(df_wide$mean_NAcc)
+      
+    num_censored <- sum(df_wide$mean_NAcc > upper_limit_NAcc | df_wide$mean_NAcc < lower_limit_NAcc)
+      
+    df_wide <- df_wide %>% 
+      filter(mean_NAcc < upper_limit_NAcc & mean_NAcc > lower_limit_NAcc )
+
+    upper_limit_vmPFC <- mean(df_wide$mean_vmPFC) + 3*sd(df_wide$mean_vmPFC)
+    lower_limit_vmPFC <- mean(df_wide$mean_vmPFC) - 3*sd(df_wide$mean_vmPFC)
+      
+    num_censored <- num_censored + sum(df_wide$mean_vmPFC > upper_limit_vmPFC | df_wide$mean_vmPFC < lower_limit_vmPFC)
+      
+    df_wide <- df_wide %>% 
+      filter(mean_vmPFC < upper_limit_vmPFC & mean_vmPFC > lower_limit_vmPFC)
+    
+    # create separate data frames for intimate and superficial trials
+    df_wide_INT <- df_wide %>% 
+      filter(intimate_cond == 1)
+    
+    df_wide_SUP <- df_wide %>% 
+      filter(intimate_cond == 0)
+    
+          ##  NAcc_vmPFC
+      # run regression models 
+      vmPFC_NAcc_ALL <- lm(mean_vmPFC ~ mean_NAcc, df_wide)
+      vmPFC_NAcc_INT <- lm(mean_vmPFC ~ mean_NAcc, df_wide_INT)
+      vmPFC_NAcc_SUP <- lm(mean_vmPFC ~ mean_NAcc, df_wide_SUP)
+      
+      # save output 
+      vmPFC_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
+                               bs_cor_ALL = round(cor(df_wide$mean_vmPFC, df_wide$mean_NAcc), 3),
+                               bs_cor_INT = round(cor(df_wide_INT$mean_vmPFC, df_wide_INT$mean_NAcc), 3), # create an intimate, superficial, and overall correlation value
+                               bs_cor_SUP = round(cor(df_wide_SUP$mean_vmPFC, df_wide_SUP$mean_NAcc), 3),
+                               bs_beta_ALL = round(vmPFC_NAcc_ALL$coefficients[[2]], 3),
+                               bs_beta_INT = round(vmPFC_NAcc_INT$coefficients[[2]], 3),
+                               bs_beta_SUP = round(vmPFC_NAcc_SUP$coefficients[[2]], 3),
+                               num_trials = nrow(df_wide),
+                               coi = "vmPFC_NAcc",
+                               num_censored = num_censored,
+                               completeness = ifelse(nrow(df_wide == 82), "both_runs", "something weird happened"))
+      
+      ## NAcc-auditory
+      
+      # run regression models 
+      aud_NAcc_ALL <- lm(mean_aud ~ mean_NAcc, df_wide)
+      aud_NAcc_INT <- lm(mean_aud ~ mean_NAcc, df_wide_INT)
+      aud_NAcc_SUP <- lm(mean_aud ~ mean_NAcc, df_wide_SUP)
+      
+      aud_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
+                             bs_cor_ALL = round(cor(df_wide$mean_aud, df_wide$mean_NAcc), 3),
+                             bs_cor_INT = round(cor(df_wide_INT$mean_aud, df_wide_INT$mean_NAcc), 3), # create an intimate, superficial, and overall correlation value
+                             bs_cor_SUP = round(cor(df_wide_SUP$mean_aud, df_wide_SUP$mean_NAcc), 3),
+                             bs_beta_ALL = round(aud_NAcc_ALL$coefficients[[2]], 3),
+                             bs_beta_INT = round(aud_NAcc_INT$coefficients[[2]], 3),
+                             bs_beta_SUP = round(aud_NAcc_SUP$coefficients[[2]], 3),
+                             num_trials = nrow(df_wide),
+                             coi = "aud_NAcc",
+                             num_censored = num_censored,
+                             completeness = ifelse(nrow(df_wide == 82), "both_runs", "something weird happened"))
+      
+      ## vis 
+      
+      # run regression models 
+      vis_NAcc_ALL <- lm(mean_vis ~ mean_NAcc, df_wide)
+      vis_NAcc_INT <- lm(mean_vis ~ mean_NAcc, df_wide_INT)
+      vis_NAcc_SUP <- lm(mean_vis ~ mean_NAcc, df_wide_SUP)
+      
+      vis_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
+                             bs_cor_ALL = round(cor(df_wide$mean_vis, df_wide$mean_NAcc), 3),
+                             bs_cor_INT = round(cor(df_wide_INT$mean_vis, df_wide_INT$mean_NAcc), 3), # create an intimate, superficial, and overall correlation value
+                             bs_cor_SUP = round(cor(df_wide_SUP$mean_vis, df_wide_SUP$mean_NAcc), 3),
+                             bs_beta_ALL = round(vis_NAcc_ALL$coefficients[[2]], 3),
+                             bs_beta_INT = round(vis_NAcc_INT$coefficients[[2]], 3),
+                             bs_beta_SUP = round(vis_NAcc_SUP$coefficients[[2]], 3),
+                             num_trials = nrow(df_wide),
+                             coi = "vis_NAcc",
+                             num_censored = num_censored,
+                             completeness = ifelse(nrow(df_wide == 82), "both_runs", "something weird happened"))
+      
+      rbind(vmPFC_NAcc, aud_NAcc, vis_NAcc)
+
+  } else
+      print(paste(x[[1]], "is missing columns", sep = " "))
+  })
+
+df_output_atypical_runs <- do.call(rbind, output_atypical_runs)
+
+# for all participants with a single complete run (based on subjects lists and NOT having atypical runs)
+# same as above but make sure to do this for trials 1-41 only
+# label num_trials as 41 + completeness as "single run"
+
+## loop 3
+
+# for participants with an atypical runs -- check manually 
+# but also create a faux design matrix based on their number of trials + regressors
+# same as above but labe
+# label num_trials with the total number of trials + completeness as "atypical number of trials"
+
+# output <- sapply(file_list, function(x) {
+#   df <- read.delim(paste0(param_input_dir, "full_trial/", x), sep = "", header = FALSE)
+#   
+#   if (length(df) != 5) {
+#     
+#     colnames(df)[1] <- "subject_id"
+#     print(paste(unique(df$subject_id), "is missing columns", sep = " "))
+#     
+# } else if (all(df$V2 == complete_betas[[1]])){
+#   
+#     colnames(df) <- c("subject_id", "beta", "roi", "mean", "sd")
+#     df_wide <- pivot_wider(df, names_from = roi, values_from = c(mean, sd))
+#   
+#     data.frame(subject_id = unique(df_wide$subject_id), 
+#              betaseries_corr = round(cor(df_wide$mean_inflated_vmPFC, df_wide$mean_NAcc), 3))
+#   } else if (all(df$V2[1:41] == complete_betas[[1]][1:41])){
+#     colnames(df) <- c("subject_id", "beta", "roi", "mean", "sd")
+# 
+#     df <- filter(df, beta %in% complete_betas[[1]][1:41])
+#     df_wide <- pivot_wider(df, names_from = roi, values_from = c(mean, sd))
+#   
+#     data.frame(subject_id = unique(df_wide$subject_id), 
+#              betaseries_corr = round(cor(df_wide$mean_inflated_vmPFC, df_wide$mean_NAcc), 3))
+#     
+#     } else 
+#       colnames(df)[1] <- "subject_id"
+#     print(paste(unique(df$subject_id), "has an atypical number of trials", sep = " "))
+#   }
+# }
+
+```
+
+```{r merge beta cors from different run types}
+
+#, row.names = FALSE, quote = FALSE, sep = ",")
+
+df_output <- rbind(df_output_both_runs, df_output_single_run, df_output_atypical_runs)
+df_output_cor <- df_output %>% 
+  pivot_longer(cols = c("bs_cor_ALL", "bs_cor_INT", "bs_cor_SUP"), names_to = "condition")
+
+df_output_cor$Zrho <- round(DescTools::FisherZ(as.numeric(df_output_cor$value)), 3)
+
+df_output_betas <- df_output %>% 
+  pivot_longer(cols = c("bs_beta_ALL", "bs_beta_INT", "bs_beta_SUP"), names_to = "condition")
+
+df_output_betas$coi <- ifelse(df_output_betas$coi == "vmPFC_NAcc", "NAcc_vmPFC", 
+                ifelse(df_output_betas$coi == "vis_NAcc", "NAcc_vis",
+                       ifelse(df_output_betas$coi == "aud_NAcc", "NAcc_aud", NA)))
+
+write.table(df_output_betas, paste0(output_dir, "/dsd_full_trial_bs_betas.csv"), row.names = FALSE, quote = FALSE, sep = ",")
+```
+
+```{r high num_censored }
+
+# which participants have three or more trials censored?
+five_or_more_censored <- df_output_betas[which(df_output_betas$num_censored > 5), ] %>% 
+  select(subject_id, num_trials) %>% 
+  distinct()
+```
+
+```{r examine descriptives + outliers}
+
+df_output_betas$value <- as.numeric(df_output_betas$value)
+
+descriptives <- df_output_betas %>% 
+  group_by(coi, condition) %>% 
+  summarise(mean = mean(value), 
+            sd = sd(value)) %>% 
+  mutate(upper_thresh = mean + 3*sd,
+         lower_thresh = mean - 3*sd)
+
+df_output_betas$wave = as.factor(paste0("wave", as.character(str_remove(lapply(str_split(df_output_betas$subject_id, pattern = "w"), function(x) {x[2]}), "0"))))
+df_output_betas$subject_id2 = as.factor(as.character(lapply(str_split(df_output_betas$subject_id, pattern = "w"), function(x) {x[1]})))
+
+ggplot(df_output_betas, aes(x = wave, y = value, group = subject_id2)) + 
+  geom_line(size = .1, color = "gray") + 
+  stat_smooth(aes(group = coi, color = coi)) + 
+  #stat_summary(aes(group = 1), geom = "line", fun.y = mean, color = "red") + 
+  facet_grid(. ~ condition)
+
+## outliers
+b1 <- df_output_betas %>% 
+  filter(condition == "bs_beta_ALL" & coi == "NAcc_vmPFC") %>% 
+  select("value")
+
+ggplot(filter(df_output_betas, condition == "bs_beta_ALL"), aes(x = value, fill = coi))+ 
+  geom_histogram() + 
+  facet_wrap(. ~ coi)
+
+outlier_df <- df_output_betas[which(df_output_betas$value> 2.5), ]
+```

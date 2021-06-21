@@ -11,7 +11,7 @@ lapply(packages, library, character.only = TRUE)
 ## Examine percentage of trash regressors for exclusion and manualQC purposes 
 
 # Set variables
-input_file <- "/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/fmriprep_20.2.1_QC/TAG_summaryRun.csv"
+input_file <- "/Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/fmriprep_20.2.1_QC/auto_motion/TAG_summaryRun.csv"
 
 # Read inputs
 motion_summary <- import(input_file)
@@ -37,5 +37,7 @@ dsd_inspect_summary <- dsd_inspect %>%
   tally()
 dsd_inspect_summary <- dsd_inspect_summary[order(dsd_inspect_summary$wave), ]
 
-
 nrow(dsd_inspect %>% filter(wave == "wave1"))
+
+dsd_motion_15perc <- rbind(dsd_exclude, dsd_inspect)
+saveRDS(dsd_motion_15perc, "/Volumes/psych-cog/dsnlab/cheng_spf/subjects/dsd_motion_15perc.rds")

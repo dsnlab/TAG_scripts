@@ -13,7 +13,7 @@
 clear all
 
 % which wave?
-wave_num = '3';
+wave_num = '1';
 
 % which cond? disclosure or eval
 cond = 'full_trial';
@@ -21,37 +21,45 @@ cond = 'full_trial';
 f = filesep();
 
 % setting directory and listing csv files in matlab directory
-input_dir = ['/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fmri/fx/multiconds/dsd/betaseries/' cond '_summary/wave' wave_num];
-output_dir = ['/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fmri/fx/multiconds/dsd/betaseries/' cond '_nod'];
+input_dir = ['/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/betaseries/' cond '_summary/wave' wave_num];
+output_dir = ['/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/betaseries/' cond '_nod'];
 d = dir(fullfile(input_dir,'*summary.csv'));
 
 %% READ RAW DATA 
 
 % for each subject and run
 for k=1:length(d)
-    
+
+k = 1;
 cd (input_dir)
 
 filename = d(k).name;
 fid=fopen(filename, 'r');
-M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%s%f%f\n','delimiter',',','Headerlines',1); 
+% disc and eval: M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%s%f%f\n','delimiter',',','Headerlines',1); 
+%M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%f%f%s%f%f\n','delimiter',',','Headerlines',1); 
+M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%f%f%s%f%f','delimiter',',','Headerlines',1); 
 fclose(fid);
 
 % SET NAMES BASED ON CONDITIONS THAT ARE PRESENT
 
-% simplify the format of the names vector
-M{12} = strrep(M{12},'"','');
-M{12} = strrep(M{12},'{','');
-M{12} = strrep(M{12},'}','');
+% simplify the format of the names vector (12 for disc and eval, 14 for
+% % full trial)
+% M{12} = strrep(M{12},'"',''); 
+% M{12} = strrep(M{12},'{','');
+% M{12} = strrep(M{12},'}','');
+
+M{14} = strrep(M{14},'"',''); 
+M{14} = strrep(M{14},'{','');
+M{14} = strrep(M{14},'}','');
 
 % PREPARE ONSETS & DURATIONS
-% changing durations from double to cell format
-M{13} = num2cell(M{13});
-M{14} = num2cell(M{14});
+% changing durations from double to cell format (previously 13 and 14)
+M{15} = num2cell(M{15});
+M{16} = num2cell(M{16});
 
-names = transpose(M{12});
-onsets = transpose(M{13});
-durations= transpose(M{14});
+names = transpose(M{14});
+onsets = transpose(M{15});
+durations= transpose(M{16});
 
 % creating a dataframe of names, onsets, durations
 % Mdata = [M{12} M{13} M{14}];

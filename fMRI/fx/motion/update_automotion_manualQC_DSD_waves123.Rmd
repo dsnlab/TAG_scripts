@@ -80,7 +80,10 @@ For all participants, remove the header and move to the correct location only.
 
 automotion_rptxt_filenames <- list.files(motionDir2)
 
-output <- lapply(str_split(automotion_rptxt_filenames, "_"), function(x) {
+redo_automotion_subjects = c("sub-TAG140w01") #, "sub-TAG048w03")
+idx = which(startsWith(automotion_rptxt_filenames, redo_automotion_subjects[1]))
+
+output <- lapply(str_split(automotion_rptxt_filenames[idx], "_"), function(x) {
   subject_id <- x[1]
   ses <- x[2]
   run_num <- substr(x[4], 5, 5)
@@ -92,32 +95,20 @@ output <- lapply(str_split(automotion_rptxt_filenames, "_"), function(x) {
 })
 
 output_df <- do.call(rbind,output)
-output_df$original_filename <- automotion_rptxt_filenames
-output_df <- output_df[-nrow(output_df), ] # remove last row
+output_df$original_filename <- automotion_rptxt_filenames[idx]
+#output_df <- output_df[-nrow(output_df), ] # remove last row
 
 # rename files only within the test folder
 setwd(paste0(motionDir2, "test")) 
 
-## stopped here on 5/28 1:30am - currently waiting to rsync all _desc-motion_regressors.txt into the test folder so that i can run the rest 
-
 # rewrite filenames (should combine with apply function below)
 apply(output_df, 1, function(x){
-  
   target_filename <- x[1]
   original_filename <- x[3]
   
-  file.rename(original_filename, target_filename)
-})
-
-# remove headers
-apply(output_df, 1, function(x){
-  
-  target_filename <- x[1]
-  original_filename <- x[3]
-  
-  rptxt_orig <- import(target_filename)
+  rptxt_orig <- import(original_filename)
   write.table(rptxt_orig, target_filename, col.names = FALSE, row.names = FALSE)
-}) 
+})
 
 # now rsync files beginning with rp* into output directory: rsync -aiv /Volumes/psych-cog/dsnlab/TAG/bids_data/derivatives/fmriprep_20.2.1_QC/auto_motion/test/rp_*.txt /Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/motion/waves123/DSD_manualQC/rp_txt
 ```
@@ -151,6 +142,29 @@ for (i in 1:nrow(subject_ids_for_manualQC_replacement)){
 }
 
 #write.table(rptxt_edited, paste0(outputDir, "rp_txt/rp_sub-", subject_id_manualQC_edit, "_DSD", run_num_manualQC_edit, ".txt"), col.names = FALSE, row.names = FALSE)
+```
+
+```{r clean up duplicate lines error, include = FALSE}
+
+subject_ids_fix_duplicate_lines <- import(paste0(scriptDir, "subject_ids_fix_duplicate_lines.txt"), header = TRUE)
+
+odd = seq(1,450,2)
+
+for (i in 1:nrow(subject_ids_fix_duplicate_lines)){
+  
+  # set subject specific variables
+  subject_id <- subject_ids_fix_duplicate_lines$subject_id[i]
+  wave_num <- subject_ids_fix_duplicate_lines$wave_num[i]
+  run_num <- subject_ids_fix_duplicate_lines$run_num[i]
+  
+  rptxt_orig <- import(paste0(motionDir2, "sub-", subject_id, "_ses-", wave_num, "_task-DSD_run-", run_num, "_desc-motion_regressors.txt"))
+  
+  rptxt_edited <- rptxt_orig[odd, ]
+  
+  write.table(rptxt_edited, paste0(outputDir, "rp_txt/rp_sub-", subject_id, "_DSD", run_num, ".txt"), col.names = FALSE, row.names = FALSE)
+  
+}
+
 ```
 
 # OLD: Wave 1 
