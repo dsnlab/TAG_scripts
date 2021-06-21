@@ -74,6 +74,7 @@ if (rerun_merge_timecourses == TRUE) {
 }
    
 levels(merged_timecourses$roi) <- c("vmPFC", "NAcc", "aud", "vis") # rename rois
+na_timecourses <- filter(merged_timecourses, is.na(merged_timecourses$mean))
 merged_timecourses <- filter(merged_timecourses, !is.na(merged_timecourses$mean))
 ```
 
@@ -85,7 +86,7 @@ subject_list<- subject_list %>%
   distinct()
 
 # for each participant at each wave,
-output <- apply(subject_list[9,], 1, function(x){
+output <- apply(subject_list[220,], 1, function(x){
   
   subject <- x[[1]][1]
   wave <- x[[2]][1]
@@ -104,17 +105,17 @@ output <- apply(subject_list[9,], 1, function(x){
     vmPFC_NAcc <- data.frame(subject_id = unique(timecourses_trunc$subject_id),
                              wave = unique(timecourses_trunc$wave),
                              rs_cor = round(cor(timecourses_trunc$mean_vmPFC, timecourses_trunc$mean_NAcc), 3),
-                             coi = "vmPFC_NAcc")
+                             coi = "NAcc_vmPFC")
   
     aud_NAcc <- data.frame(subject_id = unique(timecourses_trunc$subject_id),
                              wave = unique(timecourses_trunc$wave),
                              rs_cor = round(cor(timecourses_trunc$mean_aud, timecourses_trunc$mean_NAcc), 3),
-                             coi = "aud_NAcc")
+                             coi = "NAcc_aud")
   
     vis_NAcc <- data.frame(subject_id = unique(timecourses_trunc$subject_id),
                              wave = unique(timecourses_trunc$wave),
                              rs_cor = round(cor(timecourses_trunc$mean_vis, timecourses_trunc$mean_NAcc), 3),
-                             coi = "vis_NAcc")
+                             coi = "NAcc_vis")
   
     # bind the output
     rs_cor <- rbind(vmPFC_NAcc, aud_NAcc, vis_NAcc)
@@ -133,6 +134,10 @@ output <- apply(subject_list[9,], 1, function(x){
 merged_rs_cors <- do.call(rbind, output)
 merged_rs_cors$wave <- factor(merged_rs_cors$wave, levels = c("wave1", "wave2", "wave3"))
 
+# merged_rs_cors$coi <- ifelse(merged_rs_cors$coi == "vmPFC_NAcc", "NAcc_vmPFC", 
+#                ifelse(merged_rs_cors$coi == "vis_NAcc", "NAcc_vis",
+#                       ifelse(merged_rs_cors$coi == "aud_NAcc", "NAcc_aud", NA)))
+
 write.table(merged_rs_cors, paste0(output_dir, "/merged_rs_cors.csv"), row.names = FALSE, sep = ",")
 
 ggplot(filter(merged_rs_cors, !is.na(rs_cor)), aes(x = coi, y = Zcor, fill = coi)) + 
@@ -145,6 +150,11 @@ ggplot(filter(merged_rs_cors, !is.na(rs_cor)), aes(x = wave, y = Zcor, fill = wa
   geom_point(size = 0.2) + 
   facet_grid(. ~ coi)
 
+merged_rs_cors <- import(paste0(output_dir, "/merged_rs_cors.csv"))
+
 # merged_rs_cors[which(merged_rs_cors$Zcor > .5), ]
 # which(subject_list == "014w01")
+
+
+
 ```
