@@ -15,8 +15,8 @@ echo ---------------------------------------------------------------------------
 # Set paths and variables
 # ------------------------------------------------------------------------------------------
 # variables
-hcp_rois=(vmPFC pgACC sgACC)
-schaefer_rois=(schaefer_vmPFC schaefer_pgACC schaefer_sgACC)
+hcp_rois=(HCP_PCC) #vmPFC pgACC sgACC)
+schaefer_rois=(schaefer_PCC) #schaefer_vmPFC schaefer_pgACC schaefer_sgACC)
 cons_files=`echo $(printf "con_%04d.nii\n" {1..32})`
 models=(s4_mni_fd  s4_mni_regr  s4_ped_fd  s4_ped_regr  s6_mni_fd  s6_mni_regr  s6_ped_fd  s6_ped_regr)
 waves=(wave1 wave2)
