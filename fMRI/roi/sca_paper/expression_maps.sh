@@ -17,12 +17,12 @@ echo ---------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------
 # variables
 models=(s4_mni_fd  s4_mni_regr  s4_ped_fd  s4_ped_regr  s6_mni_fd  s6_mni_regr  s6_ped_fd  s6_ped_regr)
-maps=(self_referential_association-test_z_FDR_0.01) #RX maps (without file format, specified below as .nii)
+maps=(spmT_0001.nii) #RX maps (without file format, specified below as .nii)
 cons_files=`echo $(printf "con_%04d.nii\n" {1..32})`
 waves=(wave1 wave2)
 
 # paths
-map_dir=/projects/dsnlab/shared/tag/TAG_scripts/fMRI/roi/sca_paper/ #neurosynth map directory
+map_dir=//projects/dsnlab/shared/tag/nonbids_data/fMRI/rx/svc/wave1/task/ #map directory
 output_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/svc/wave1and2/event_alltheways_forsca/dotProducts #parameter estimate output directory
 
 
