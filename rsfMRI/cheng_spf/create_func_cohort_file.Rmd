@@ -105,7 +105,6 @@ if (rerun_confounds == TRUE){
 }
 ```
 
-
 ```{r remove extra runs}
 
 for (i in 1:nrow(inclusion_info_three_runs)){ # for every row of the inclusion info three runs df, remove runs that should not be concatenated
@@ -127,6 +126,10 @@ enough_good_frames <- dataset %>%
   summarise(num_frames_below_thresh = sum(FD_below_thresh)) %>% 
   mutate(enough_good_frames = ifelse(num_frames_below_thresh >= 385, 1, 0), # five minutes of data 
          enough_good_frames_4min30s = ifelse(num_frames_below_thresh >= 347, 1, 0)) # 4 mins 30 seconds of data
+
+temp <- filter(dataset, subjectID=="TAG077w02") %>% 
+  group_by(run) %>% 
+  summarise(num_frames_below_thresh = sum(FD_below_thresh))
 
 enough_good_frames$subject_id = unlist(lapply(str_split(enough_good_frames$subjectID, "TAG"), function(x){x[2]}))
 
@@ -358,8 +361,8 @@ for (i in 1:nrow(inclusion_info_three_runs)){
   }  
 }
 
-
-
 func_cohort <- rbind(func_cohort, func_cohort_three_runs)
 #write.table(func_cohort, paste0(inclusion_info_dir, "func_cohort_files/func_cohort_tag.csv"), row.names = FALSE, quote = FALSE, sep = ",")
+
+func_cohort <- import(paste0(inclusion_info_dir, "func_cohort_files/func_cohort_tag_single_runs.csv"))
 ```

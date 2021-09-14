@@ -2,27 +2,24 @@
 #--------------------------------------------------------------
 # This script executes $SHELL_SCRIPT for $SUB
 #	
-# Marjolein Oct 2020 | Adapted T Cheng June 2021
+# D.Cos 2018.11.06
 #--------------------------------------------------------------
-
-SUBJLIST_FILENAME=$1
-SHELL_SCRIPT=$2
 
 # Set your study
 STUDY=/projects/dsnlab/shared/tag/TAG_scripts
 
 # Set subject list
-SUBJLIST=`cat ${SUBJLIST_FILENAME}`
+SUBJLIST=`cat subject_list.txt`
 #SUBJLIST=`echo "TAG001"`
 
 # Set shell script to execute
-#SHELL_SCRIPT=extract_parameterEstimates.sh
+SHELL_SCRIPT=expression_maps.sh
 
-# FP the results files
-RESULTS_INFIX=extract_pe_ft
+# study the results files
+RESULTS_INFIX=expression
 
 # Set output dir and make it if it doesn't exist
-OUTPUTDIR=${STUDY}/fMRI/betaseries/dsd/waves123/output
+OUTPUTDIR=${STUDY}/fMRI/roi/sca_paper/output
 
 if [ ! -d ${OUTPUTDIR} ]; then
 	mkdir -p ${OUTPUTDIR}
@@ -30,7 +27,7 @@ fi
 
 # Set job parameters
 cpuspertask=1
-mempercpu=8G
+mempercpu=2G
 
 # Create and execute batch job
 for SUB in $SUBJLIST; do
@@ -39,9 +36,9 @@ for SUB in $SUBJLIST; do
 		 	-o ${OUTPUTDIR}/${SUB}_${RESULTS_INFIX}.log \
 		 	--cpus-per-task=${cpuspertask} \
 		 	--mem-per-cpu=${mempercpu} \
-			--account=dsnlab \
-			--partition=ctn \
-			--time=0-00:30:00 \
+		 	--account=dsnlab \
+		 	--partition=ctn,short \
+			--time 0-1:00:00 \
 		 	${SHELL_SCRIPT}
 	 	sleep .25
 done
