@@ -1,7 +1,7 @@
 ---
 title: "Score_Qualtrics"
 author: "Kate, Cameron, Nandi, John, & Sam"
-date: "9 July 2019"
+date: "10 Feb 2022"
 output: html_document
 ---
 
@@ -9,106 +9,132 @@ Set working directory
 ```{r Set Directory, message=FALSE, warning=FALSE, include=FALSE}
 getwd()
 #You should set this to the behavioral directory on the TAG file server 
-workdir='I:/dsnlab/TAG/behavior/' 
+workdir='I:/dsnlab/TAG/behavior/'
+
+#Set this to the path of the credentials file.
+#credsFile<-'~/data/TAG/Questionnaires/Confidential/credentials.yaml.DEFAULT'
+credsFile<-file.path(workdir,"Questionnaires/RDOC/Confidential/credentials.yaml.DEFAULT", fsep="")
 ```
 
 Load required packages
 ```{r Load packages, message=FALSE, warning=FALSE, include=FALSE}
 ## Load required packages ##
 packages <- c("lme4", "nlme", "ggplot2", "dplyr", "tidyr", "knitr",
-              "parallel", "data.table", "lubridate","xml2","devtools")
+              "parallel", "data.table", "lubridate","xml2","devtools",
+              "stringr")
 if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
   install.packages(setdiff(packages, rownames(installed.packages())))  
 }
 lapply(packages, library, character.only = TRUE)
-install_github('jflournoy/qualtrics')
-library(scorequaltrics)
+install_github("jflournoy/scorequaltrics")
+library("scorequaltrics")
 rm(packages)
 ```
 
 Extract qualtrics data from website
 ```{r Extract Qualtrics, message=FALSE, warning=FALSE, include=FALSE}
-credsFile<-file.path(workdir,"Questionnaires/RDOC/Confidential/credentials.yaml.DEFAULT", fsep="")
-creds<-creds_from_file(credsFile)
 
-exclude_survey=c("NV","GUT","TEST","Appointment","Newsletter","SOS","Sharing Task","PMS Interest")
-survey_info<-scorequaltrics::get_surveys(creds) %>% 
-  filter(!grepl(paste0(exclude_survey,collapse="|"),SurveyName)) %>% 
-  #filter(!SurveyName %in% paste0(exclude_survey)) %>%
-  dplyr::select(SurveyID, SurveyName)
+creds <- creds_from_file(credsFile)
 
-get_survey_data<-function(surveysDF,pid_col){
-  #Takes the data.frame that is returned by `get_surveys`
-  #Returns a long format data.frame of survey data with names
-  # "SID variable name"         "item"        "value"       "survey_name"
-  survey_data<-surveysDF %>% 
-    group_by(SurveyID) %>%
-    do(
-      survey_name=.$SurveyName[[1]],
-      survey_data=scorequaltrics::get_survey_responses(
-        creds,
-        surveyid=.$SurveyID[[1]])
-    )
-  long_survey_data<-survey_data %>% 
-    filter(dim(survey_data)[1]>0) %>%
-    do({
-      colNames <- names(.$survey_data)
-      gather_cols_list <- lapply(pid_col, function(x) colNames[!grepl(x, colNames)])
-      gather_cols<-Reduce(intersect, gather_cols_list)
-      aDF<-gather_(.$survey_data,
-                   'item',
-                   'value',
-                   gather_cols)
-      aDF$survey_name<-.$survey_name
-      aDF
-    })
-  long_survey_data
+exclude_survey=c("NV",
+                 "GUT",
+                 "TEST",
+                 "Appointment",
+                 "Newsletter",
+                 "SOS",
+                 "Sharing Task",
+                 "PMS Interest",
+                 "Checklist",
+                 "Consent",
+                 "Assent",
+                 "KSADS",
+                 "Confirmation",
+                 "This is Me",
+                 "ACE",
+                 "KidCOPE",
+                 "Untitled Project",
+                 "COVID",
+                 "Daily",
+                 "Saliva",
+                 "Contact",
+                 "Participation",
+                 "Opportunities",
+                 "Bank",
+                 "saliva sample",
+                 "Smartphone",
+                 "Check In",
+                 "FP")
+                 #"TAG - Sess 2 - V3 - minus CTQ",
+                 #"W4 Home Q's - PAST V3",
+                 #"W4 Home Q's - PAST V2",
+                 #"TAG - Sess 2 - V3 for Home - (SSDS_2 and on)",
+                 #"W2 - Home Qs - Current V2 IN LAB")
+
+#get_surveys gets a list of alll the surveys, so we will exclude those we don't want (in the list above).
+survey_info <- scorequaltrics::get_surveys(creds) %>% 
+  filter(!grepl(paste0(exclude_survey, collapse="|"), SurveyName)) %>% #not sure why this is necessary but it does seem to help?
+  filter(!SurveyName %in% exclude_survey) %>%
+  # filter(grepl('TAG', SurveyName)) %>%
+  dplyr::select(id, SurveyName)
+
+raw_survey_data <- get_survey_data(survey_info, pid_cols=c("RecipientLastName", "SID_embed", "SID"))
+
+#Need to do a little cleaning before we do anything else.
+raw_survey_data[RecipientLastName == "Monte", SID := 244] #SJC updated
+raw_survey_data[SID == 255, SID := 225] #SJC updated
+raw_survey_data[SID == "SV_eqvWqPtsOO4uqPP", SID := NA] #SJC updated #Not strictly necessary since `fix_ids` would do this too.
+
+#For fixing User IDs, I added a function to scorequaltrics,
+#`scorequaltrics::fix_ids`. The help and the example below should be pretty self
+#explanatory.
+raw_survey_data$SID <- scorequaltrics::fix_ids(raw_survey_data, pid_cols=c("RecipientLastName", "SID_embed", "SID"), 
+                                               prefix = '[Tt][Aa][Gg]', #Case insensitive for TAG
+                                               format_ids = 'TAG%03d')  
+
+#For fixing the dates, It's a little more straightforward and not generalizable,
+#so heres what I've done. Essentially, first we _try_ to convert each date to a
+#number. If it turns into an NA, we know that it is a character and so is likely
+#a data formatted as expected. If it successfully is converted we know it's
+#probably a unix timestamp. We can then convert the unix timestamps into
+#readable dates using the lubridate package. I did write a small function to
+#convert a character unix time stamp to a date.
+convert_unixtime_to_ymd_hms <- function(x){
+  return(as.character(
+    lubridate::ymd_hms(
+      lubridate::as_datetime(
+        as.numeric(x)))))
 }
+raw_survey_data[grepl('[dD]ate', item), value := fifelse(is.na(as.numeric(value)), 
+                                                         value,
+                                                         convert_unixtime_to_ymd_hms(value))]
 
-raw_survey_data <- get_survey_data(survey_info,pid_col=c("SID", "SID_embed"))
-
-long_survey_data<- raw_survey_data %>% mutate(value = ifelse(value == -99, NA, value)) %>% 
-  mutate(SID = ifelse(!is.na(SID_embed), SID_embed, 
-                      ifelse(SID=="", SID_embed, SID))) %>%
-  select(-SID_embed)
-
-embedded_qs<-survey_info %>% 
+#Handle numeric missing values
+long_survey_data <- raw_survey_data %>% 
+  mutate(value = ifelse(value == -99, NA, value))
+  
+embedded_qs <- survey_info %>% 
   filter(SurveyName %in% c("TAG - Home Qs - V3 - with SID embedded", 
                            "TAG - W1 Home Qs - Current V4")) 
-sortbyqid_data <- get_survey_data(embedded_qs,pid_col="qid") %>% mutate(value = ifelse(value == -99, NA, value))
+sortbyqid_data <- get_survey_data(embedded_qs, pid_cols = "ResponseId") %>% 
+  mutate(value = ifelse(value == -99, NA, value))
 
-rm(creds,credsFile,get_survey_data)
+rm(creds,credsFile)
 ```
 
-Clean qualtrics (from scratch)
-```{r Clean qualtrics, message=FALSE, warning=FALSE, include=FALSE}
-#This is too slow. See data table implementation below.
-# system.time({
-# cleaned_survey_data<- long_survey_data %>% 
-#   mutate(tagid=ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID)) %>%
-#   select(tagid, item, value, survey_name) %>%
-#   filter(!tagid=="TAG000",
-#          !tagid=="TAG999") %>%
-#   mutate(tagid=ifelse(tagid=="013 ", "TAG013", tagid))
-# })
-#   user  system elapsed 
-# 45.024   2.324  46.810 
+More cleaning...
 
-library(data.table)
-cleaned_survey_data <- as.data.table(long_survey_data)
-cleaned_survey_data[, tagid := ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID)]
-cleaned_survey_data[, SID := NULL]
-cleaned_survey_data <- cleaned_survey_data[!(tagid %in% c('TAG000', 'TAG999'))]
-cleaned_survey_data[tagid == '013 ', tagid := 'TAG013']
-cleaned_survey_data[tagid == '70', tagid := 'TAG070']
-cleaned_survey_data[tagid == 'TAG255', tagid := 'TAG225'] #SJC updated
-cleaned_survey_data[tagid == 'home', tagid := "TAG244"] #NV updated
-cleaned_survey_data[tagid == '541695411', tagid := "TAG040"] #NV updated
-cleaned_survey_data[tagid == "TAGHVU", tagid := "TAG070"] #NV updated
-cleaned_survey_data <- as.data.frame(cleaned_survey_data)
-#The above is much much quicker.
-#  user  system elapsed 
-# 0.228   0.012   0.241 
+```{r Clean qualtrics, message=FALSE, warning=FALSE, include=FALSE}
+#long_survey_data should already be a data table, but just making sure:
+cleaned_survey_data <- as.data.table(long_survey_data) %>% select(SID, item, value, survey_name)
+
+setnames(cleaned_survey_data, old = 'SID', new = 'tagid')
+
+cleaned_survey_data <- cleaned_survey_data[!(tagid %in% c('TAG000', 'TAG999', 'TAG9999'))]
+
+#remove rows if tag id is 'TAG' and then between 4-10 more digits.
+cleaned_survey_data <- cleaned_survey_data[!grepl('TAG\\d{4,10}', tagid)] 
+
+testing <- subset(cleaned_survey_data, !is.na(tagid))
 
 IDs<-unique(cleaned_survey_data$tagid)
 
@@ -119,14 +145,14 @@ misIDkey<-read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/qidkey.csv")
 TAGHomeQ<-sortbyqid_data
 for (i in 1:length(misIDkey$qid)){
   TAGHomeQ <- TAGHomeQ %>%
-    mutate(value=ifelse(qid==as.character(misIDkey$qid[i]) && item=="SID",
+    mutate(value=ifelse(ResponseId==as.character(misIDkey$qid[i]) && item=="SID",
                         as.character(misIDkey$SID[i]),value))
 }
 gather_cols<-unique(TAGHomeQ$item)
 TAGEmbeddedHomeQ_Gathered <- TAGHomeQ %>% 
   spread(item,value) %>%
   mutate(tagid=ifelse(nchar(SID)==3, sprintf("TAG%03s",SID), SID))
-test1 <- select(TAGEmbeddedHomeQ_Gathered, tagid, survey_name, qid, everything())
+test1 <- select(TAGEmbeddedHomeQ_Gathered, tagid, survey_name, ResponseId, everything())
 test2 <- gather(test1,"item","value",3:dim(test1)[2]) %>%
   filter(!tagid=='')
 
@@ -160,13 +186,15 @@ print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("
 print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W2S2",survey_name)))$tagid))," participants have completed Wave 2 Session 2 surveys!"))
 print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W3S1",survey_name)))$tagid))," participants have completed Wave 3 Session 1 surveys!"))
 print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W3S2",survey_name)))$tagid))," participants have completed Wave 3 Session 2 surveys!"))
+print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W4S1",survey_name)))$tagid))," participants have completed Wave 4 Session 1 surveys!"))
+print(paste0("A total of ",length(unique((cleaned_survey_data %>% filter(grepl("W4S2",survey_name)))$tagid))," participants have completed Wave 4 Session 2 surveys!"))
 
 #rm(surveyed)
 ```
 
 Load and clean redcap info
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
-redcapData <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_dates_20191213.csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
+redcapData <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_dates_20220427.csv"), header = TRUE, stringsAsFactors = FALSE)# %>%
   # filter(!grepl("wave_2",redcap_event_name))
 redcapData_dob<-redcapData %>%
   select(dob,subject_spit_id) %>%
@@ -189,7 +217,7 @@ rm(redcapData_dob,redcapData,redcapData_sessiondates)
 
 Configure anthro information
 ```{r Load&Clean Redcap, message=FALSE, warning=FALSE, include=FALSE}
-redcap_anthro <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_anthro_20191213.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
+redcap_anthro <- read.csv(paste0(workdir,"Questionnaires/RDOC/Confidential/redcap_anthro_20220427.csv"), header = TRUE, stringsAsFactors = FALSE) %>%
   filter(!anthro_doc=="") %>%
   extract(redcap_event_name, c('wave'), 'wave_([\\d]).*') %>%
   mutate(tagid=substring(subject_spit_id,first=4,last=length(subject_spit_id)))%>%
@@ -263,7 +291,7 @@ rm(waist_graph,heights_graph,weights_graph,redcap_anthro,anthro_change_graph)
 
 ONLY RUN IF Prepping for NDA Submission: Prepare GUIDs
 ```{r, eval=FALSE, include=FALSE}
-redcap_NDA_info <- read.csv(paste0(workdir,"RDoCdb/Confidential/redcap_nda_consent_20191213.csv"),
+redcap_NDA_info <- read.csv(paste0(workdir,"RDoCdb/Confidential/redcap_nda_consent_20220210.csv"),
                             header = TRUE,
                             stringsAsFactors = FALSE)
 
@@ -344,8 +372,8 @@ Get Survey Date info
 survey_startdate<-filter(cleaned_survey_data, grepl("StartDate",item)) %>%
   filter(!survey_name=="Sharing Task Experience Survey") %>%
   mutate(startdate=as.Date(value),
-         survey_type=ifelse(grepl("(Sess 1|W[123]S1)",survey_name),"Sess 1",
-                            ifelse(grepl("(Sess 2|W[123]S2)",survey_name),"Sess 2",
+         survey_type=ifelse(grepl("(Sess 1|W[1234]S1)",survey_name),"Sess 1",
+                            ifelse(grepl("(Sess 2|W[1234]S2)",survey_name),"Sess 2",
                                    ifelse(grepl("Parent",survey_name),"Parent",
                                           ifelse(grepl("Home",survey_name),"Home",
                                                  NA)))))  %>%
@@ -357,8 +385,8 @@ survey_originaldate<-filter(cleaned_survey_data, grepl("original.date.timestamp"
   filter(!survey_name=="Sharing Task Experience Survey") %>%
   filter(!value=="") %>%
   mutate(originaldate=as.Date(value),
-         survey_type=ifelse(grepl("Sess 1|W[123]S1",survey_name),"Sess 1",
-                            ifelse(grepl("Sess 2|W[123]S2",survey_name),"Sess 2",
+         survey_type=ifelse(grepl("Sess 1|W[1234]S1",survey_name),"Sess 1",
+                            ifelse(grepl("Sess 2|W[1234]S2",survey_name),"Sess 2",
                                    ifelse(grepl("Parent",survey_name),"Parent",
                                           ifelse(grepl("Home",survey_name),"Home",
                                                  NA))))) %>%
@@ -366,8 +394,8 @@ survey_originaldate<-filter(cleaned_survey_data, grepl("original.date.timestamp"
   # filter(!survey_type=="Parent") %>%
   dplyr::arrange(originaldate)
 
-survey_date<-left_join(survey_startdate,survey_originaldate) %>%
-  mutate(value=as.Date(ifelse(is.na(originaldate),startdate,originaldate),origin="1970-01-01 UTC")) %>%
+survey_date<-left_join(survey_startdate, survey_originaldate) %>%
+  mutate(value=as.Date(ifelse(is.na(startdate),originaldate,startdate),origin="1970-01-01 UTC")) %>%
   select(-originaldate,-startdate)
 
 survey_date_sorted <- survey_date %>%
@@ -551,7 +579,8 @@ participants_ndar_data<-left_join(ndar_key,participants_ndar_data, by="tagid") %
   select(-tagid,-sa_date,-dob,-anontagid,-ID,-guid) 
 
 ndar_subject <- as.list(read.csv(paste0(workdir,"RDoCdb/templates/ndar_subject01_template.csv"), header = TRUE, stringsAsFactors = FALSE, skip=1))
-ndar_subject_df<-data.frame(ndar_subject)
+ndar_subject_df<-data.frame(lapply(ndar_subject, as.character), stringsAsFactors = FALSE) %>%
+  mutate(interview_age = as.double(interview_age))
 ndar_subject_df<-bind_rows(ndar_subject_df,participants_ndar_data)
 ndar_subject_df_header<-rep(NA,length(ndar_subject_df))
 ndar_subject_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/ndar_subject01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
@@ -560,7 +589,7 @@ part2<-colnames(ndar_subject_df)
 part3<-as.matrix(ndar_subject_df)
 colnames(part3)<-NULL
 together<-rbind(ndar_subject_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/dec2019/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/feb2022/ndar_subject01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(ndar_race,ethnicity_long,ndar_ethnicity,together,part3,part2,ndar_subject_df_header,ndar_subject,ndar_subject_df,ndar_ethnicity.df,participants_ndar_data)
 ```
 
@@ -584,18 +613,59 @@ BFI10<-left_join(filter(cleaned_survey_data, grepl("BFI",item)) %>%
                    filter(!is.na(dob),!is.na(sa_date)) %>%
                    select(tagid, sa_date, sb_date, dob),by="tagid")
 
-BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(qualtrics_date=value) %>% 
-  select(-value) %>%
-  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
-                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
-                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
-                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
-                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                                 )))))) %>%
-  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+BFI10 <- filter(cleaned_survey_data, grepl("BFI",item)) %>% 
+                   mutate(value=as.numeric(value)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,value,survey_name,.keep_all = FALSE)
+
+
+#fix coding
+BFI10_test <- filter(cleaned_survey_data, grepl("BFI",item)) %>% 
+                   filter(!is.na(value)) %>% 
+                   distinct(tagid,item,survey_name,.keep_all = T)
+BFI10_test["value"][BFI10_test["value"] == "Disagree strongly"] <- "1"
+BFI10_test["value"][BFI10_test["value"] == "Disagree a little"] <- "2"
+BFI10_test["value"][BFI10_test["value"] == "Neither agree nor disagree"] <- "3"
+BFI10_test["value"][BFI10_test["value"] == "Agree a little"] <- "4"
+BFI10_test["value"][BFI10_test["value"] == "Agree strongly"] <- "5"
+
+date_test <- redcap_cleaned %>%
+  filter(!is.na(dob),!is.na(sa_date)) 
+
+BFI10<-left_join(date_test %>%
+                   select(tagid, sa_date, sb_date, dob, wave),
+                 BFI10_test %>% 
+                   #mutate(value=as.numeric(value)) %>% 
+                   spread(item,value),by = "tagid")
+cols.num <- c(7:16)
+BFI10[cols.num] <- sapply(BFI10[cols.num],as.numeric)
+sapply(BFI10, class)
+
+BFI10 <- BFI10 %>% mutate(survey_date=ifelse(is.na(`time_BFI-10`),
+                                      paste0(sprintf("%02d",month(sa_date)),"/",sprintf("%02d",day(sa_date)),"/",year(sa_date)),
+                                      paste0(sprintf("%02d",month(`time_BFI-10`)),"/",sprintf("%02d",day(`time_BFI-10`)),"/",year(`time_BFI-10`)))) 
+
+
+
+#BFI10_Wave1<-left_join(BFI10,survey_originaldate, by = c("tagid","survey_name")) %>% 
+ # distinct(tagid,survey_name,.keep_all = T) %>%
+  #mutate(qualtrics_date=ifelse(!is.na(originaldate), sa_date, originaldate))
+
+#BFI10_Wave1<-left_join(BFI10,survey_originaldate, by = c("tagid","survey_name")) %>% 
+ # distinct(tagid,survey_name,.keep_all = T) %>%
+  #mutate(qualtrics_date=originaldate) %>% 
+  #select(-originaldate) %>%
+#  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+ #                           ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+  #                                 ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+   #                                       ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+    #                                             ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(`time_BFI-10`)
+     #                                            )))))) %>%
+#  select(-originaldate,-sb_date,-sa_date,-dob) %>%
+ # distinct(tagid,survey_name,.keep_all = TRUE) %>%
+BFI10_Wave1 <- BFI10 %>%
+  distinct(tagid,survey_name,survey_date,.keep_all = T) %>%
+  select(-wave,-sb_date,-sa_date,-dob, -`time_BFI-10`) %>%
   mutate(BFI_10_1=ifelse(BFI_10_1==1,5,
                          ifelse(BFI_10_1==2,4,
                                 ifelse(BFI_10_1==3,3,
@@ -652,8 +722,12 @@ BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>%
          BFI10_open_total=rowSums(cbind(BFI_10_5,BFI_10_10), na.rm=F),
          BFI10_open_mean=rowMeans(cbind(BFI_10_5,BFI_10_10), na.rm=T))
 
+#tidying
+#BFI10_Wave1 <- BFI10_Wave1[,c(2,1,3:12,15:40)] 
+BFI10_Wave1 <- BFI10_Wave1[order(BFI10_Wave1$tagid), ]
+
 ## Save it
-BFI10_Wave1_outdf <- BFI10_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+BFI10_Wave1_outdf <- BFI10_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name)) 
 write.csv(BFI10_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/BFI10_Wave1.csv"))
 
 BFI10_Wave2_outdf <- BFI10_Wave1 %>% filter(grepl("W2",survey_name)) 
@@ -661,6 +735,9 @@ write.csv(BFI10_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/BFI10_W
 
 BFI10_Wave3_outdf <- BFI10_Wave1 %>% filter(grepl("W3",survey_name)) 
 write.csv(BFI10_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/BFI10_Wave3.csv"))
+
+BFI10_Wave4_outdf <- BFI10_Wave1 %>% filter(grepl("W4",survey_name)) 
+write.csv(BFI10_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/BFI10_Wave4.csv"))
 
 ## Graph it
 BFI10_Wave1_totals<-BFI10_Wave1_outdf %>%
@@ -929,8 +1006,8 @@ w1_NoMenarche = as.list(Menstruation %>% filter(w1_Menarche==0) %>% select(tagid
 
 #NV: Update missing PDS_F6 in PDS dataframe with info on menstruation collected by other methods 
 PDS <- PDS %>%
-  mutate(PDS_F6 = ifelse((!grepl("W2|W3",survey_name) & is.na(PDS_F6) & (tagid %in% w1_Menarche$tagid)), 1, 
-                         ifelse((!grepl("W2|W3",survey_name) & is.na(PDS_F6) & (tagid %in% w1_NoMenarche$tagid)), 0,
+  mutate(PDS_F6 = ifelse((!grepl("W2|W3|W4",survey_name) & is.na(PDS_F6) & (tagid %in% w1_Menarche$tagid)), 1, 
+                         ifelse((!grepl("W2|W3|W4",survey_name) & is.na(PDS_F6) & (tagid %in% w1_NoMenarche$tagid)), 0,
                                 PDS_F6)))
                          
 PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>% #NV: This dataframe is called PDS_W1, but it doesn't seem to be filtering W1 alone). However, I'm not editing this as it seems like the same dataframe is being used for the RDoC submission below.l
@@ -1016,15 +1093,133 @@ PDS_Wave1<-left_join(PDS,survey_date, by = c("tagid","survey_name")) %>% #NV: Th
          gonadf2_missing_perc=100*(rowSums(is.na(cbind(PDS_F1,PDS_F4,PDS_F6)))/3),
          ) #NV added perc missing
 
+#renaming new vars
+PDS_cleaned <- PDS_Wave1 %>% mutate(PDS_F7 = 
+    ifelse(PDS_F7==1,"47 or less",
+           ifelse(PDS_F7==2,"48", 
+                  ifelse(PDS_F7==3,"49",
+                         ifelse(PDS_F7==4,"50",
+                                ifelse(PDS_F7==5,"51",
+                                       ifelse(PDS_F7==6,"52", 
+                                              ifelse(PDS_F7==7,"53", 
+                                                     ifelse(PDS_F7==8,"54", 
+    ifelse(PDS_F7==9,"55", 
+           ifelse(PDS_F7==10,"56", 
+                  ifelse(PDS_F7==11,"57", 
+                         ifelse(PDS_F7==12,"58", 
+                                ifelse(PDS_F7==13,"59", 
+                                       ifelse(PDS_F7==14,"60", 
+                                              ifelse(PDS_F7==15,"61", 
+    ifelse(PDS_F7==16,"62", 
+           ifelse(PDS_F7==17,"63", 
+                  ifelse(PDS_F7==18,"64", 
+                         ifelse(PDS_F7==19,"65", 
+                                ifelse(PDS_F7==20,"66",
+                                       ifelse(PDS_F7==21,"67", 
+                                              ifelse(PDS_F7==22,"68", 
+    ifelse(PDS_F7==23,"69", 
+           ifelse(PDS_F7==24,"70", 
+                  ifelse(PDS_F7==25,"71", 
+                         ifelse(is.na(PDS_F7),NA,PDS_F7)))))))))
+)))))))))))))))))) %>% 
+  rename(height_inches = PDS_F7) %>% 
+  mutate(PDS_F8 = 
+    ifelse(PDS_F8==1,"less than 40",
+           ifelse(PDS_F8==2,"40-50", 
+                  ifelse(PDS_F8==3,"50-60",
+                         ifelse(PDS_F8==4,"60-70",
+                                ifelse(PDS_F8==5,"70-80",
+                                       ifelse(PDS_F8==6,"80-90", 
+                                              ifelse(PDS_F8==7,"90-100", 
+                                                     ifelse(PDS_F8==8,"100-110", 
+    ifelse(PDS_F8==9,"110-120", 
+           ifelse(PDS_F8==10,"120-130", 
+                  ifelse(PDS_F8==11,"130-140", 
+                         ifelse(PDS_F8==12,"140-150", 
+                                ifelse(PDS_F8==13,"150-160", 
+                                       ifelse(PDS_F8==14,"160-170", 
+                                              ifelse(PDS_F8==15,"170-180", 
+    ifelse(PDS_F8==16,"180-190", 
+           ifelse(PDS_F8==17,"190-200", 
+                  ifelse(PDS_F8==18,"200-210", 
+                         ifelse(PDS_F8==19,"210-220", 
+                                ifelse(PDS_F8==20,"220-230",
+                                       ifelse(PDS_F8==21,"230-240", 
+                                              ifelse(PDS_F8==22,"240-250", 
+    ifelse(PDS_F8==23,"250-260", 
+           ifelse(PDS_F8==24,"260-270", 
+                  ifelse(PDS_F8==25,"270-280",
+                         ifelse(PDS_F8==26,"280-290", 
+                                ifelse(PDS_F8==27,"290-300", 
+                                       ifelse(PDS_F8==28,"more than 300",NA))))))))
+))))))))))))))))))))) %>% 
+  rename(weight_pounds = PDS_F8)%>% 
+  mutate(PDS_F9_4_3 = ifelse(!is.na(PDS_F9_4_3),PDS_F9_4_3,PDS_F9)) %>% 
+  mutate(PDS_F9_4_3 = ifelse((PDS_F9_4_3==1 & survey_name=="W3S2 - V4"),2015,
+  ifelse((PDS_F9_4_3==2 & survey_name=="W3S2 - V4"),2016, 
+         ifelse((PDS_F9_4_3==3 & survey_name=="W3S2 - V4"),2017, 
+                ifelse((PDS_F9_4_3==4 & survey_name=="W3S2 - V4"),2018, 
+  ifelse((PDS_F9_4_3==5 & survey_name=="W3S2 - V4"),2019, 
+         ifelse((PDS_F9_4_3==1 & survey_name=="W3S2 - V5"),2015,
+  ifelse((PDS_F9_4_3==2 & survey_name=="W3S2 - V5"),2016, 
+         ifelse((PDS_F9_4_3==3 & survey_name=="W3S2 - V5"),2017, 
+                ifelse((PDS_F9_4_3==4 & survey_name=="W3S2 - V5"),2018, 
+  ifelse((PDS_F9_4_3==5 & survey_name=="W3S2 - V5"),2019, 
+         ifelse((PDS_F9_4_3==1 & survey_name=="W3S2 - V6"),2015,
+  ifelse((PDS_F9_4_3==2 & survey_name=="W3S2 - V6"),2016, 
+         ifelse((PDS_F9_4_3==3 & survey_name=="W3S2 - V6"),2017, 
+                ifelse((PDS_F9_4_3==4 & survey_name=="W3S2 - V6"),2018, 
+  ifelse((PDS_F9_4_3==5 & survey_name=="W3S2 - V6"),2019, PDS_F9_4_3)))))))))))))))) %>% 
+  mutate(PDS_F9_4_3 = ifelse(PDS_F9_4_3==1,2014,
+                             ifelse(PDS_F9_4_3==2,2015, 
+                                    ifelse(PDS_F9_4_3==3,2016, 
+                                           ifelse(PDS_F9_4_3==4,2017, 
+  ifelse(PDS_F9_4_3==5,2018, 
+         ifelse(PDS_F9_4_3==6,2019, 
+                ifelse(PDS_F9_4_3==7,2020, 
+                       ifelse(PDS_F9_4_3==8,2021,PDS_F9_4_3))))))))) %>% 
+  rename(
+       menarche_month = PDS_F9_4_1, 
+       menarche_day = PDS_F9_4_2,  
+       menarche_year = PDS_F9_4_3
+      ) %>% select(-PDS_F9) %>% 
+  mutate(PDS_F10_1_4 = ifelse(PDS_F10_1_4==1,2015, 
+                              ifelse(PDS_F10_1_4==2,2016, 
+                                     ifelse(PDS_F10_1_4==3,2017, 
+                                            ifelse(PDS_F10_1_4==4,2018, 
+  ifelse(PDS_F10_1_4==5,2019,NA)))))) %>% 
+  mutate(`PDS_F10#4_1` = ifelse(`PDS_F10#4_1`==1,2015, 
+                                ifelse(`PDS_F10#4_1`==2,2016, 
+                                       ifelse(`PDS_F10#4_1`==3,2017, 
+                                              ifelse(`PDS_F10#4_1`==4,2018, 
+  ifelse(`PDS_F10#4_1`==5,2019, 
+         ifelse(`PDS_F10#4_1`==6,2020, 
+                ifelse(`PDS_F10#4_1`==7,2021, 
+                       ifelse(`PDS_F10#4_1`==8,2022,NA))))))))) %>% 
+  mutate(`PDS_F10#4_1` = ifelse(!is.na(`PDS_F10#3_1_1`),`PDS_F10#3_1_1`,`PDS_F10#4_1`)) %>% 
+  select(-`PDS_F10#3_1_1`) %>% 
+    rename(
+       lmp_month = `PDS_F10#1_1`, 
+       lmp_day = `PDS_F10#2_1`,  
+       lmp_year = `PDS_F10#4_1`
+      ) %>% 
+  mutate(lmp_month = ifelse(!is.na(PDS_F10_1_1),PDS_F10_1_1,lmp_month),
+         lmp_day = ifelse(!is.na(PDS_F10_1_2),PDS_F10_1_2,lmp_day), 
+         lmp_year = ifelse(!is.na(PDS_F10_1_4),PDS_F10_1_4,lmp_year)) %>% 
+  select(-c(PDS_F10_1_1,PDS_F10_1_2,PDS_F10_1_4))
+
 ## Save it
-PDS_Wave1_outdf <- PDS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) #NV: given comment above, I'm now saving another filtered PDS_wave1 document for saving output.
+PDS_Wave1_outdf <- PDS_cleaned %>% filter(!grepl("W2|W3|W4",survey_name)) #NV: given comment above, I'm now saving another filtered PDS_wave1 document for saving output.
 write.csv(PDS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PDS_Wave1.csv"))
 
-PDS_Wave2_outdf <- PDS_Wave1 %>% filter(grepl("W2",survey_name))
+PDS_Wave2_outdf <- PDS_cleaned %>% filter(grepl("W2",survey_name))
 write.csv(PDS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PDS_Wave2.csv"))
 
-PDS_Wave3_outdf <- PDS_Wave1 %>% filter(grepl("W3",survey_name))
+PDS_Wave3_outdf <- PDS_cleaned %>% filter(grepl("W3",survey_name))
 write.csv(PDS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/PDS_Wave3.csv"))
+
+PDS_Wave4_outdf <- PDS_cleaned %>% filter(grepl("W4",survey_name))
+write.csv(PDS_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/PDS_Wave4.csv"))
 
 ## Graph it
 PDS_Wave1_pdss_graph<-ggplot(PDS_Wave1_outdf, aes(x=pdss, colour="deeppink")) +
@@ -2519,7 +2714,7 @@ rm(together,part2,part3,erq_df_header,erq_temp,erq_temp_df,ERQ,ERQ_Wave1,ERQ_Wav
 
 Prepare IFS
 ```{r}
-IFS<-left_join(filter(cleaned_survey_data, grepl("IFS",item)) %>%
+IFS<-left_join(filter(cleaned_survey_data, grepl("IFS",item)) %>% 
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>%
@@ -2528,6 +2723,7 @@ IFS<-left_join(filter(cleaned_survey_data, grepl("IFS",item)) %>%
                redcap_cleaned %>%
                  filter(!is.na(dob),!is.na(sa_date)) %>%
                  select(tagid, sa_date, sb_date, dob),by="tagid")
+
 if (length(IFS$tagid) == length(unique(IFS$tagid))){
   print("No duplicate TAGIDs in data")
 } else {
@@ -2540,9 +2736,10 @@ IFS_cleaned<-left_join(IFS,survey_date, by = c("tagid","survey_name")) %>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
                             ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
                                    ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
+                                          ifelse(survey_name=="TAG - W1S2 - Current V3",sb_date,
                                           ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                          ))))) %>%
-  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+                                          )))))) %>% 
+  select(-sb_date,-sa_date,-dob, -qualtrics_date) %>%
   mutate(IFS_frankness_total=rowSums(cbind(IFS_1,IFS_2,IFS_3,IFS_4),na.rm=FALSE),
          IFS_frankness_mean=round(rowMeans(cbind(IFS_1,IFS_2,IFS_3,IFS_4),na.rm=TRUE),3),
          IFS_sensitivity_total=rowSums(cbind(IFS_5,IFS_6,IFS_7,IFS_8),na.rm=FALSE),
@@ -2576,12 +2773,14 @@ IFS_cleaned<-left_join(IFS,survey_date, by = c("tagid","survey_name")) %>%
                                                    IFS_25,IFS_26,IFS_27,IFS_28,
                                                    IFS_29,IFS_30,IFS_31,IFS_32))))/32) #NV added info on % missing items
 ## Save it
-IFS_Wave1_outdf <- IFS_cleaned %>% filter(!grepl("W2|W3",survey_name)) 
+IFS_Wave1_outdf <- IFS_cleaned %>% filter(!grepl("W2|W3|W4",survey_name)) 
 write.csv(IFS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/IFS_Wave1.csv"))
 IFS_Wave2_outdf <- IFS_cleaned %>% filter(grepl("W2",survey_name)) 
 write.csv(IFS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/IFS_Wave2.csv"))
 IFS_Wave3_outdf <- IFS_cleaned %>% filter(grepl("W3",survey_name)) 
 write.csv(IFS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/IFS_Wave3.csv"))
+IFS_Wave4_outdf <- IFS_cleaned %>% filter(grepl("W4",survey_name)) 
+write.csv(IFS_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/IFS_Wave4.csv"))
 
 ## Graph it
 IFS_Wave1_totals<-IFS_cleaned %>%
@@ -3064,7 +3263,7 @@ MSPSS_Wave1<-left_join(MSPSS,survey_date, by = c("tagid","survey_name")) %>%
          MSPSS_missing_perc=100*(rowSums(is.na(cbind(MSPSS_1,MSPSS_2,MSPSS_3,MSPSS_4,MSPSS_5,MSPSS_6,MSPSS_7,MSPSS_8,MSPSS_9,MSPSS_10,MSPSS_11,MSPSS_12))))/12) #NV added info on % missing items
 
 ## Save it
-MSPSS_Wave1_outdf <- MSPSS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+MSPSS_Wave1_outdf <- MSPSS_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name)) 
 write.csv(MSPSS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/MSPSS_Wave1.csv"))
 
 MSPSS_Wave2_outdf <- MSPSS_Wave1 %>% filter(grepl("W2",survey_name)) 
@@ -3072,6 +3271,9 @@ write.csv(MSPSS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/MSPSS_W
 
 MSPSS_Wave3_outdf <- MSPSS_Wave1 %>% filter(grepl("W3",survey_name)) 
 write.csv(MSPSS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/MSPSS_Wave3.csv"))
+
+MSPSS_Wave4_outdf <- MSPSS_Wave1 %>% filter(grepl("W4",survey_name)) 
+write.csv(MSPSS_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/MSPSS_Wave4.csv"))
 
 ## Graph it
 MSPSS_Wave1_totals<-MSPSS_Wave1 %>%
@@ -3334,7 +3536,8 @@ ndar_pss_data <- left_join(ndar_key,ndar_pss_data, by="tagid") %>%
          subjectkey=guid) %>%
   filter(!is.na(subjectkey),
          !interview_age=="") %>%
-  select(-contains("PSS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-guid,-survey_type)
+  select(-contains("PSS",ignore.case = FALSE),-dob,-survey_date,-survey_name,-tagid,-anontagid,-ID,-guid,-survey_type,
+         -sa_date,-sb_date,-qualtrics_date)
 pss_df_header<-rep(NA,length(read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)))
 pss_df_header[1]<-read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,1]
 pss_df_header[2]<-read.csv(paste0(workdir,"RDoCdb/templates/pss01_template.csv"), header = FALSE, stringsAsFactors = FALSE)[1,2]
@@ -3667,8 +3870,8 @@ RSCS_Wave1<-left_join(RSCS,survey_date, by = c("tagid","survey_name")) %>%
                             ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
                                    ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
                                           ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
-                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
-                                                 )))))) %>%
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date))
+                                                 ))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(RSCS_publicsc_total=rowSums(cbind(R_SCS_C_1,R_SCS_C_2,R_SCS_C_3,R_SCS_C_7,R_SCS_C_10,R_SCS_C_12,R_SCS_C_14,
                                       R_SCS_C_15,R_SCS_C_16,R_SCS_C_21,R_SCS_C_28), na.rm=F),
@@ -3682,7 +3885,7 @@ RSCS_Wave1<-left_join(RSCS,survey_date, by = c("tagid","survey_name")) %>%
          RSCS_socanx_mean=rowMeans(cbind(R_SCS_C_13,R_SCS_C_17,R_SCS_C_18,R_SCS_C_19,R_SCS_C_25,R_SCS_C_26,R_SCS_C_29), na.rm=T))
 
 ## Save it
-RSCS_Wave1_outdf <- RSCS_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+RSCS_Wave1_outdf <- RSCS_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name)) 
 write.csv(RSCS_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/RSCS_Wave1.csv"))
 
 RSCS_Wave2_outdf <- RSCS_Wave1 %>% filter(grepl("W2",survey_name)) 
@@ -3690,6 +3893,9 @@ write.csv(RSCS_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/RSCS_Wav
 
 RSCS_Wave3_outdf <- RSCS_Wave1 %>% filter(grepl("W3",survey_name)) 
 write.csv(RSCS_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/RSCS_Wave3.csv"))
+
+RSCS_Wave4_outdf <- RSCS_Wave1 %>% filter(grepl("W4",survey_name)) 
+write.csv(RSCS_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/RSCS_Wave4.csv"))
 
 ## Graph it
 RSCS_Wave1_totals<-RSCS_Wave1 %>%
@@ -4729,8 +4935,10 @@ Prepare SSDS
 ```{r}
 SSDS<-left_join(filter(cleaned_survey_data, grepl("SSDS",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
-                 filter(!is.na(value)) %>%
+                 filter(!is.na(value))%>%
                  filter(!value=="") %>%
+                 filter(!grepl("TAG160",tagid) | grepl("W2|W3",survey_name)) %>% 
+                 #need to readd TAG160 at Wave 1 when we decide which answers we're including
                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
                  spread(item,value),
                redcap_cleaned %>%
@@ -4749,12 +4957,15 @@ TAG149_special<-left_join(filter(cleaned_survey_data, grepl("SSDS",item)) %>%
                             filter(!value=="") %>%
                             filter(tagid=="TAG149") %>%
                             filter(!grepl("W2", survey_name)) %>% 
+                            filter(!grepl("W3", survey_name)) %>% 
                             distinct(tagid,item,value,.keep_all = FALSE) %>%
                             spread(item,value),
                           redcap_cleaned %>%
                             filter(!is.na(dob),!is.na(sa_date),tagid=="TAG149") %>%
                             select(tagid, sa_date, sb_date, dob),by="tagid") %>%
   mutate(survey_name="TAG - Sess 2 - V3 for Home - (SSDS_2 and on)")
+
+TAG149_special <- bind_rows(SSDS %>% filter(tagid=="TAG149" & grepl("W2|W3", survey_name)), TAG149_special)
 
 SSDS <- bind_rows(SSDS %>% filter(!tagid=="TAG149"),TAG149_special)
   
@@ -4922,7 +5133,7 @@ part2<-colnames(ndar_ssds_data)
 part3<-as.matrix(ndar_ssds_data)
 colnames(part3)<-NULL
 together<-rbind(ssds_df_header,part2,part3)
-write.table(together,file =paste0(workdir,"RDoCdb/output/jan2019/ssds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
+write.table(together,file =paste0(workdir,"RDoCdb/output/dec2019/ssds01.csv"),sep=",",na = "",row.names=FALSE,col.names=FALSE)
 rm(together,part2,part3,ssds_df_header,ssds_temp,ssds_temp_df,SSDS,SSDS_Wave1,SSDS_Wave1_means,SSDS_Wave1_means_graph,
    SSDS_Wave1_totals,SSDS_Wave1_totals_graph)
 ```
@@ -5489,31 +5700,15 @@ PDS_parent<-left_join(filter(cleaned_survey_data, grepl("Parent",survey_name)) %
                   filter(grepl("PDS",item)) %>% 
                     mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value), !value=="") %>%
+                 filter(!grepl("TAG110",tagid) | !grepl("W2",survey_name)) %>% 
                   distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
                   spread(item,value),
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
                   select(tagid, sa_date, sb_date, dob),by="tagid")
 
-PDS<-left_join(filter(cleaned_survey_data, grepl("PDS",item)) %>% 
-                 mutate(value=as.numeric(value)) %>% 
-                 filter(!grepl("Parent",survey_name)) %>%
-                 filter(!is.na(value)) %>% 
-                 distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
-                 spread(item,value),
-               redcap_cleaned %>%
-                 filter(!is.na(dob),!is.na(sa_date)) %>%
-                 select(tagid, sa_date, sb_date, dob),by="tagid")
-
-PDS_parent_Wave1<-left_join(PDS_parent,survey_date, by = c("tagid","survey_name")) %>% 
-  distinct(tagid,survey_name,.keep_all = TRUE) %>%
-  mutate(qualtrics_date=value) %>%
-  select(-value)%>%
-  mutate(survey_date=ifelse(survey_name=="TAG - Parent Questionnaires V1",sa_date,
-                            ifelse(survey_name=="TAG - Parent Questionnaires - V2 - Current",sa_date,
-                                   as.character(qualtrics_date)
-                                          ))) %>%
-  select(-qualtrics_date,-sb_date,-sa_date,-dob) 
+PDS_parent <- rbind(PDS_parent, c("TAG110", "W1 Parent - Relabelled", 3, 1, 2, 3, 3, 0, 10, 5, "2017-07-14", "2017-08-11", "2007-06-15"))
+PDS_parent <- rbind(PDS_parent, c("TAG110", "W2 Parent - Relabelled", 3, 1, 2, 3, 3, 0, 16, 8, "2018-12-11", "2019-01-12", "2007-06-15"))
 
 PDS_parent_Wave1<-left_join(PDS_parent,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
@@ -5521,8 +5716,10 @@ PDS_parent_Wave1<-left_join(PDS_parent,survey_date, by = c("tagid","survey_name"
   select(-value) %>%
   mutate(survey_date=ifelse(survey_name=="TAG - Parent Questionnaires V1",sa_date,
                             ifelse(survey_name=="TAG - Parent Questionnaires - V2 - Current",sa_date,
+                                   ifelse(survey_name=="W1 Parent - Relabelled", sa_date, 
+                                          ifelse(survey_name=="W2 Parent - Relabelled", sa_date, 
                                    as.character(qualtrics_date)
-                                          ))) %>%
+                                          ))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(peta=PDS_F1,
          petb=PDS_F2,
@@ -5597,9 +5794,17 @@ PDS_parent_Wave1<-left_join(PDS_parent,survey_date, by = c("tagid","survey_name"
          gonadf2_missing_perc=100*(rowSums(is.na(cbind(PDS_F1,PDS_F4,PDS_F6)))/3),
          ) #NV added perc missing      
 
+PDS_parent_Wave1$survey_type <- ifelse(PDS_parent_Wave1$tagid=="TAG110", "Parent", PDS_parent_Wave1$survey_type)
+
 ## Save it
 PDS_parent_Wave1_outdf <- PDS_parent_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
 write.csv(PDS_parent_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PDS_parent_Wave1.csv"))
+
+PDS_parent_Wave2_outdf <- PDS_parent_Wave1 %>% filter(grepl("W2",survey_name)) 
+write.csv(PDS_parent_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PDS_parent_Wave2.csv"))
+
+PDS_parent_Wave3_outdf <- PDS_parent_Wave1 %>% filter(grepl("W3",survey_name)) 
+write.csv(PDS_parent_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/PDS_parent_Wave3.csv"))
 ```
 
 Prepare Parent-report CES_D 
