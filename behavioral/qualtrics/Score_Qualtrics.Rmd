@@ -1314,14 +1314,14 @@ PBIP_Wave1<-left_join(PBIP,survey_date, by = c("tagid","survey_name")) %>%
                                    ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
                                           ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
                                           ))))) %>%
-  select(-qualtrics_date,-sb_date,-sa_date,-dob,-PBIP_1_Drawing,-PBIP_1_Question,-PBIP_2_Question,-PBIP_2_Drawing) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(stage=rowMeans(cbind(PBIP_1A,PBIP_2A),na.rm=F), #NV: changed na.rm to False from True. Also removed filtering of those with missing stage.
          PBIP_stage_N=2,
          PBIP_stage_missing=rowSums(is.na(cbind(PBIP_1A,PBIP_2A))),
          PBIP_stage_missing_perc=100*(rowSums(is.na(cbind(PBIP_1A,PBIP_2A)))/2))  
 
 ## Save it
-PBIP_Wave1_outdf <- PBIP_Wave1 %>% filter(!grepl("W2|W3",survey_name)) #NV: Same comment as PDS re filtering to wave 1.
+PBIP_Wave1_outdf <- PBIP_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name)) #NV: Same comment as PDS re filtering to wave 1.
 write.csv(PBIP_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/PBIP_Wave1.csv"))
 
 PBIP_Wave2_outdf <- PBIP_Wave1 %>% filter(grepl("W2",survey_name))
@@ -1329,6 +1329,9 @@ write.csv(PBIP_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/PBIP_Wav
 
 PBIP_Wave3_outdf <- PBIP_Wave1 %>% filter(grepl("W3",survey_name))
 write.csv(PBIP_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/PBIP_Wave3.csv"))
+
+PBIP_Wave4_outdf <- PBIP_Wave1 %>% filter(grepl("W4",survey_name))
+write.csv(PBIP_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/PBIP_Wave4.csv"))
 
 ## Graph it
 PBIP_Wave1_pbip_graph<-ggplot(PBIP_Wave1_outdf, aes(x=stage, colour="deeppink")) +
@@ -1599,7 +1602,7 @@ CESDC_Wave1<-left_join(CESDC,survey_date, by = c("tagid","survey_name")) %>%
   mutate(CES_DC_total_75perc=ifelse(CES_DC_missing_perc <= 25,CES_DC_mean*20,NA))
 
 ## Save it
-CESDC_Wave1_outdf <- CESDC_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+CESDC_Wave1_outdf <- CESDC_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name)) 
 write.csv(CESDC_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CESDC_Wave1.csv"))
 
 CESDC_Wave2_outdf <- CESDC_Wave1 %>% filter(grepl("W2",survey_name)) 
@@ -1607,6 +1610,9 @@ write.csv(CESDC_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/CESDC_W
 
 CESDC_Wave3_outdf <- CESDC_Wave1 %>% filter(grepl("W3",survey_name)) 
 write.csv(CESDC_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/CESDC_Wave3.csv"))
+
+CESDC_Wave4_outdf <- CESDC_Wave1 %>% filter(grepl("W4",survey_name)) 
+write.csv(CESDC_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave4/CESDC_Wave4.csv"))
 
 ## Graph it
 CESDC_Wave1_totals_graph<-ggplot(CESDC_Wave1_outdf, aes(x=CES_DC_total, colour="deeppink")) +
@@ -1855,76 +1861,83 @@ CTQ<-left_join(filter(cleaned_survey_data, grepl("CTQ",item)) %>%
 CTQ_Wave1<-left_join(CTQ,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(qualtrics_date=value) %>% 
-  select(-contains("TEXT")) %>%
+  #select(-contains("TEXT")) %>%
   select(-value)%>%
   mutate(survey_date=ifelse(survey_name=="TAG - Sess 2 - V1",sb_date,
                             ifelse(survey_name=="TAG - Sess 2 - V2",sb_date,
                                    ifelse(survey_name=="TAG - Sess 2 - V3 - Current",sb_date,
                                           ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
                                           ))))) %>%
-  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
-  mutate(CTQ_1=CTQ_1..1,
-         CTQ_2=ifelse(CTQ_2..1==1,5,
-                      ifelse(CTQ_2..1==2,4,
-                             ifelse(CTQ_2..1==3,3,
-                                    ifelse(CTQ_2..1==4,2,
-                                           ifelse(CTQ_2..1==5,1,
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>% 
+  select(-CTQ_1_2_1, -CTQ_2_2_1, -CTQ_3_2_1, -CTQ_4_2_1, -CTQ_5_2_1, -CTQ_6_2_1, 
+         -CTQ_7_2_1, -CTQ_8_2_1, -CTQ_9_2_1, -CTQ_10_2_1, -CTQ_11_2_1, 
+         -CTQ_12_2_1, -CTQ_13_2_1, -CTQ_14_2_1, -CTQ_15_2_1, -CTQ_16_2_1, 
+         -CTQ_17_2_1, -CTQ_18_2_1, -CTQ_19_2_1, -CTQ_20_2_1, -CTQ_21_2_1, 
+         -CTQ_22_2_1, -CTQ_23_2_1, -CTQ_24_2_1, -CTQ_25_2_1, -CTQ_26_2_1, 
+         -CTQ_27_2_1, -CTQ_28_2_1, -CTQ_29_2_1, -CTQ_30_2_1, -CTQ_31_2_1, 
+         -CTQ_32_2_1) %>% 
+  mutate(CTQ_1=CTQ_1_1,
+         CTQ_2=ifelse(CTQ_2_1==1,5,
+                      ifelse(CTQ_2_1==2,4,
+                             ifelse(CTQ_2_1==3,3,
+                                    ifelse(CTQ_2_1==4,2,
+                                           ifelse(CTQ_2_1==5,1,
                                                   NA))))),
-         CTQ_3=CTQ_3..1,
-         CTQ_4=CTQ_4..1,
-         CTQ_5=ifelse(CTQ_5..1==1,5,
-                      ifelse(CTQ_5..1==2,4,
-                             ifelse(CTQ_5..1==3,3,
-                                    ifelse(CTQ_5..1==4,2,
-                                           ifelse(CTQ_5..1==5,1,
+         CTQ_3=CTQ_3_1,
+         CTQ_4=CTQ_4_1,
+         CTQ_5=ifelse(CTQ_5_1==1,5,
+                      ifelse(CTQ_5_1==2,4,
+                             ifelse(CTQ_5_1==3,3,
+                                    ifelse(CTQ_5_1==4,2,
+                                           ifelse(CTQ_5_1==5,1,
                                                   NA))))),
-         CTQ_6=CTQ_6..1,
-         CTQ_7=ifelse(CTQ_7..1==1,5,
-                      ifelse(CTQ_7..1==2,4,
-                             ifelse(CTQ_7..1==3,3,
-                                    ifelse(CTQ_7..1==4,2,
-                                           ifelse(CTQ_7..1==5,1,
+         CTQ_6=CTQ_6_1,
+         CTQ_7=ifelse(CTQ_7_1==1,5,
+                      ifelse(CTQ_7_1==2,4,
+                             ifelse(CTQ_7_1==3,3,
+                                    ifelse(CTQ_7_1==4,2,
+                                           ifelse(CTQ_7_1==5,1,
                                                   NA))))),
-         CTQ_8=CTQ_8..1,
-         CTQ_9=CTQ_9..1,
-         CTQ_10=CTQ_10..1,
-         CTQ_11=CTQ_11..1,
-         CTQ_12=CTQ_12..1,
-         CTQ_13=ifelse(CTQ_13..1==1,5,
-                       ifelse(CTQ_13..1==2,4,
-                              ifelse(CTQ_13..1==3,3,
-                                     ifelse(CTQ_13..1==4,2,
-                                            ifelse(CTQ_13..1==5,1,
+         CTQ_8=CTQ_8_1,
+         CTQ_9=CTQ_9_1,
+         CTQ_10=CTQ_10_1,
+         CTQ_11=CTQ_11_1,
+         CTQ_12=CTQ_12_1,
+         CTQ_13=ifelse(CTQ_13_1==1,5,
+                       ifelse(CTQ_13_1==2,4,
+                              ifelse(CTQ_13_1==3,3,
+                                     ifelse(CTQ_13_1==4,2,
+                                            ifelse(CTQ_13_1==5,1,
                                                    NA))))),
-         CTQ_14=CTQ_14..1,
-         CTQ_15=CTQ_15..1,
-         CTQ_16=CTQ_16..1,
-         CTQ_17=CTQ_17..1,
-         CTQ_18=CTQ_18..1,
-         CTQ_19=ifelse(CTQ_19..1==1,5,
-                       ifelse(CTQ_19..1==2,4,
-                              ifelse(CTQ_19..1==3,3,
-                                     ifelse(CTQ_19..1==4,2,
-                                            ifelse(CTQ_19..1==5,1,
+         CTQ_14=CTQ_14_1,
+         CTQ_15=CTQ_15_1,
+         CTQ_16=CTQ_16_1,
+         CTQ_17=CTQ_17_1,
+         CTQ_18=CTQ_18_1,
+         CTQ_19=ifelse(CTQ_19_1==1,5,
+                       ifelse(CTQ_19_1==2,4,
+                              ifelse(CTQ_19_1==3,3,
+                                     ifelse(CTQ_19_1==4,2,
+                                            ifelse(CTQ_19_1==5,1,
                                                    NA))))),
-         CTQ_20=CTQ_20..1,
-         CTQ_21=CTQ_21..1,
-         CTQ_22=CTQ_22..1,
-         CTQ_23=CTQ_23..1,
-         CTQ_24=CTQ_24..1,
-         CTQ_25=CTQ_25..1,
-         CTQ_26=ifelse(CTQ_26..1==1,5,
-                       ifelse(CTQ_26..1==2,4,
-                              ifelse(CTQ_26..1==3,3,
-                                     ifelse(CTQ_26..1==4,2,
-                                            ifelse(CTQ_26..1==5,1,
+         CTQ_20=CTQ_20_1,
+         CTQ_21=CTQ_21_1,
+         CTQ_22=CTQ_22_1,
+         CTQ_23=CTQ_23_1,
+         CTQ_24=CTQ_24_1,
+         CTQ_25=CTQ_25_1,
+         CTQ_26=ifelse(CTQ_26_1==1,5,
+                       ifelse(CTQ_26_1==2,4,
+                              ifelse(CTQ_26_1==3,3,
+                                     ifelse(CTQ_26_1==4,2,
+                                            ifelse(CTQ_26_1==5,1,
                                                    NA))))),
-         CTQ_27=CTQ_27..1,
-         CTQ_28=CTQ_28..1,
-         CTQ_29=CTQ_29..1,
-         CTQ_30=CTQ_30..1,
-         CTQ_31=CTQ_31..1,
-         CTQ_32=CTQ_32..1,
+         CTQ_27=CTQ_27_1,
+         CTQ_28=CTQ_28_1,
+         CTQ_29=CTQ_29_1,
+         CTQ_30=CTQ_30_1,
+         CTQ_31=CTQ_31_1,
+         CTQ_32=CTQ_32_1,
          CTQ_N=32) %>%
   mutate(CTQ_missing=rowSums(is.na(cbind(CTQ_1,CTQ_2,CTQ_3,CTQ_4,CTQ_5,CTQ_6,CTQ_7,CTQ_8,CTQ_9,CTQ_10,CTQ_11,CTQ_12,CTQ_13,CTQ_14,CTQ_15,CTQ_16,CTQ_17,CTQ_18,CTQ_19,CTQ_20,CTQ_21,CTQ_22,CTQ_23,CTQ_24,CTQ_25,CTQ_26,CTQ_27,CTQ_28,CTQ_29,CTQ_30,CTQ_31,CTQ_32))),
          CTQ_emotionalabuse_total=rowSums(cbind(CTQ_3,CTQ_8,CTQ_14,CTQ_18,CTQ_25,CTQ_31),na.rm=T),
@@ -1941,7 +1954,7 @@ CTQ_Wave1<-left_join(CTQ,survey_date, by = c("tagid","survey_name")) %>%
          CTQ_validity_mean=rowMeans(cbind(CTQ_10,CTQ_16,CTQ_22),na.rm=F))
 
 ## Save it
-CTQ_Wave1_outdf <- CTQ_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+CTQ_Wave1_outdf <- CTQ_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name)) 
 write.csv(CTQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CTQ_Wave1.csv"))
 
 CTQ_Wave2_outdf <- CTQ_Wave1 %>% filter(grepl("W2",survey_name)) 
@@ -1949,6 +1962,9 @@ write.csv(CTQ_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/CTQ_Wave2
 
 CTQ_Wave3_outdf <- CTQ_Wave1 %>% filter(grepl("W3",survey_name)) 
 write.csv(CTQ_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/CTQ_Wave3.csv"))
+
+CTQ_Wave4_outdf <- CTQ_Wave1 %>% filter(grepl("W4",survey_name)) 
+write.csv(CTQ_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/CTQ_Wave4.csv"))
 
 ## Graph it
 CTQ_Wave1_totals<-CTQ_Wave1 %>%
