@@ -81,8 +81,24 @@ raw_survey_data <- get_survey_data(survey_info, pid_cols=c("RecipientLastName", 
 
 #Need to do a little cleaning before we do anything else.
 raw_survey_data[RecipientLastName == "Monte", SID := 244] #SJC updated
+raw_survey_data[RecipientLastName == "Mercurio", SID := 034] #SJC updated
+raw_survey_data[RecipientLastName == "Holland", SID := 006] #SJC updated
+raw_survey_data[RecipientLastName == "Estess", SID := 089] #SJC updated
+raw_survey_data[RecipientLastName == "Espy", SID := 011] #SJC updated
+raw_survey_data[RecipientLastName == "Sheppeard", SID := 141] #SJC updated
+raw_survey_data[RecipientLastName == "Martin", SID := 097] #SJC updated
+raw_survey_data[RecipientLastName == "Robbins", SID := 138] #SJC updated
+raw_survey_data[RecipientLastName == "Ramsdal", SID := 084] #SJC updated
+raw_survey_data[RecipientLastName == "Ziemer", SID := 068] #SJC updated
+raw_survey_data[RecipientLastName == "Dannielle Sanchez", SID := 102] #SJC updated
+raw_survey_data[RecipientLastName == "Trueblood", SID := 144] #SJC updated
+raw_survey_data[RecipientLastName == "Davis", SID := 054] #SJC updated
+raw_survey_data[RecipientLastName == "Dillon", SID := 044] #SJC updated
+raw_survey_data[RecipientLastName == "Lopez", SID := 100] #SJC updated
+raw_survey_data[RecipientLastName == "Morikawa", SID := 056] #SJC updated
+raw_survey_data[RecipientLastName == "McCan", SID := 012] #SJC updated
 raw_survey_data[SID == 255, SID := 225] #SJC updated
-raw_survey_data[SID == "SV_eqvWqPtsOO4uqPP", SID := NA] #SJC updated #Not strictly necessary since `fix_ids` would do this too.
+#raw_survey_data[SID == "SV_eqvWqPtsOO4uqPP", SID := NA] #SJC updated #Not strictly necessary since `fix_ids` would do this too. #This deletes real data... 
 
 #For fixing User IDs, I added a function to scorequaltrics,
 #`scorequaltrics::fix_ids`. The help and the example below should be pretty self
@@ -613,59 +629,18 @@ BFI10<-left_join(filter(cleaned_survey_data, grepl("BFI",item)) %>%
                    filter(!is.na(dob),!is.na(sa_date)) %>%
                    select(tagid, sa_date, sb_date, dob),by="tagid")
 
-BFI10 <- filter(cleaned_survey_data, grepl("BFI",item)) %>% 
-                   mutate(value=as.numeric(value)) %>% 
-                   filter(!is.na(value)) %>% 
-                   distinct(tagid,item,value,survey_name,.keep_all = FALSE)
-
-
-#fix coding
-BFI10_test <- filter(cleaned_survey_data, grepl("BFI",item)) %>% 
-                   filter(!is.na(value)) %>% 
-                   distinct(tagid,item,survey_name,.keep_all = T)
-BFI10_test["value"][BFI10_test["value"] == "Disagree strongly"] <- "1"
-BFI10_test["value"][BFI10_test["value"] == "Disagree a little"] <- "2"
-BFI10_test["value"][BFI10_test["value"] == "Neither agree nor disagree"] <- "3"
-BFI10_test["value"][BFI10_test["value"] == "Agree a little"] <- "4"
-BFI10_test["value"][BFI10_test["value"] == "Agree strongly"] <- "5"
-
-date_test <- redcap_cleaned %>%
-  filter(!is.na(dob),!is.na(sa_date)) 
-
-BFI10<-left_join(date_test %>%
-                   select(tagid, sa_date, sb_date, dob, wave),
-                 BFI10_test %>% 
-                   #mutate(value=as.numeric(value)) %>% 
-                   spread(item,value),by = "tagid")
-cols.num <- c(7:16)
-BFI10[cols.num] <- sapply(BFI10[cols.num],as.numeric)
-sapply(BFI10, class)
-
-BFI10 <- BFI10 %>% mutate(survey_date=ifelse(is.na(`time_BFI-10`),
-                                      paste0(sprintf("%02d",month(sa_date)),"/",sprintf("%02d",day(sa_date)),"/",year(sa_date)),
-                                      paste0(sprintf("%02d",month(`time_BFI-10`)),"/",sprintf("%02d",day(`time_BFI-10`)),"/",year(`time_BFI-10`)))) 
-
-
-
-#BFI10_Wave1<-left_join(BFI10,survey_originaldate, by = c("tagid","survey_name")) %>% 
- # distinct(tagid,survey_name,.keep_all = T) %>%
-  #mutate(qualtrics_date=ifelse(!is.na(originaldate), sa_date, originaldate))
-
-#BFI10_Wave1<-left_join(BFI10,survey_originaldate, by = c("tagid","survey_name")) %>% 
- # distinct(tagid,survey_name,.keep_all = T) %>%
-  #mutate(qualtrics_date=originaldate) %>% 
-  #select(-originaldate) %>%
-#  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
- #                           ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
-  #                                 ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
-   #                                       ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
-    #                                             ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(`time_BFI-10`)
-     #                                            )))))) %>%
-#  select(-originaldate,-sb_date,-sa_date,-dob) %>%
- # distinct(tagid,survey_name,.keep_all = TRUE) %>%
-BFI10_Wave1 <- BFI10 %>%
-  distinct(tagid,survey_name,survey_date,.keep_all = T) %>%
-  select(-wave,-sb_date,-sa_date,-dob, -`time_BFI-10`) %>%
+BFI10_Wave1<-left_join(BFI10,survey_date, by = c("tagid","survey_name")) %>% 
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
+  mutate(qualtrics_date=value) %>% 
+  select(-value) %>%
+  mutate(survey_date=ifelse(survey_name=="TAG - Sess 1 - V4 - Current",sa_date,
+                            ifelse(survey_name=="TAG - Sess 1 - V1",sa_date,
+                                   ifelse(survey_name=="TAG - Sess 1 - V2",sa_date,
+                                          ifelse(survey_name=="TAG - Sess 1 - V3",sa_date,
+                                                 ifelse(survey_name=="Sensitive Q's for 042",sb_date,as.character(qualtrics_date)
+                                                 )))))) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  distinct(tagid,survey_name,.keep_all = TRUE) %>%
   mutate(BFI_10_1=ifelse(BFI_10_1==1,5,
                          ifelse(BFI_10_1==2,4,
                                 ifelse(BFI_10_1==3,3,
@@ -721,10 +696,6 @@ BFI10_Wave1 <- BFI10 %>%
          BFI10_open_missing_perc=100*(rowSums(is.na(cbind(BFI_10_5,BFI_10_10)))/2),
          BFI10_open_total=rowSums(cbind(BFI_10_5,BFI_10_10), na.rm=F),
          BFI10_open_mean=rowMeans(cbind(BFI_10_5,BFI_10_10), na.rm=T))
-
-#tidying
-#BFI10_Wave1 <- BFI10_Wave1[,c(2,1,3:12,15:40)] 
-BFI10_Wave1 <- BFI10_Wave1[order(BFI10_Wave1$tagid), ]
 
 ## Save it
 BFI10_Wave1_outdf <- BFI10_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name)) 
@@ -836,15 +807,15 @@ rm(BFI10,BFI10_Wave1,BFI10_Wave1_means,BFI10_Wave1_means_graph,BFI10_Wave1_total
 
 Prepare CAMM
 ```{r}
-CAMM<-left_join(CAMM <- filter(cleaned_survey_data, grepl("CAMM",item)) %>% 
+CAMM<-left_join(filter(cleaned_survey_data, grepl("CAMM",item)) %>% 
                   mutate(value=as.numeric(value)) %>% 
                   filter(!is.na(value)) %>% 
-                  filter(!grepl("TAG160",tagid) | grepl("W2|W3",survey_name)) %>% 
-  #need to readd TAG160 at Wave 1 when we decide which answers we're including
-                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%                                    spread(item,value),
+                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
+                  spread(item,value),
                 redcap_cleaned %>%
                   filter(!is.na(dob),!is.na(sa_date)) %>%
                   select(tagid, sa_date, sb_date, dob),by="tagid")
+
 
 CAMM_Wave1<-left_join(CAMM,survey_date, by = c("tagid","survey_name")) %>% 
   distinct(tagid,survey_name,.keep_all = TRUE) %>%
@@ -1392,7 +1363,7 @@ rm(pbip_temp_df,pbip_temp,pbip_df_header,PBIP_Wave1_pbip_by_pds_graph,PBIP_PDS_W
 
 Prepare CARE-R Soc
 ```{r}
-CARE_R_SOC<-left_join(filter(cleaned_survey_data, grepl("CARE_R",item)) %>% 
+CARE_R_SOC<-left_join(filter(cleaned_survey_data, grepl("CARE-R",item)) %>% 
                         mutate(value=as.numeric(value)) %>% 
                         filter(!is.na(value)) %>% 
                         distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
@@ -1411,44 +1382,44 @@ CARE_R_SOC_Wave1<-left_join(CARE_R_SOC,survey_date, by = c("tagid","survey_name"
                                           ))))) %>%
   select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
   mutate(carersoc_gen_N=2,
-         carersoc_gen_missing=rowSums(is.na(cbind(CARE_R_I,CARE_R_II))),
-         carersoc_gen_missing_perc=100*(rowSums(is.na(cbind(CARE_R_I,CARE_R_II)))/2),
-         carersoc_gen=rowMeans(cbind(CARE_R_I,CARE_R_II),na.rm=T),
+         carersoc_gen_missing=rowSums(is.na(cbind(`CARE-R_I`,`CARE-R_II`))),
+         carersoc_gen_missing_perc=100*(rowSums(is.na(cbind(`CARE-R_I`,`CARE-R_II`)))/2),
+         carersoc_gen=rowMeans(cbind(`CARE-R_I`,`CARE-R_II`),na.rm=T),
          carersoc_dosubstance_N=4,
-         carersoc_dosubstance_missing=rowSums(is.na(cbind(CARE_R_2A,CARE_R_3A,CARE_R_4A,CARE_R_5A))), #NV: should CARE_R_1A be in her e too?
-         carersoc_dosubstance_missing_perc=100*(rowSums(is.na(cbind(CARE_R_2A,CARE_R_3A,CARE_R_4A,CARE_R_5A)))/4),
-         carersoc_dosubstance=round(rowMeans(cbind(CARE_R_2A,CARE_R_3A,CARE_R_4A,CARE_R_5A),na.rm=T),2),
+         carersoc_dosubstance_missing=rowSums(is.na(cbind(`CARE-R_2A`,`CARE-R_3A`,`CARE-R_4A`,`CARE-R_5A`))), #NV: should CARE-R_1A be in her e too?
+         carersoc_dosubstance_missing_perc=100*(rowSums(is.na(cbind(`CARE-R_2A`,`CARE-R_3A`,`CARE-R_4A`,`CARE-R_5A`)))/4),
+         carersoc_dosubstance=round(rowMeans(cbind(`CARE-R_2A`,`CARE-R_3A`,`CARE-R_4A`,`CARE-R_5A`),na.rm=T),2),
          carersoc_avoidsubstance_N=4,
-         carersoc_avoidsubstance_missing=rowSums(is.na(cbind(CARE_R_2B,CARE_R_3B,CARE_R_4B,CARE_R_5B))),
-         carersoc_avoidsubstance_missing_perc=100*(rowSums(is.na(cbind(CARE_R_2B,CARE_R_3B,CARE_R_4B,CARE_R_5B)))/4),
-         carersoc_avoidsubstance=round(rowMeans(cbind(CARE_R_2B,CARE_R_3B,CARE_R_4B,CARE_R_5B),na.rm=T),2),
+         carersoc_avoidsubstance_missing=rowSums(is.na(cbind(`CARE-R_2B`,`CARE-R_3B`,`CARE-R_4B`,`CARE-R_5B`))),
+         carersoc_avoidsubstance_missing_perc=100*(rowSums(is.na(cbind(`CARE-R_2B`,`CARE-R_3B`,`CARE-R_4B`,`CARE-R_5B`)))/4),
+         carersoc_avoidsubstance=round(rowMeans(cbind(`CARE-R_2B`,`CARE-R_3B`,`CARE-R_4B`,`CARE-R_5B`),na.rm=T),2),
          carersoc_doviolence_N=4,
-         carersoc_doviolence_missing=rowSums(is.na(cbind(CARE_R_7A,CARE_R_9A,CARE_R_10A,CARE_R_11A))),
-         carersoc_doviolence_missing_perc=100*(rowSums(is.na(cbind(CARE_R_7A,CARE_R_9A,CARE_R_10A,CARE_R_11A)))/4),
-         carersoc_doviolence=round(rowMeans(cbind(CARE_R_7A,CARE_R_9A,CARE_R_10A,CARE_R_11A),na.rm=T),2),
+         carersoc_doviolence_missing=rowSums(is.na(cbind(`CARE-R_7A`,`CARE-R_9A`,`CARE-R_10A`,`CARE-R_11A`))),
+         carersoc_doviolence_missing_perc=100*(rowSums(is.na(cbind(`CARE-R_7A`,`CARE-R_9A`,`CARE-R_10A`,`CARE-R_11A`)))/4),
+         carersoc_doviolence=round(rowMeans(cbind(`CARE-R_7A`,`CARE-R_9A`,`CARE-R_10A`,`CARE-R_11A`),na.rm=T),2),
          carersoc_avoidviolence_N=4,
-         carersoc_avoidviolence_missing=rowSums(is.na(cbind(CARE_R_7B,CARE_R_9B,CARE_R_10B,CARE_R_11B))),
-         carersoc_avoidviolence_missing_perc=100*(rowSums(is.na(cbind(CARE_R_7B,CARE_R_9B,CARE_R_10B,CARE_R_11B)))/4),
-         carersoc_avoidviolence=round(rowMeans(cbind(CARE_R_7B,CARE_R_9B,CARE_R_10B,CARE_R_11B),na.rm=T),2),
+         carersoc_avoidviolence_missing=rowSums(is.na(cbind(`CARE-R_7B`,`CARE-R_9B`,`CARE-R_10B`,`CARE-R_11B`))),
+         carersoc_avoidviolence_missing_perc=100*(rowSums(is.na(cbind(`CARE-R_7B`,`CARE-R_9B`,`CARE-R_10B`,`CARE-R_11B`)))/4),
+         carersoc_avoidviolence=round(rowMeans(cbind(`CARE-R_7B`,`CARE-R_9B`,`CARE-R_10B`,`CARE-R_11B`),na.rm=T),2),
          carersoc_dorecklessdriving_N=4,
-         carersoc_dorecklessdriving_missing=rowSums(is.na(cbind(CARE_R_6A,CARE_R_12A,CARE_R_13A,CARE_R_14A))),
-         carersoc_dorecklessdriving_missing_perc=100*(rowSums(is.na(cbind(CARE_R_6A,CARE_R_12A,CARE_R_13A,CARE_R_14A)))/4),
-         carersoc_dorecklessdriving=round(rowMeans(cbind(CARE_R_6A,CARE_R_12A,CARE_R_13A,CARE_R_14A),na.rm=T),2),
+         carersoc_dorecklessdriving_missing=rowSums(is.na(cbind(`CARE-R_6A`,`CARE-R_12A`,`CARE-R_13A`,`CARE-R_14A`))),
+         carersoc_dorecklessdriving_missing_perc=100*(rowSums(is.na(cbind(`CARE-R_6A`,`CARE-R_12A`,`CARE-R_13A`,`CARE-R_14A`)))/4),
+         carersoc_dorecklessdriving=round(rowMeans(cbind(`CARE-R_6A`,`CARE-R_12A`,`CARE-R_13A`,`CARE-R_14A`),na.rm=T),2),
          carersoc_avoidrecklessdriving_N=4,
-         carersoc_avoidrecklessdriving_missing=rowSums(is.na(cbind(CARE_R_6B,CARE_R_12B,CARE_R_13B,CARE_R_14B))),
-         carersoc_avoidrecklessdriving_missing_perc=100*(rowSums(is.na(cbind(CARE_R_6B,CARE_R_12B,CARE_R_13B,CARE_R_14B)))/4),
-         carersoc_avoidrecklessdriving=round(rowMeans(cbind(CARE_R_6B,CARE_R_12B,CARE_R_13B,CARE_R_14B),na.rm=T),2),
+         carersoc_avoidrecklessdriving_missing=rowSums(is.na(cbind(`CARE-R_6B`,`CARE-R_12B`,`CARE-R_13B`,`CARE-R_14B`))),
+         carersoc_avoidrecklessdriving_missing_perc=100*(rowSums(is.na(cbind(`CARE-R_6B`,`CARE-R_12B`,`CARE-R_13B`,`CARE-R_14B`)))/4),
+         carersoc_avoidrecklessdriving=round(rowMeans(cbind(`CARE-R_6B`,`CARE-R_12B`,`CARE-R_13B`,`CARE-R_14B`),na.rm=T),2),
          carersoc_dograffiti_N=1,
-         carersoc_dograffiti_missing=rowSums(is.na(cbind(CARE_R_8A))),
-         carersoc_dograffiti_missing_perc=100*(rowSums(is.na(cbind(CARE_R_8A)))/1),
-         carersoc_dograffiti=CARE_R_8A,
+         carersoc_dograffiti_missing=rowSums(is.na(cbind(`CARE-R_8A`))),
+         carersoc_dograffiti_missing_perc=100*(rowSums(is.na(cbind(`CARE-R_8A`)))/1),
+         carersoc_dograffiti=`CARE-R_8A`,
          carersoc_avoidgraffiti_N=1,
-         carersoc_avoidgraffiti_missing=rowSums(is.na(cbind(CARE_R_8B))),
-         carersoc_avoidgraffiti_missing_perc=100*(rowSums(is.na(cbind(CARE_R_8B)))/1),
-         carersoc_avoidgraffiti=CARE_R_8B)  
+         carersoc_avoidgraffiti_missing=rowSums(is.na(cbind(`CARE-R_8B`))),
+         carersoc_avoidgraffiti_missing_perc=100*(rowSums(is.na(cbind(`CARE-R_8B`)))/1),
+         carersoc_avoidgraffiti=`CARE-R_8B`)  
 
 ## Save it
-CARE_R_SOC_Wave1_outdf <- CARE_R_SOC_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+CARE_R_SOC_Wave1_outdf <- CARE_R_SOC_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name)) 
 write.csv(CARE_R_SOC_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/CARE_R_SOC_Wave1.csv"))
 
 CARE_R_SOC_Wave2_outdf <- CARE_R_SOC_Wave1 %>% filter(grepl("W2",survey_name)) 
@@ -1456,6 +1427,9 @@ write.csv(CARE_R_SOC_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/CA
 
 CARE_R_SOC_Wave3_outdf <- CARE_R_SOC_Wave1 %>% filter(grepl("W3",survey_name)) 
 write.csv(CARE_R_SOC_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/CARE_R_SOC_Wave3.csv"))
+
+CARE_R_SOC_Wave4_outdf <- CARE_R_SOC_Wave1 %>% filter(grepl("W4",survey_name)) 
+write.csv(CARE_R_SOC_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/CARE_R_SOC_Wave4.csv"))
 
 ## Graph it
 CARE_R_SOC_Wave1_DO<-CARE_R_SOC_Wave1 %>%
@@ -1726,7 +1700,7 @@ Prepare CRQ
 CRQ <- left_join(filter(cleaned_survey_data, grepl("CRQ",item)) %>%
                    mutate(value=as.numeric(value)) %>% 
                    filter(!is.na(value)) %>%  
-                   filter(!grepl("TAG160",tagid) | grepl("W2|W3",survey_name)) %>% 
+                   filter(!grepl("TAG160",tagid) | grepl("W2|W3|W4",survey_name)) %>% 
                    #need to readd TAG160 at Wave 1 when we decide which answers we're including
                    distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
                    spread(item,value),redcap_cleaned %>%
@@ -2072,7 +2046,7 @@ DIT<-left_join(filter(cleaned_survey_data, grepl("DIT",item)) %>%
                  filter(!grepl("CUDIT",item)) %>% 
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>% 
-                  filter(!grepl("TAG160",tagid) | grepl("W2|W3",survey_name)) %>% 
+                  filter(!grepl("TAG160",tagid) | grepl("W2|W3|W4",survey_name)) %>% 
   #need to readd TAG160 at Wave 1 when we decide which answers we're including
                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
                  spread(item,value),
@@ -2624,7 +2598,7 @@ Prepare ERQ
 ERQ<-left_join(filter(cleaned_survey_data, grepl("ERQ",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
-                 filter(!grepl("TAG160",tagid) | grepl("W2|W3",survey_name)) %>% 
+                 filter(!grepl("TAG160",tagid) | grepl("W2|W3|W4",survey_name)) %>% 
                  #need to readd TAG160 at Wave 1 when we decide which answers we're including
                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
                  spread(item,value),
@@ -2921,7 +2895,7 @@ Prepare IRI
 IRI<-left_join(filter(cleaned_survey_data, grepl("IRI",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
-                 filter(!grepl("TAG160",tagid) | grepl("W2|W3",survey_name)) %>% 
+                 filter(!grepl("TAG160",tagid) | grepl("W2|W3|W4",survey_name)) %>% 
                  #need to readd TAG160 at Wave 1 when we decide which answers we're including
                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>% 
                  spread(item,value),
@@ -3116,7 +3090,9 @@ KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name")) %>%
   mutate(qualtrics_date=value) %>%
   select(-value)%>%
   mutate(survey_date=qualtrics_date) %>%
-  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>%
+  select(-qualtrics_date,-sb_date,-sa_date,-dob) %>% 
+  mutate(K_SRQ_1=ifelse(tagid=="TAG003" & survey_name=="TAG - Sess 1 - V3", 7, K_SRQ_1), K_SRQ_2=ifelse(tagid=="TAG003" & survey_name=="TAG - Sess 1 - V3", 5, K_SRQ_2), K_SRQ_3=ifelse(tagid=="TAG003" & survey_name=="TAG - Sess 1 - V3", 5, K_SRQ_3), K_SRQ_4=ifelse(tagid=="TAG003" & survey_name=="TAG - Sess 1 - V3", 5, K_SRQ_4), K_SRQ_5=ifelse(tagid=="TAG003" & survey_name=="TAG - Sess 1 - V3", 4, K_SRQ_5), K_SRQ_6=ifelse(tagid=="TAG003" & survey_name=="TAG - Sess 1 - V3", 4, K_SRQ_6), K_SRQ_7=ifelse(tagid=="TAG003" & survey_name=="TAG - Sess 1 - V3", 6, K_SRQ_7), K_SRQ_8=ifelse(tagid=="TAG003" & survey_name=="TAG - Sess 1 - V3", 3, K_SRQ_8), K_SRQ_9=ifelse(tagid=="TAG003" & survey_name=="TAG - Sess 1 - V3", 4, K_SRQ_9)) %>% 
+  subset(survey_name!="TAG - Sess 1 - V3 - for 003 (KSRQ_1 and Sleep Q's)") %>% 
   mutate(KSRQ_adm_mean=round(rowMeans(cbind(K_SRQ_1,K_SRQ_7,K_SRQ_11,K_SRQ_17), na.rm=T),3),
          KSRQ_negsoc_mean=round(rowMeans(cbind(K_SRQ_3,K_SRQ_5,K_SRQ_8,K_SRQ_13,K_SRQ_16), na.rm=T),3),
          KSRQ_pass_mean=round(rowMeans(cbind(K_SRQ_12,K_SRQ_20,K_SRQ_22), na.rm=T),3),
@@ -3126,7 +3102,7 @@ KSRQ_Wave1<-left_join(KSRQ,survey_date, by = c("tagid","survey_name")) %>%
          KSRQ_social_mean=round(rowMeans(cbind(K_SRQ_4,K_SRQ_10,K_SRQ_14), na.rm=T),3))
 # Note above: Up to 5/09/2019, item 13 was missing completely from qualtrics, so subscales above reflect actual qualtrics item numbers - MLB
 ## Save it
-KSRQ_Wave1_outdf <- KSRQ_Wave1 %>% filter(!grepl("W2|W3",survey_name))
+KSRQ_Wave1_outdf <- KSRQ_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name))
 write.csv(KSRQ_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/KSRQ_Wave1.csv"))
 
 KSRQ_Wave2_outdf <- KSRQ_Wave1 %>% filter(grepl("W2",survey_name))
@@ -3134,6 +3110,9 @@ write.csv(KSRQ_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/KSRQ_Wav
 
 KSRQ_Wave3_outdf <- KSRQ_Wave1 %>% filter(grepl("W3",survey_name))
 write.csv(KSRQ_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/KSRQ_Wave3.csv"))
+
+KSRQ_Wave4_outdf <- KSRQ_Wave1 %>% filter(grepl("W4",survey_name))
+write.csv(KSRQ_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/KSRQ_Wave4.csv"))
 
 ## Graph it
 KSRQ_Wave1_means<-KSRQ_Wave1 %>%
@@ -4525,7 +4504,7 @@ SPPA<-left_join(filter(cleaned_survey_data, grepl("SPPA",item)) %>%
                  mutate(value=as.numeric(value)) %>% 
                  filter(!is.na(value)) %>%
                  filter(!value=="") %>% 
-                  filter(!grepl("TAG160",tagid) | grepl("W2|W3",survey_name)) %>% 
+                  filter(!grepl("TAG160",tagid) | grepl("W2|W3|W4",survey_name)) %>% 
   #need to readd TAG160 at Wave 1 when we decide which answers we're including
                  distinct(tagid,item,value,survey_name,.keep_all = FALSE) %>%
                  spread(item,value),
@@ -4797,7 +4776,7 @@ SPPA_Wave1<-left_join(SPPA,survey_date, by = c("tagid","survey_name")) %>%
          SPPA_globalselfworth_missing_perc=100*(rowSums(is.na(cbind(ha9,ha18,ha27,ha36,ha45)))/5))
 
 ## Save it
-SPPA_Wave1_outdf <- SPPA_Wave1 %>% filter(!grepl("W2|W3",survey_name)) 
+SPPA_Wave1_outdf <- SPPA_Wave1 %>% filter(!grepl("W2|W3|W4",survey_name)) 
 write.csv(SPPA_Wave1_outdf, file = paste0(workdir,"Questionnaires/Wave1/SPPA_Wave1.csv"))
 
 SPPA_Wave2_outdf <- SPPA_Wave1 %>% filter(grepl("W2",survey_name)) 
@@ -4805,6 +4784,9 @@ write.csv(SPPA_Wave2_outdf, file = paste0(workdir,"Questionnaires/Wave2/SPPA_Wav
 
 SPPA_Wave3_outdf <- SPPA_Wave1 %>% filter(grepl("W3",survey_name)) 
 write.csv(SPPA_Wave3_outdf, file = paste0(workdir,"Questionnaires/Wave3/SPPA_Wave3.csv"))
+
+SPPA_Wave4_outdf <- SPPA_Wave1 %>% filter(grepl("W4",survey_name)) 
+write.csv(SPPA_Wave4_outdf, file = paste0(workdir,"Questionnaires/Wave4/SPPA_Wave4.csv"))
 
 ## Graph it
 SPPA_Wave1_totals<-SPPA_Wave1_outdf %>%
@@ -4822,7 +4804,7 @@ SPPA_Wave1_totals<-SPPA_Wave1_outdf %>%
   gather('item','value',2:length(.)) 
 SPPA_Wave1_totals_graph<-ggplot(SPPA_Wave1_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+
-  ggtitle(paste0("Self-Perception Profile for Adolescents total subscores for ",length(unique(SPPA_Wave1_outdf$tagid[!is.na(SPPA_Wave1_outdf$SPPA_scholasticcomp_total)]))," participants")) + geom_vline(aes(xintercept = median(SPPA_Wave1_outdf$SPPA_globalselfworth_total, na.rm=T), colour="Global_Self_Worth"))
+  ggtitle(paste0("Wave 1 SPPA total subscores for ",length(unique(SPPA_Wave1_outdf$tagid[!is.na(SPPA_Wave1_outdf$SPPA_scholasticcomp_total)]))," participants")) + geom_vline(aes(xintercept = median(SPPA_Wave1_outdf$SPPA_globalselfworth_total, na.rm=T), colour="Global_Self_Worth"))
 
 SPPA_Wave2_totals<-SPPA_Wave2_outdf %>%
   select(tagid,SPPA_scholasticcomp_total,SPPA_socialcomp_total,SPPA_athleticcomp_total,
@@ -4839,7 +4821,7 @@ SPPA_Wave2_totals<-SPPA_Wave2_outdf %>%
   gather('item','value',2:length(.)) 
 SPPA_Wave2_totals_graph<-ggplot(SPPA_Wave2_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+ 
-  ggtitle(paste0("Self-Perception Profile for Adolescents total subscores for ",length(unique(SPPA_Wave2_outdf$tagid[!is.na(SPPA_Wave2_outdf$SPPA_scholasticcomp_total)]))," participants")) + geom_vline(aes(xintercept = median(SPPA_Wave2_outdf$SPPA_globalselfworth_total, na.rm=T), colour="Global_Self_Worth"))
+  ggtitle(paste0("Wave 2 SPPA total subscores for ",length(unique(SPPA_Wave2_outdf$tagid[!is.na(SPPA_Wave2_outdf$SPPA_scholasticcomp_total)]))," participants")) + geom_vline(aes(xintercept = median(SPPA_Wave2_outdf$SPPA_globalselfworth_total, na.rm=T), colour="Global_Self_Worth"))
 
 SPPA_Wave3_totals<-SPPA_Wave3_outdf %>%
   select(tagid,SPPA_scholasticcomp_total,SPPA_socialcomp_total,SPPA_athleticcomp_total,
@@ -4857,11 +4839,31 @@ SPPA_Wave3_totals<-SPPA_Wave3_outdf %>%
   gather('item','value',2:length(.)) 
 SPPA_Wave3_totals_graph<-ggplot(SPPA_Wave3_totals, aes(x=value, colour=item)) +
   geom_density(alpha=.3)+ 
-  ggtitle(paste0("Self-Perception Profile for Adolescents total subscores for ",length(unique(SPPA_Wave3_outdf$tagid[!is.na(SPPA_Wave3_outdf$SPPA_scholasticcomp_total)]))," participants")) + geom_vline(aes(xintercept = median(SPPA_Wave3_outdf$SPPA_globalselfworth_total, na.rm=T), colour="Global_Self_Worth"))+ geom_vline(aes(xintercept = median(SPPA_Wave3_outdf$SPPA_romanticappeal_total, na.rm=T), colour="Romantic_Appeal"))
+  ggtitle(paste0("Wave 3 SPPA total subscores for ",length(unique(SPPA_Wave3_outdf$tagid[!is.na(SPPA_Wave3_outdf$SPPA_scholasticcomp_total)]))," participants")) + geom_vline(aes(xintercept = median(SPPA_Wave3_outdf$SPPA_globalselfworth_total, na.rm=T), colour="Global_Self_Worth"))
+#+ geom_vline(aes(xintercept = median(SPPA_Wave3_outdf$SPPA_romanticappeal_total, na.rm=T), colour="Romantic_Appeal"))
 
+SPPA_Wave4_totals<-SPPA_Wave4_outdf %>%
+  select(tagid,SPPA_scholasticcomp_total,SPPA_socialcomp_total,SPPA_athleticcomp_total,
+         SPPA_physicalappear_total,SPPA_behavconduct_total,SPPA_closefriend_total,
+         SPPA_globalselfworth_total,SPPA_romanticappeal_total) %>%
+  mutate(Scholastic_Competence=SPPA_scholasticcomp_total,
+         Social_Competence=SPPA_socialcomp_total,
+         Athletic_Competence=SPPA_athleticcomp_total,
+         Physical_Appearance=SPPA_physicalappear_total,
+         Behavioral_Conduct=SPPA_behavconduct_total,
+         Close_Friendship=SPPA_closefriend_total,
+         Global_Self_Worth=SPPA_globalselfworth_total,
+         Romantic_Appeal=SPPA_romanticappeal_total) %>%
+  select(-contains("SPPA")) %>%
+  gather('item','value',2:length(.)) 
+SPPA_Wave4_totals_graph<-ggplot(SPPA_Wave4_totals, aes(x=value, colour=item)) +
+  geom_density(alpha=.3)+ 
+  ggtitle(paste0("Wave 4 SPPA total subscores for ",length(unique(SPPA_Wave4_outdf$tagid[!is.na(SPPA_Wave4_outdf$SPPA_scholasticcomp_total)]))," participants")) + geom_vline(aes(xintercept = median(SPPA_Wave4_outdf$SPPA_globalselfworth_total, na.rm=T), colour="Global_Self_Worth"))
+#+ geom_vline(aes(xintercept = median(SPPA_Wave4_outdf$SPPA_romanticappeal_total, na.rm=T), colour="Romantic_Appeal"))
 
 require(gridExtra)
-grid.arrange(SPPA_Wave1_totals_graph, SPPA_Wave2_totals_graph, ncol=2)
+grid.arrange(SPPA_Wave1_totals_graph, SPPA_Wave2_totals_graph, 
+             SPPA_Wave3_totals_graph, SPPA_Wave4_totals_graph, ncol=2)
 
 sppa_pds_wave1 <- merge(SPPA_Wave1_outdf, PDS_Wave1_outdf, by = "tagid", all = T)
 sppa_pds_wave1$pdsgroup <- ifelse(sppa_pds_wave1$pdss<=2, 1, ifelse(sppa_pds_wave1$pdss>=4, 3, ifelse(is.na(sppa_pds_wave1$pdss), NA, 2)))
