@@ -127,7 +127,7 @@ enough_good_frames <- dataset %>%
   mutate(enough_good_frames = ifelse(num_frames_below_thresh >= 385, 1, 0), # five minutes of data 
          enough_good_frames_4min30s = ifelse(num_frames_below_thresh >= 347, 1, 0)) # 4 mins 30 seconds of data
 
-temp <- filter(dataset, subjectID=="TAG077w02") %>% 
+temp <- filter(dataset, subjectID=="TAG181w02") %>% 
   group_by(run) %>% 
   summarise(num_frames_below_thresh = sum(FD_below_thresh))
 
