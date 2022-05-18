@@ -17,7 +17,7 @@ lapply(packages, library, character.only = TRUE)
 
 # Set inputs
 data_dir <- '/projects/dsnlab/shared/tag/fmriprep_20.2.1/fmriprep'
-inclusion_info_dir <-'/home/tcheng/xcpengine/data/'
+inclusion_info_dir <- '/home/tcheng/xcpengine/data/'
 inclusion_info_file <- 'rsfc_inclusion.csv'
 inclusion_info_three_runs_file <- 'rsfc_inclusion_three_runs.csv'
 output_dir <- '/projects/dsnlab/shared/tag/fmriprep_20.2.1/fmriprep/derivatives'

@@ -19,7 +19,7 @@ lapply(packages, library, character.only = TRUE)
 param_input_dir <- "/Volumes/psych-cog/dsnlab/cheng_spf/data/betaseries_paramEst/"
 task_summary_dir <- "/Volumes/psych-cog/dsnlab/TAG/nonbids_data/fMRI/fx/multiconds/dsd/betaseries/full_trial_summary/"
 subjects_dir <- "/Volumes/psych-cog/dsnlab/cheng_spf/subjects/dsd_subject_lists"
-fx_model_type <- "full_trial"
+fx_roi_dir <- "full_trial/vmPFC_symm_parameterEstimates"
 
 # Outputs 
 output_dir <- "/Volumes/psych-cog/dsnlab/cheng_spf/data/betaseries_paramEst/summaries"
@@ -51,22 +51,30 @@ if (rerun_merge_summaries == TRUE) {
 
 ```{r load inputs}
 
-file_list <- list.files(paste0(param_input_dir, "full_trial"))
+file_list <- list.files(paste0(param_input_dir, fx_roi_dir))
 complete_betas <- import(paste0(param_input_dir, "complete_betas.txt"), header = FALSE)
 # merged_disc_summary_files <- import(paste0(task_summary_dir, "merged_disclosure_summary_files.csv"))
 # merged_disc_summary_files$subject_id <- unlist(lapply(str_split(merged_disc_summary_files$subject_id, "TAG"), function(x){x[2]}))
 
 merged_full_trial_summary_files <- import(paste0(task_summary_dir, "merged_full_trial_summary_files.csv"))
 merged_full_trial_summary_files$subject_id <- unlist(lapply(str_split(merged_full_trial_summary_files$subject_id, "TAG"), function(x){x[2]}))
+merged_full_trial_summary_files <- filter(merged_full_trial_summary_files, run !=0)
+
+# dealing with 094w02 weirdness in a very manual edit type of way
+merged_full_trial_summary_files <- filter(merged_full_trial_summary_files, !(subject_id == "094w02" & is.na(disc.rt.seconds))) # manully removed bad trials
+merged_full_trial_summary_files <- filter(merged_full_trial_summary_files, V1 != "20763")
 
 subject_list_both_runs <- import(paste0(subjects_dir, "/dsd_both_runs.txt"), header = FALSE)
 colnames(subject_list_both_runs) <- "subject_id"
 
-subject_list_single_run <- import(paste0(subjects_dir, "subject_list_single_run_labeled.txt"), header = FALSE)
+subject_list_single_run <- import(paste0(subjects_dir, "/dsd_one_run_me.txt"), header = FALSE)
 colnames(subject_list_single_run) <- c("subject_id","run")
+
+subject_list_atypical_runs <- import(paste0(subjects_dir, "/dsd_atypical_runs.txt"), header = FALSE)
+colnames(subject_list_atypical_runs) <- c("subject_id")
 ```
 
-```{r examine task data}
+```{r examine task data, ignore = T}
 
 trials_per_subject <- data.frame(table(merged_full_trial_summary_files$subject_id))
 colnames(trials_per_subject) <- c("subject_id", "num_trials")
@@ -88,10 +96,10 @@ trial_summary_wide <- pivot_wider(trial_summary, names_from = run, values_from =
 #          atypical_run = ifelse(run1 != 41 | run2 != 41, 1, 0))
 
 # How many participants should be excluded for having an atypical number of runs? 
-atypical_runs <- trial_summary_wide[which(trials_per_subject$atypical_run == 1), ]
+# atypical_runs <- trial_summary_wide[which(trials_per_subject$atypical_run == 1), ]
 
-subject_list_both_runs[which(subject_list_both_runs$subject_id %in% atypical_runs$subject_id), ] # four participants with two runs have an atypical number of trials per run
-subject_list_single_run[which(subject_list_single_run$subject_id %in% atypical_runs$subject_id), ] # no participants with only one run have an atypical number of trials per run
+# subject_list_both_runs[which(subject_list_both_runs$subject_id %in% atypical_runs$subject_id), ] # four participants with two runs have an atypical number of trials per run
+# subject_list_single_run[which(subject_list_single_run$subject_id %in% atypical_runs$subject_id), ] # no participants with only one run have an atypical number of trials per run
 
 # create separate file lists for participants with two runs vs. only one run
 file_list_df <- data.frame(subject_id = unlist(lapply(str_split(file_list, "_"), function(x){x[1]})),
@@ -100,56 +108,101 @@ file_list_df <- data.frame(subject_id = unlist(lapply(str_split(file_list, "_"),
 file_list_both_runs_df <- file_list_df %>% 
   filter(subject_id %in% subject_list_both_runs$subject_id)
 
+subject_list_both_runs[!subject_list_both_runs$subject_id %in% file_list_both_runs_df$subject_id, ] # what does this mean, are these participants missing data??
+
 file_list_single_run_df <- file_list_df %>% 
   filter(subject_id %in% subject_list_single_run$subject_id)
 
+subject_list_single_run[!subject_list_single_run$subject_id %in% file_list_single_run_df$subject_id, ]
+
 file_list_atypical_runs_df <- file_list_df %>% 
-  filter(subject_id %in% atypical_runs$subject_id)
+  filter(subject_id %in% subject_list_atypical_runs$subject_id)
 
-not_atypical <- c("030w01", "094w02", "143w02", "200w01", "210w01") # these participants have just a single run, and the run that is NOT included is atypical
+# not_atypical <- c("030w01", "094w02", "143w02", "200w01", "210w01") # these participants have just a single run, and the run that is NOT included is atypical
 
-file_list_atypical_runs_df <- filter(file_list_atypical_runs_df, !(subject_id %in% not_atypical))
+# file_list_atypical_runs_df <- filter(file_list_atypical_runs_df, !(subject_id %in% not_atypical))
 ```
 
 ```{r both runs: calculate betas}
 
-# for all participants with both runs (typical number of trials)
-output_both_runs <- apply(file_list_both_runs_df, 1, function(x) {
-  # read in parameter estimates 
-  df <- read.delim(paste0(param_input_dir, "full_trial/", x[[2]]), sep = "", header = FALSE)
-  
-  if (!(x[[1]] %in% atypical_runs$subject_id)){
+# create a file list for all participants
 
-    # if there are the correct number of columns, then
-    if (length(df) == 5) {
-    
+file_list <- rbind(file_list_both_runs_df, file_list_single_run_df)
+
+# for all participants with both runs (typical number of trials)
+# manually edited for atypical runs
+create_betas <- apply(file_list_atypical_runs_df, 1, function(x) { # file_list
+  x = file_list_atypical_runs_df[3, ] # for testing
+  
+  # figure out whether they have both runs, a single run, or an atypical run structure
+  how_many_runs <- ifelse(x[[1]] %in% file_list_both_runs_df$subject_id, "both_runs", 
+                          ifelse(x[[1]] %in% file_list_single_run_df$subject_id, "single_run", 
+                                 ifelse(x[[1]] %in% file_list_atypical_runs_df$subject_id, "atypical_runs", NA)))
+  
+  # read in parameter estimates
+  df <- read.delim(paste0(param_input_dir, fx_roi_dir, "/", x[[2]]), sep = "", header = FALSE)
+  df_NAcc <- read.delim(paste0(param_input_dir, "full_trial/", x[[2]]), sep = "", header = FALSE)
+  df <- rbind(df, df_NAcc)
+  df <- df[duplicated(df) == F, ]
+  
+  # check if the parameter estimates file has the correct number of columns
+  if (!(length(df) == 5)) {
+    print("df doesn't have 5 columns")
+  } else
       # format dataframe
       colnames(df) <- c("subject_id", "beta", "roi", "mean", "sd")
-      levels(df$roi) <- c("vmPFC", "NAcc", "aud", "vis") # rename rois
+      levels(df$roi) <- unique(df$roi) #c("vmPFC", "NAcc", "aud", "vis") # rename rois
 
-      df_wide <- pivot_wider(df, names_from = roi, values_from = c(mean, sd)) %>% 
-        filter(beta != "beta_0088.nii")
+      if (how_many_runs == "both_runs"){
+        df_wide <- pivot_wider(df, names_from = roi, values_from = c(mean, sd)) %>% 
+          filter(beta != "beta_0088.nii")
     
-      # label trials as intimate or superficial
-      print(x[[1]])
+        # label trials as intimate or superficial
+        print(x[[1]])
+        trial_data <- filter(merged_full_trial_summary_files, subject_id == x[[1]])
+        df_wide$intimate_cond <- trial_data$intimate_cond
+        
+      } else if (how_many_runs == "single_run") {
+        df_wide <- pivot_wider(df, names_from = roi, values_from = c(mean, sd))
+        df_wide <- df_wide[1:41, ]
+        # figure out DSD1 or DSD2
+        run <- filter(subject_list_single_run, subject_id == x[[1]]) %>% 
+          select(run)
+      
+        # label trials as intimate or superficial
+        print(x[[1]])
+        trial_data <- filter(merged_full_trial_summary_files, subject_id == x[[1]]) %>% 
+          filter(run == run[[1]])
+        df_wide$intimate_cond <- trial_data$intimate_cond
+      } 
+      # else if (how_many_runs == "atypical_runs") {
+      df_wide <- pivot_wider(df, names_from = roi, values_from = c(mean, sd)) %>% 
+          filter(beta != "beta_0088.nii")
       trial_data <- filter(merged_full_trial_summary_files, subject_id == x[[1]])
+      
+      # 005w01 manually edited to delete last few trials: 
+      # df_wide <- df_wide[c(-83:-80), ]
+      # 054w01 manually edited to include run 2 only based on pattern of responses:
+      # df_wide <- df_wide[41:82, ]
+      #trial_data <- trial_data[c(1:82, ]
+      # 210w01 manually edited to include first 26 trials of run 1 and all of run 2
+      df_wide <- df_wide[c(1:26, 42:82), ]
+      trial_data <- trial_data[c(1:26, 41:81), ]
+      
       df_wide$intimate_cond <- trial_data$intimate_cond
       
+      # filter outliers
       upper_limit_NAcc <- mean(df_wide$mean_NAcc) + 3*sd(df_wide$mean_NAcc)
       lower_limit_NAcc <- mean(df_wide$mean_NAcc) - 3*sd(df_wide$mean_NAcc)
-      
       num_censored <- sum(df_wide$mean_NAcc > upper_limit_NAcc | df_wide$mean_NAcc < lower_limit_NAcc)
-      
       df_wide <- df_wide %>% 
         filter(mean_NAcc < upper_limit_NAcc & mean_NAcc > lower_limit_NAcc )
 
-      upper_limit_vmPFC <- mean(df_wide$mean_vmPFC) + 3*sd(df_wide$mean_vmPFC)
-      lower_limit_vmPFC <- mean(df_wide$mean_vmPFC) - 3*sd(df_wide$mean_vmPFC)
-      
-      num_censored <- num_censored + sum(df_wide$mean_vmPFC > upper_limit_vmPFC | df_wide$mean_vmPFC < lower_limit_vmPFC)
-      
+      upper_limit_inflated_vmPFC <- mean(df_wide$mean_inflated_vmPFC) + 3*sd(df_wide$mean_inflated_vmPFC)
+      lower_limit_inflated_vmPFC <- mean(df_wide$mean_inflated_vmPFC) - 3*sd(df_wide$mean_inflated_vmPFC)
+      num_censored <- num_censored + sum(df_wide$mean_inflated_vmPFC > upper_limit_inflated_vmPFC | df_wide$mean_inflated_vmPFC < lower_limit_inflated_vmPFC)
       df_wide <- df_wide %>% 
-        filter(mean_vmPFC < upper_limit_vmPFC & mean_vmPFC > lower_limit_vmPFC)
+        filter(mean_inflated_vmPFC < upper_limit_inflated_vmPFC & mean_inflated_vmPFC > lower_limit_inflated_vmPFC)
       
       # create separate data frames for intimate and superficial trials
       df_wide_INT <- df_wide %>% 
@@ -157,12 +210,65 @@ output_both_runs <- apply(file_list_both_runs_df, 1, function(x) {
       
       df_wide_SUP <- df_wide %>% 
         filter(intimate_cond == 0)
+    
+      ## for each roi in a list, run regression models and save the output 
+      roilist <- c("area_14c_left_symm_bi", "area_14c_right_symm_bi","area_14m_left_symm_bi", "area_14m_right_symm_bi", "area_24_left_symm_bi", "area_24_right_symm_bi", "area_25_left_symm_bi", "area_25_right_symm_bi", "area_32_left_symm_bi", "area_32_right_symm_bi")               
       
+      for (i in 1:length(roilist)){
+        roi <- roilist[i]
+        
+        roi_NAcc_ALL <- lm(as.formula(paste0("mean_", roi, " ~ mean_NAcc")), df_wide)
+        roi_NAcc_INT <- lm(as.formula(paste0("mean_", roi, " ~ mean_NAcc")), df_wide_INT)
+        roi_NAcc_SUP <- lm(as.formula(paste0("mean_", roi, " ~ mean_NAcc")), df_wide_SUP)
+        
+        roi_NAcc <- data.frame(subject_id = unique(df_wide$subject_id),
+                             bs_beta_ALL = round(roi_NAcc_ALL$coefficients[[2]], 3),
+                             bs_beta_INT = round(roi_NAcc_INT$coefficients[[2]], 3),
+                             bs_beta_SUP = round(roi_NAcc_SUP$coefficients[[2]], 3),
+                             num_trials = nrow(df_wide),
+                             coi = paste0(roi, "_NAcc"),
+                             num_censored = num_censored)
+        
+          if (i==1){
+            all_rois_NAcc_df <- roi_NAcc
+          } else {
+          all_rois_NAcc_df <- rbind(all_rois_NAcc_df, roi_NAcc)
+          }
+        }
+      
+      return(all_rois_NAcc_df)
+  
+})
+
+#df_betas <- do.call(rbind, create_betas)
+#df_betas <- filter(df_betas, !is.na(subject_id))
+# saveRDS(df_betas, paste0(output_dir, "/vmPFC_symm_rois/vmpfc_roi_betas_atypical.rds")) # this is misnamed, should be called SANS atypical?
+
+# saveRDS(all_rois_NAcc_df, paste0(output_dir, "/vmPFC_symm_rois/210w01_manual_vmpfc_roi_betas.rds"))
+df_betas <- readRDS(paste0(output_dir, "/vmPFC_symm_rois/vmpfc_roi_betas_both_or_single.rds"))  %>% 
+  rbind(readRDS(paste0(output_dir, "/vmPFC_symm_rois/005w01_manual_vmpfc_roi_betas.rds"))) %>% 
+  rbind(readRDS(paste0(output_dir, "/vmPFC_symm_rois/054w01_manual_vmpfc_roi_betas.rds"))) %>% 
+  rbind(readRDS(paste0(output_dir, "/vmPFC_symm_rois/210w01_manual_vmpfc_roi_betas.rds")))
+  
+df_betas <- df_betas[duplicated(df_betas) == F, ]
+colnames(df_betas) <- c("subject_id", "bs_beta_ALL", "bs_beta_INT", "bs_beta_SUP", "num_trials", "coi", "num_censored")
+
+df_betas <- df_betas %>% 
+  pivot_longer(cols = c("bs_beta_ALL", "bs_beta_INT", "bs_beta_SUP"), names_to = "condition")
+
+# write.table(df_betas, paste0(output_dir, "/dsd_full_trial_vmpfc_symm_bs_betas.csv"), row.names = FALSE, quote = FALSE, sep = ",")
+```
+
+
+## OLD STUFF
+```{r, include = F}
       ##  NAcc_vmPFC
       # run regression models 
-      vmPFC_NAcc_ALL <- lm(mean_vmPFC ~ mean_NAcc, df_wide)
-      vmPFC_NAcc_INT <- lm(mean_vmPFC ~ mean_NAcc, df_wide_INT)
-      vmPFC_NAcc_SUP <- lm(mean_vmPFC ~ mean_NAcc, df_wide_SUP)
+     
+      
+      vmPFC_NAcc_ALL <- lm(mean_inflated_vmPFC ~ mean_NAcc, df_wide)
+      vmPFC_NAcc_INT <- lm(mean_inflated_vmPFC ~ mean_NAcc, df_wide_INT)
+      vmPFC_NAcc_SUP <- lm(mean_inflated_vmPFC ~ mean_NAcc, df_wide_SUP)
       
       # save output 
       vmPFC_NAcc <- data.frame(subject_id = unique(df_wide$subject_id), 
@@ -225,15 +331,18 @@ output_both_runs <- apply(file_list_both_runs_df, 1, function(x) {
 
 df_output_both_runs <- do.call(rbind, output_both_runs)
 df_output_both_runs <- filter(df_output_both_runs, !is.na(subject_id))
+saveRDS(df_output_both_runs, paste0(output_dir, "/df_output_both_runs.rds"))
+
+df_output_both_runs <- readRDS(paste0(output_dir, "/df_output_both_runs.rds"))
 ```
 
-```{r single run: calculate betas}
+```{r single run: calculate betas,  include = F}
 
 output_single_run <- apply(file_list_single_run_df, 1, function(x) {
   # read in parameter estimates 
   df <- read.delim(paste0(param_input_dir, "full_trial/", x[[2]]), sep = "", header = FALSE)
   
-  if (!(x[[1]] %in% atypical_runs$subject_id)){
+  if (!(x[[1]] %in% file_list_atypical_runs_df$subject_id)){
 
     # if there are the correct number of columns, then
     if (length(df) == 5) {
@@ -345,19 +454,18 @@ output_single_run <- apply(file_list_single_run_df, 1, function(x) {
 
 df_output_single_run <- do.call(rbind, output_single_run) 
 df_output_single_run <- filter(df_output_single_run, !is.na(subject_id))
+saveRDS(df_output_single_run, paste0(output_dir, "/df_output_single_run.rds"))
 ```
 
-```{r atypical runs: calculate betas}
+```{r atypical runs: calculate betas,  include = F}
 
-output_atypical_runs <- apply(file_list_atypical_runs_df, 1, function(x) {
-  # read in parameter estimates 
-  df <- read.delim(paste0(param_input_dir, "full_trial/", x[[2]]), sep = "", header = FALSE)
+# do these manually for each of 
+file_list_atypical_runs_df
+x = file_list_atypical_runs_df[3, ]
+print(x[[1]])
+run_to_keep = 2
+df <- read.delim(paste0(param_input_dir, "full_trial/", x[[2]]), sep = "", header = FALSE)
 
-    # if there are the correct number of columns, then
-    if (length(df) == 5) {
-    
-    print(x[[1]])
-      
     # format dataframe
     colnames(df) <- c("subject_id", "beta", "roi", "mean", "sd")
     levels(df$roi) <- c("vmPFC", "NAcc", "aud", "vis") # rename rois
@@ -369,10 +477,13 @@ output_atypical_runs <- apply(file_list_atypical_runs_df, 1, function(x) {
     num_trials_run2 <- filter(trial_summary, subject_id == x[[1]], run == 2)$num_trials 
     
     betas_run1 <- paste0("beta_", str_pad(c(1:num_trials_run1), 4, side = "left", pad = "0"), ".nii")
-    betas_run2 <- paste0("beta_", str_pad(c((num_trials_run1 + 6) : (num_trials_run1 + 6 + num_trials_run2 -1)), 4, side = "left", pad = "0"), ".nii")
+    betas_run2 <- paste0("beta_", str_pad(c((num_trials_run1 + 6) : (num_trials_run1 + 6 + num_trials_run2 -1 )), 4, side = "left", pad = "0"), ".nii")
   
     df_wide <- df_wide %>% 
-      filter(beta %in% c(betas_run1, betas_run2))
+      filter(beta %in% c(betas_run2))
+    
+    trial_data <- trial_data %>% 
+      filter(run == run_to_keep)
     
     # label trials as intimate or superficial
     df_wide$intimate_cond <- trial_data$intimate_cond
@@ -459,11 +570,13 @@ output_atypical_runs <- apply(file_list_atypical_runs_df, 1, function(x) {
       
       rbind(vmPFC_NAcc, aud_NAcc, vis_NAcc)
 
-  } else
-      print(paste(x[[1]], "is missing columns", sep = " "))
-  })
-
-df_output_atypical_runs <- do.call(rbind, output_atypical_runs)
+# TAG005w01_output <- rbind(vmPFC_NAcc, aud_NAcc, vis_NAcc)
+# TAG054w01_output <-   rbind(vmPFC_NAcc, aud_NAcc, vis_NAcc)
+# TAG210w01_output <-    rbind(vmPFC_NAcc, aud_NAcc, vis_NAcc)   
+# df_output_atypical_runs <- rbind(TAG005w01_output, TAG054w01_output, TAG210w01_output)
+# saveRDS(df_output_atypical_runs, paste0(output_dir, "/df_output_atypical_runs.rds"))
+      
+df_output_atypical_runs <- readRDS(paste0(output_dir, "/df_output_atypical_runs.rds"))
 
 # for all participants with a single complete run (based on subjects lists and NOT having atypical runs)
 # same as above but make sure to do this for trials 1-41 only
@@ -508,7 +621,7 @@ df_output_atypical_runs <- do.call(rbind, output_atypical_runs)
 
 ```
 
-```{r merge beta cors from different run types}
+```{r merge beta cors from different run types,  include = F}
 
 #, row.names = FALSE, quote = FALSE, sep = ",")
 
@@ -522,8 +635,8 @@ df_output_betas <- df_output %>%
   pivot_longer(cols = c("bs_beta_ALL", "bs_beta_INT", "bs_beta_SUP"), names_to = "condition")
 
 df_output_betas$coi <- ifelse(df_output_betas$coi == "vmPFC_NAcc", "NAcc_vmPFC", 
-                ifelse(df_output_betas$coi == "vis_NAcc", "NAcc_vis",
-                       ifelse(df_output_betas$coi == "aud_NAcc", "NAcc_aud", NA)))
+                              ifelse(df_output_betas$coi == "vis_NAcc", "NAcc_vis",
+                                     ifelse(df_output_betas$coi == "aud_NAcc", "NAcc_aud", NA)))
 
 write.table(df_output_betas, paste0(output_dir, "/dsd_full_trial_bs_betas.csv"), row.names = FALSE, quote = FALSE, sep = ",")
 ```
