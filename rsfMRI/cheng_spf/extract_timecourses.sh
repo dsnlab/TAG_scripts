@@ -15,12 +15,15 @@ echo ---------------------------------------------------------------------------
 # Set paths and variables
 # ------------------------------------------------------------------------------------------
 # variables
-rois=(inflated_vmPFC NAcc primary_aud_sphere_rad4_n56_n16_0 primary_vis_sphere_rad4_n4_n88_4)
+# rois=(inflated_vmPFC NAcc primary_aud_sphere_rad4_n56_n16_0 primary_vis_sphere_rad4_n4_n88_4)
+rois=(area_14c_left_symm_bi area_14c_right_symm_bi area_14m_left_symm_bi area_14m_right_symm_bi area_24_left_symm_bi area_24_right_symm_bi area_25_left_symm_bi area_25_right_symm_bi area_32_left_symm_bi area_32_right_symm_bi)
+
 
 # paths
 xcp_sub_dir=/projects/dsnlab/shared/tag/fmriprep_20.2.1/xcp_output/sub-TAG"${SUB}"/ses-"${WAVE}"/run-"${RUN}"  # /projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/waves123/betaseries/sub-TAG"${SUB}" #beta directory
-roi_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/roi/cheng_spf  #roi directory 
-output_dir=/projects/dsnlab/shared/tag/nonbids_data/rsMRI/cheng_spf/timecourses # timecourse output directory
+#roi_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/roi/cheng_spf  #roi directory 
+roi_dir=/projects/dsnlab/shared/tag/fmriprep_20.2.1/rois/VmPFC_symmetric_20141024
+output_dir=/projects/dsnlab/shared/tag/nonbids_data/rsMRI/cheng_spf/timecourses/vmPFC_symm # timecourse output directory
 
 if [ ! -d ${output_dir} ]; then
 	mkdir -p ${output_dir}

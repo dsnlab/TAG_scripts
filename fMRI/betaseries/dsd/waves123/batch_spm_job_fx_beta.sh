@@ -15,7 +15,7 @@ STUDY=/projects/dsnlab/shared/tag/TAG_scripts
 SUBJLIST=`cat "$SUBJLIST_FILE"`
 
 # Which SID should be replaced?
-REPLACESID=001w02
+REPLACESID=001w03
 
 # SPM Path
 SPM_PATH=/projects/dsnlab/shared/SPM12

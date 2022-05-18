@@ -61,7 +61,7 @@ if [ "${PROCESS}" == "slurm" ]; then
 		 -o "${OUTPUTDIR}"/"${SUB}"_${RESULTS_INFIX}.log \
 		 --cpus-per-task=${cpuspertask} \
 		 --mem-per-cpu=${mempercpu} \
-		 --account=dsnlab --partition=short \
+		 --account=dsnlab --partition=ctn \
 		 spm_job.sh
 	 sleep .25
 	done
