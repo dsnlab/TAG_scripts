@@ -22,7 +22,7 @@
 # vmPFC	324
 
 ## define paths
-atlas_schaefer=/projects/dsnlab/shared/parcellation_atlas_schaeferes/Schaefer/MNI/Schaefer2018_400Parcels_7Networks_order_FSLMNI152_2mm.nii.gz
+atlas_schaefer=/projects/dsnlab/shared/parcellation_atlases/Schaefer/MNI/Schaefer2018_400Parcels_7Networks_order_FSLMNI152_2mm.nii.gz
 atlas_hcp=/projects/dsnlab/shared/tag/nonbids_data/fMRI/roi/HCPMMP1_on_MNI152_ICBM2009a_nlin_hd.nii.gz
 roiDir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/roi
 

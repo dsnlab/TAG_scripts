@@ -1,0 +1,4 @@
+sed -e 's/custom_subjlist\.txt/subject_list_w3_vgw.txt/g' \
+    -e 's/convert_bids_w3_custom\.sh/convert_bids_w3_vgw.sh/g' \
+    -e 's/batch_convert_bids_w3_custom\.sh/batch_convert_bids_w3_vgw.sh/g' \
+    -e 's/BCB_config\.sh/batch_convert_bids_config_w3_vgw.sh/g' "$@"

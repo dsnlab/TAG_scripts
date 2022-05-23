@@ -54,3 +54,69 @@ When errors are found, the following rules are employed:
 3. **DTI:** If there are not exactly 2 files (rl + lr), no images will be renamed or copied to `$bidsdir`. 
 4. **Resting state:** If there are more than 2 run with the same name, no images will be renamed or copied to `$bidsdir`. 
 5. **Functional task runs:** If there are multiple functional task runs, the largest task run will be renamed and copied to `$bidsdir`. 
+6. 
+
+### VGW README for wave 3 BIDS conversion
+All data that VGW used for wave 3 bids conversion is tagged with the suffix `_w3_vgw`.
+For instance, VGW used: 
+* `subject_list_w3_vgw.txt`
+* `convert_bids_config_w3_vgw.sh`
+* `batch_convert_bids_w3_vgw.sh`
+* `convert_bids_w3_vgw.sh`
+
+The subject list file (`subject_list_w3_vgw.txt`) contains a list of subjects
+with a column for the subject id (`$SUBJID`), the session id (`$SESSID`), and the
+name of the input directory (`$INPUT_DIR`), in this order. The first line contains
+arbitrary column headers and is ignored by the script (discarded). Any text  on
+a line after the third column is also ignored, so annotations can be added
+without interfering with the script. The subject id and session id columns
+(columns 1 and 2) are used only for naming the output directories after
+conversion, so their values can be arbitrarily chosen. The input directory
+column (column 3) is used to look up the DICOM data, so it must correspond to
+the actual location of that data within the DICOM base directory (the DICOM
+base directory is hardcoded in the `batch_convert_bids_w3_vgw.sh` script as the
+`$data_base_dir` variable; currently `/gpfs/projects/dsnlab/shared/tag/archive/DICOMS`).
+
+Lines of the subject list are parsed using the `xargs(1)` utility, which should
+allow quoting and backslash escaping of whitespace (similar to how Bash handles
+quoted strings) within a single entry in a column, if such a need arises (For
+example, you could have an entry like: `'TAG 1' 'WAVE 3' 'TAG 1 WAVE 3 SESSION
+DATA'` and the quoted white space will be preseved.
+
+The `convert_bids_config_w3_vgw.sh` file should be updated before a run to
+select the conversions you wish to process, etc. Then you will run the
+`batch_convert_bids_w3_vgw.sh` script to start the conversion process. This
+script accepts the following arguments:
+
+    SYNOPSIS
+        ./batch_convert_bids_w3_vgw.sh [OPTIONS] SUBJ_LIST
+    
+    DESCRIPTION
+        Batch-converts the subjects listed in the SUBJ_LIST file.
+
+        -d, --data-base-dir=DBDIR
+               The DBDIR argument is the base DICOMS directory. The default
+               value is: /gpfs/projects/dsnlab/shared/tag/archive/DICOMS
+        -o, --output-dir=OUTDIR
+               The OUTDIR argument is the name of the output directory. The
+               default behavior is to produce a timestamped directory
+               `./output_w3_vgw/<Timestamp>/' for each batch run.
+        -c, --config=CONFIG_SCRIPT
+               The CONFIG_SCRIPT argument is the name of the configuration
+               script that is run by the conversion script on each run,
+               containing options for which conversions to perform, etc. By
+               default, it searches for a file named
+               `convert_bids_config_w3_vgw.sh' in the same directory as the
+               `batch_convert_bids_w3_vgw.sh' script. 
+        -s, --script=SBATCH_SCRIPT
+               The SBATCH_SCRIPT argument is the name of the actual conversion
+               script that is run for each item in the subject list. By
+               default, it searches for a file named `convert_bids_w3_vgw.sh'
+               in the same directory as the `batch_conver_bids_w3.vgw.sh'
+               script
+
+    EXAMPLES
+        ./batch_convert_bids_w3_vgw.sh subject_list_w3_vgw.txt
+        ./batch_convert_bids_w3_vgw.sh -c custom_config.sh custom_subject_list.txt
+        etc.
+
