@@ -1,0 +1,94 @@
+{
+    "descriptions": [
+        {
+            "dataType": "anat",
+            "modalityLabel": "T1w",
+            "criteria": {
+                "SeriesDescription": "mprage_p2*"
+            }
+        },
+        {
+            "dataType": "func",
+            "modalityLabel": "bold",
+            "customLabels": "task-SVC_run-01",
+            "criteria": {
+                "SeriesDescription": "SVC_1*"
+            }
+        },
+        {
+            "dataType": "func",
+            "modalityLabel": "bold",
+            "customLabels": "task-SVC_run-02",
+            "criteria": {
+                "SeriesDescription": "SVC_2*"
+            }
+        },
+                 {
+            "dataType": "func",
+            "modalityLabel": "bold",
+            "customLabels": "task-rest",
+            "criteria": {
+                "SeriesDescription": "Resting_*"
+            }
+        },
+        {
+            "dataType": "func",
+            "modalityLabel": "bold",
+            "customLabels": "task-DSD_run-01",
+            "criteria": {
+                "SeriesDescription": "DSD_1*"
+            }
+        },
+        {
+            "dataType": "func",
+            "modalityLabel": "bold",
+            "customLabels": "task-DSD_run-02",
+            "criteria": {
+                "SeriesDescription": "DSD_2*"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phasediff",
+            "customLabels": "",
+            "criteria": {
+                "SidecarFilename": "*fieldmap_*_e2*",
+                "ProtocolName": "fieldmap_2mm",
+                "ImageType": "P"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude2",
+            "customLabels": "",
+            "criteria": {
+                "SidecarFilename": "*fieldmap_*_e2*",
+                "ProtocolName": "fieldmap_2mm",
+                "EchoNumber": 2,
+                "EchoTime": 0.00683,
+                "ImageType": "M"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude1",
+            "customLabels": "",
+            "criteria": {
+                "ProtocolName": "fieldmap_2mm",
+                "EchoTime": 0.00437,
+                "ImageType": "M"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude2",
+            "customLabels": "",
+            "criteria": {
+                "ProtocolName": "*fieldmap_*_e2*",
+                "EchoNumber": 2,
+                "EchoTime": 0.00683,
+                "ImageType": "P"
+            }
+        }
+    ]
+}
