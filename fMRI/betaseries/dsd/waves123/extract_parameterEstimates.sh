@@ -20,12 +20,15 @@ rois=(area_14c_left_symm_bi area_14c_right_symm_bi area_14m_left_symm_bi area_14
 # waves=(wave1 wave2 wave3)
 betas=`echo $(printf "beta_%04d.nii\n" {1..41}) $(printf "beta_%04d.nii\n" {47..88})`
 
+# task
+task=`disc_dec` #`full_trial`
+
 #for WAVE in ${waves[@]} ; do 
 
 # paths
-beta_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/waves123/betaseries/full_trial/sub-TAG"${SUB}" #beta directory
+beta_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/waves123/betaseries/"${task}"/sub-TAG"${SUB}" #beta directory
 roi_dir=/projects/dsnlab/shared/tag/fmriprep_20.2.1/rois/VmPFC_symmetric_20141024  #roi directory 
-output_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/waves123/betaseries/full_trial/vmPFC_symm_parameterEstimates #parameter estimate output directory
+output_dir=/projects/dsnlab/shared/tag/nonbids_data/fMRI/fx/models/dsd/waves123/betaseries/"${task}"/vmPFC_symm_parameterEstimates #parameter estimate output directory
 
 if [ ! -d ${output_dir} ]; then
 	mkdir -p ${output_dir}

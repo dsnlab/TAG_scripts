@@ -21,8 +21,11 @@ SUBJLIST=`cat ${SUBJLIST_FILENAME}`
 # FP the results files
 RESULTS_INFIX=extract_pe_ft
 
+# task
+task='disc_dec'
+
 # Set output dir and make it if it doesn't exist
-OUTPUTDIR=${STUDY}/fMRI/betaseries/dsd/waves123/output
+OUTPUTDIR=${STUDY}/fMRI/betaseries/dsd/waves123/output/"${task}"
 
 if [ ! -d ${OUTPUTDIR} ]; then
 	mkdir -p ${OUTPUTDIR}
@@ -40,7 +43,7 @@ for SUB in $SUBJLIST; do
 		 	--cpus-per-task=${cpuspertask} \
 		 	--mem-per-cpu=${mempercpu} \
 			--account=dsnlab \
-			--partition=ctn \
+			--partition=long \
 			--time=0-00:30:00 \
 		 	${SHELL_SCRIPT}
 	 	sleep .25
