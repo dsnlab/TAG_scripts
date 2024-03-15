@@ -7,7 +7,7 @@
 
 # Set directory names
 niidir="/projects/dsnlab/shared/tag/archive/clean_nii"
-bidsdir="/projects/dsnlab/shared/tag/bids_data2"
+bidsdir="/projects/dsnlab/shared/tag/bids_data_sep_wave"
 
 # Set study info
 declare -a anat="mprage_p2"
@@ -15,7 +15,7 @@ declare -a fmap="fieldmap_2mm"
 declare -a dti="diff"
 declare -a resting=("Resting_1" "Resting_2")
 #declare -a tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
-tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
+tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2" "rest_1" "rest_2")
 
 #Set phase encoding direction for fmap and task
 #1a = A-P
@@ -28,12 +28,12 @@ tasks=("SVC_1" "SVC_2" "DSD_1" "DSD_2")
 PhaseEncoding_task=1a
 
 # Set which sequences to create Json
-convertanat="TRUE"
+convertanat="FALSE"
 convertfmap="TRUE"
 convertdti="FALSE"
-convertrest="TRUE"
-converttask="TRUE"
+convertrest="FALSE"
+converttask="FALSE"
 
 # Set log files of new Json files and errors
-newlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/new_Json.txt" #lists subject-specific functional and anatomical json files that are created.
-errorlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/errorlog_Json.txt" #lists when subjects were not checked by scan (i.e., missing files or wrong number of files)
+newlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/new_Json_sepwave.txt" #lists subject-specific functional and anatomical json files that are created.
+errorlog="/projects/dsnlab/shared/tag/TAG_scripts/org/bids-conversion/errorlog_Json_sepwave.txt" #lists when subjects were not checked by scan (i.e., missing files or wrong number of files)

@@ -21,7 +21,7 @@ rois=(area_14c_left_symm_bi area_14c_right_symm_bi area_14m_left_symm_bi area_14
 betas=`echo $(printf "beta_%04d.nii\n" {1..41})` #`echo $(printf "beta_%04d.nii\n" {46..86})`
 
 # task
-task=`disc_dec` #`full_trial`
+task="disc_dec" #"full_trial"
 
 #for WAVE in ${waves[@]} ; do
 

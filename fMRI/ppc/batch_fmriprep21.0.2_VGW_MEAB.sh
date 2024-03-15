@@ -2,7 +2,7 @@
 #
 
 #SBATCH --account=dsnlab   
-#SBATCH --partition=ctn       ### queue to submit to
+#SBATCH --partition=long       ### queue to submit to
 #SBATCH --job-name=batch_job_MEAB_VGW    ### job name
 #SBATCH --output=output/wave3/batch_w3_output.out   ### file in which to store job stdout
 #SBATCH --error=output/wave3/error_w3.err    ### file in which to store job stderr
@@ -27,7 +27,7 @@ container=BIDS/SingularityContainers/fmriprep-21.0.2.simg
 study="tag"
 
 # Set subject list
-SUBJLIST=`cat subject_list_test.txt`
+SUBJLIST=`cat subject_list_fmap_w3.txt`
 
 # 
 for SUBJ in $SUBJLIST; do
@@ -36,7 +36,7 @@ for SUBJ in $SUBJLIST; do
 #sessid=`echo $SUBJ|awk '{print $2}' FS=","` 
 	
 sbatch --export SUBJ=${SUBJ},group_dir=${group_dir},study=${study},container=${container} \
---job-name ${subid}fmriprep_w3 --account=dsnlab --partition=ctn --time=1-23:00:00 --mem=25G --cpus-per-task=8 \
+--job-name ${SUBJ}fmriprep --account=dsnlab --partition=long,longfat --time=4-23:00:00 --mem=64G --cpus-per-task=8 \
 -o "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/output/fmriprep21.0.2/"${SUBJ}"_output.txt \
 -e "${group_dir}"/"${study}"/TAG_scripts/fMRI/ppc/output/fmriprep21.0.2/"${SUBJ}"_error.txt \
 job_fmriprep21.0.2_VGW_MEAB.sh
