@@ -1,0 +1,143 @@
+---
+title: "clean_this_is_me"
+output: html_document
+date: "2024-05-02"
+---
+
+## Purpose
+Prepare This is Me transcript data for narrative identity coding and other types of future analyses. Note that this script should _not_ rewrite the files once training is underway!
+
+## Inputs
+- .csv files created by copying and pasting the word doc transcriptions of 
+
+## Outputs
+- .csv file with a master key relating each transcript to its randomized id (random_id)
+- .csv file with randomized id and each transcript, with a greater proportion of later waves in the first 150 transcripts for training (40 from wave 4, 50 from wave 5, the rest are random draws from waves 1-3)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(pacman)
+p_load("dplyr", "tidyr", "knitr", "ggplot2", "tidytext", "stringr", "readr")
+```
+
+```{r inputs}
+
+tim_dir <- "/Volumes/psych-cog/dsnlab/TAG/behavior/This_Is_Me/"
+waves <- paste0("w", rep(1:5))
+```
+
+```{r create a df with all transcripts}
+
+all_text <- data.frame(subject_id = as.character(),
+                                 wave = as.character(),
+                                 text = as.character())
+
+for (i in 1:length(waves)){
+  
+  wave <- waves[i]
+  
+  # read in the data frame
+  df <- read.csv(paste0(tim_dir, "TRANSCRIPTIONS/", waves[i], "_transcriptions.csv"), header = F)
+  df <- data.frame(V1 = df[, 1]) # keep first column
+  df <- filter(df, V1 != " ") # remove blank rows
+  df <- filter(df, V1 != "")
+  
+  # subject IDs are anything starting with TAG
+  subject_ids <- filter(df, startsWith(df$V1, "TAG")) 
+  subject_ids <- str_replace_all(subject_ids$V1, fixed(" "), "") # remove the space if one got introduced
+  subject_ids <- substr(subject_ids, start = 1, stop = 6) # only keep the TAG ID (so ignoring "verified by" or other notes)
+  
+  # text is anything _not_ starting with TAG
+  text <- filter(df, !startsWith(df$V1, "TAG")) # | startsWith(df$V1, "0")) # create text var w/ lines that start with S; a few typos without the word S, so I start with "0" sometimes
+  
+  # if there's the same number of units of subject IDs and text, then put these together into a data frame
+  if(length(subject_ids) == nrow(text)){
+    temp <- data.frame(subject_id = subject_ids, 
+                   wave = wave,
+                   text = text)
+    colnames(temp) <- c("subject_id", "wave", "text")
+    
+    all_text <- rbind(all_text, temp) # append to whatever we have going on from the other waves
+  } else {print(paste0("differing numbers of subject ids and text for wave ", wave))} # otherwise print that the subject IDs and waves don't match
+}
+
+all_text$subj_wave_id <- paste(all_text$subject_id, all_text$wave, sep = "_")
+
+# manual edits
+# remove TAG026 version 1 (they restarted)
+all_text <- filter(all_text, !(subject_id == "TAG026" & grepl("Can I start over?", text)))
+
+# other misc notes
+# TAG181 and TAG194 has no transcript and was removed from the csv
+# had to delete comments at the end of w5 transcripts
+# spot checked alignment with original transcripts on 5/2/2024
+```
+
+```{r create training set}
+
+# first 150 should oversample from waves 4 and 5 -- so 40 from each, then the remaining 70 from waves 1-3
+
+# randomly re-order wave 5 data
+w5_text <- all_text %>% filter(wave == "w5")
+random_nums_w5 <- sample(1:nrow(w5_text), size = nrow(w5_text), replace = FALSE) # give each participant a random number
+w5_text$random_num <- random_nums_w5
+random_order_w5_text <- w5_text[order(w5_text$random_num), ] # re order the dataframe 
+
+# do the same with wave 4 data
+w4_text <- all_text %>% filter(wave == "w4")
+random_nums_w4 <- sample(1:nrow(w4_text), size = nrow(w4_text), replace = FALSE)
+w4_text$random_num <- random_nums_w4
+random_order_w4_text <- w4_text[order(w4_text$random_num), ]
+
+# randomly select from waves 1-3
+rest_of_data <- rbind(all_text %>% filter(wave != "w5" & wave != "w4")) %>% 
+  mutate(random_num = sample(1:nrow(.), size = nrow(.), replace = FALSE))
+random_order_rest_of_data <- rest_of_data[order(rest_of_data$random_num), ]
+
+# combine these three sets to create a training data set
+training_data <- rbind(random_order_w5_text[1:40, 1:4], random_order_w4_text[1:40, 1:4], random_order_rest_of_data[1:70, 1:4])
+training_data$random_num <- sample(1:nrow(training_data), size = nrow(training_data), replace = FALSE) # now give each of these a _new_ random number
+training_data <- training_data[order(training_data$random_num), ] # shuffle the training data based on this random number
+```
+
+```{r get the rest of the data}
+
+non_training_data <- all_text %>% filter(!(subj_wave_id %in% training_data$subj_wave_id))
+non_training_data$random_num<- sample(151:(150+nrow(non_training_data)), size = nrow(non_training_data), replace = FALSE) # random number from 151 to 510
+
+```
+
+```{r combine training and non-training dfs}
+
+all_text_reordered <- rbind(training_data, non_training_data ) 
+all_text_reordered <- all_text_reordered[order(all_text_reordered$random_num), ]
+
+# change random_num into random_id 
+all_text_reordered$random_id <- str_pad(all_text_reordered$random_num, width = 3, pad = "0")
+all_text_reordered$random_id <- paste0("random_", all_text_reordered$random_id)
+```
+
+```{r save two versions}
+
+## do not overwrite once training is underway
+# saveRDS(all_text_reordered, file = paste0(tim_dir, "TRANSCRIPTIONS/coding_master_key.rds"))
+
+anonymized_text <- all_text_reordered %>% select(c("random_id", "text"))
+#write.csv(anonymized_text, file = paste0(tim_dir, "TRANSCRIPTIONS/coding_anonymized_transcripts.csv"), fileEncoding = "macroman")
+```
+
+
+```{r summary stats, include = F}
+
+all_text %>% group_by(wave) %>% 
+  count()
+```
+
+```{r remove text extras, include = F}
+
+# df_wide$text <- filter(df_raw, startsWith(df_raw$V1, "S") | startsWith(df_raw$V1, "0")) # create text var w/ lines that start with S; a few typos without the word S, so I start with "0" sometimes
+# df_wide <- as.data.frame(df_wide) # change the list into a dataframe
+# colnames(df_wide) <- c("SID", "text") # rename the variables
+
+```
