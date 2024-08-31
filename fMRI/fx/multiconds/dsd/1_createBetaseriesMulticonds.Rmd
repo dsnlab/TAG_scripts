@@ -38,6 +38,7 @@ curr_wave = 1
 input_df <- read.csv(input_file)
 # input_df <- input_df %>% filter(wave==1)
 ids <- as.vector(unique(input_df$sid))
+ids <- 210
 ```
 
 ```{r format multiconds}

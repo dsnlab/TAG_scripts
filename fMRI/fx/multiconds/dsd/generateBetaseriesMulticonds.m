@@ -16,7 +16,7 @@ clear all
 wave_num = '1';
 
 % which cond? disclosure or eval
-cond = 'full_trial';
+cond = 'disclosure';
 
 f = filesep();
 
@@ -28,38 +28,42 @@ d = dir(fullfile(input_dir,'*summary.csv'));
 %% READ RAW DATA 
 
 % for each subject and run
-for k=1:length(d)
+%for k=1:length(d)
 
-k = 1;
+k = 289;
 cd (input_dir)
 
 filename = d(k).name;
 fid=fopen(filename, 'r');
-% disc and eval: M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%s%f%f\n','delimiter',',','Headerlines',1); 
+% disc and eval: 
+%M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%s%f%f\n','delimiter',',','Headerlines',1); 
 %M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%f%f%s%f%f\n','delimiter',',','Headerlines',1); 
-M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%f%f%s%f%f','delimiter',',','Headerlines',1); 
+%M = textscan(fid,'%s%s%s%s%f%f%s%f%f%s%s%f%f%s%f%f','delimiter',',','Headerlines',1); 
+% new test on 20240827 for 210w01 only
+M = textscan(fid,'%s%s%s%s%f%f%f%f%f%f%s%s%f%f','delimiter',',','Headerlines',1);
 fclose(fid);
 
-% SET NAMES BASED ON CONDITIONS THAT ARE PRESENT
+% SET NAMES BASED ON CONDITIONS THAT ARE PRESENT - NOTE FROM 20240824 -- I
+% need to edit the indexes for 210w01
 
 % simplify the format of the names vector (12 for disc and eval, 14 for
 % % full trial)
-% M{12} = strrep(M{12},'"',''); 
-% M{12} = strrep(M{12},'{','');
-% M{12} = strrep(M{12},'}','');
-
-M{14} = strrep(M{14},'"',''); 
-M{14} = strrep(M{14},'{','');
-M{14} = strrep(M{14},'}','');
+M{12} = strrep(M{12},'"',''); 
+M{12} = strrep(M{12},'{','');
+M{12} = strrep(M{12},'}','');
+% 
+% M{14} = strrep(M{14},'"',''); 
+% M{14} = strrep(M{14},'{','');
+% M{14} = strrep(M{14},'}','');
 
 % PREPARE ONSETS & DURATIONS
-% changing durations from double to cell format (previously 13 and 14)
-M{15} = num2cell(M{15});
-M{16} = num2cell(M{16});
+% changing durations from double to cell format (13 and 14 for disc, 15 and 16 for full trial)
+M{15} = num2cell(M{13});
+M{16} = num2cell(M{14});
 
-names = transpose(M{14});
-onsets = transpose(M{15});
-durations= transpose(M{16});
+names = transpose(M{12});
+onsets = transpose(M{13});
+durations= transpose(M{14});
 
 % creating a dataframe of names, onsets, durations
 % Mdata = [M{12} M{13} M{14}];
